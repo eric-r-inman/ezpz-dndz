@@ -1,4 +1,4 @@
-module Update.Status exposing (applySelected, applyTarget, concentrationNoteChanged, coverCycle, flyHeightAdjust, maxConcentrationNoteLength, openFor, toggleFlag)
+module Update.Status exposing (applySelected, applyTarget, concentrationNoteChanged, coverCycle, flyHeightAdjust, logToggle, maxConcentrationNoteLength, openFor, toggleFlag, undoLatest)
 
 {-| Update branches for the Status editor. The toggles edit a
 draft; the two Apply buttons add what it holds to the target
@@ -178,15 +178,129 @@ applyTo names model =
                             else
                                 c.flyHeight
                     }
+
+                snapshots =
+                    targets
+                        |> List.filterMap (\name -> Encounter.creatureNamed name model.encounter)
+                        |> List.map
+                            (\c ->
+                                { name = c.name
+                                , cover = c.cover
+                                , concentrating = c.concentrating
+                                , concentrationNote = c.concentrationNote
+                                , hiding = c.hiding
+                                , dodging = c.dodging
+                                , flying = c.flying
+                                , flyHeight = c.flyHeight
+                                }
+                            )
+
+                applied =
+                    List.filterMap identity
+                        [ coverLabel ui.cover
+                        , labelIf ui.concentrating "Concentrating"
+                        , labelIf ui.hiding "Hiding"
+                        , labelIf ui.dodging "Dodging"
+                        , labelIf ui.flying "Flying"
+                        ]
+
+                landed =
+                    { model
+                        | encounter =
+                            List.foldl
+                                (\name enc -> Encounter.mapCreature name add enc)
+                                model.encounter
+                                targets
+                    }
             in
             withUi (\u -> StatusUi.fresh u.target)
-                { model
-                    | encounter =
-                        List.foldl
-                            (\name enc -> Encounter.mapCreature name add enc)
-                            model.encounter
-                            targets
-                }
+                (if List.isEmpty applied || List.isEmpty snapshots then
+                    landed
+
+                 else
+                    { landed
+                        | statusLog =
+                            { seq = model.nextStatusLogSeq
+                            , summary = String.join ", " applied
+                            , targets = snapshots
+                            }
+                                :: List.take (StatusUi.maxStatusLogEntries - 1) model.statusLog
+                        , nextStatusLogSeq = model.nextStatusLogSeq + 1
+                        , statusLogOpen = True
+                    }
+                )
 
         _ ->
             model
+
+
+{-| The cover the draft sets, where it sets one. `NoCover` is the
+draft's resting state rather than a cover to apply, so it names
+nothing.
+-}
+coverLabel : Encounter.Cover -> Maybe String
+coverLabel cover =
+    case cover of
+        Encounter.NoCover ->
+            Nothing
+
+        Encounter.HalfCover ->
+            Just "Half cover"
+
+        Encounter.ThreeQuartersCover ->
+            Just "Three-quarters cover"
+
+        Encounter.FullCover ->
+            Just "Full cover"
+
+
+labelIf : Bool -> String -> Maybe String
+labelIf on label =
+    if on then
+        Just label
+
+    else
+        Nothing
+
+
+logToggle : Model -> ( Model, Cmd Msg )
+logToggle model =
+    ( { model | statusLogOpen = not model.statusLogOpen }, Cmd.none )
+
+
+{-| Undo the newest apply by putting every creature it touched
+back as it stood, then drop the entry so the next undo chains
+backwards. A creature the GM has since edited is restored along
+with the rest.
+-}
+undoLatest : Model -> ( Model, Cmd Msg )
+undoLatest model =
+    case model.statusLog of
+        entry :: rest ->
+            ( { model
+                | encounter =
+                    List.foldl
+                        (\s enc ->
+                            Encounter.mapCreature s.name
+                                (\c ->
+                                    { c
+                                        | cover = s.cover
+                                        , concentrating = s.concentrating
+                                        , concentrationNote = s.concentrationNote
+                                        , hiding = s.hiding
+                                        , dodging = s.dodging
+                                        , flying = s.flying
+                                        , flyHeight = s.flyHeight
+                                    }
+                                )
+                                enc
+                        )
+                        model.encounter
+                        entry.targets
+                , statusLog = rest
+              }
+            , Cmd.none
+            )
+
+        [] ->
+            ( model, Cmd.none )

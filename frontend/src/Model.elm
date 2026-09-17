@@ -1372,6 +1372,13 @@ type alias Model =
     -- `nextHpLogSeq` gives.
     , nextConditionLogSeq : Int
 
+    -- Recent status applies, newest first, each carrying what the
+    -- creatures it touched looked like beforehand so undo can put
+    -- them back.
+    , statusLog : List Ui.Status.StatusLogEntry
+    , statusLogOpen : Bool
+    , nextStatusLogSeq : Int
+
     -- Same pattern for the Duplicate and Replace editors:
     -- newest first, capped in their Update modules.
     , duplicateLog : List Ui.Duplicate.DuplicateLogEntry
