@@ -3,6 +3,8 @@
 
 * Upcoming
 ** Added
+1. The Condition/Effect editor's quick-apply caret carries the note along with
+   the condition.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance

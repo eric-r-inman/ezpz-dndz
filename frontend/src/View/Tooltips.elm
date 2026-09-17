@@ -580,7 +580,7 @@ conditionPresetSaveStartBlocked =
 
 conditionQuickApply : String
 conditionQuickApply =
-    "Quick apply to target"
+    "Quick apply to target, with note"
 
 
 saveNoticeDismiss : String

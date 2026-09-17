@@ -138,10 +138,10 @@ standardRadio ui label =
         ]
 
 
-{-| Applies the picked condition alone and folds the editor. It
-takes the right edge of whatever names the condition, so the fast
-path is a column of its own rather than something crowding the
-name.
+{-| Applies the picked condition, under the form's note, and folds
+the editor. It takes the right edge of whatever names the
+condition, so the fast path is a column of its own rather than
+something crowding the name.
 -}
 quickApplyCaret : Html Msg
 quickApplyCaret =
