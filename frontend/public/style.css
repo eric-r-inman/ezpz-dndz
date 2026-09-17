@@ -8786,6 +8786,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-text);
 }
 
+/* Holds the caret's place on a row that reads whole already.  It
+   carries the caret's own glyph rather than a width of its own, so
+   the column stays exactly as wide as a real caret however the
+   glyph or its size changes; hiding it this way also keeps it out
+   of the accessibility tree, where a caret that does nothing would
+   only mislead. */
+.log-row__fold--none {
+  visibility: hidden;
+  cursor: default;
+}
+
 /* Wrapper around a docked editor's unavailable Apply button.  It
    owns the tooltip trigger, since the disabled button inside
    swallows mouse events in Chrome, and takes the button's place

@@ -1336,6 +1336,12 @@ type alias Model =
     -- has one identity wherever it renders.
     , expandedLogRows : Set String
 
+    -- Log rows whose text does not fit the one line a folded row
+    -- gives it, reported by the browser because nothing else can
+    -- measure a rendered width.  A row outside this set reads
+    -- whole already and is offered no fold.
+    , overflowingLogRows : Set String
+
     -- Twin of `hpChangeLog` for the Save Chain modal.  The
     -- three apply paths (Fail button, Pass button, 🎲 Roll
     -- saves button) each prepend one entry per target so the

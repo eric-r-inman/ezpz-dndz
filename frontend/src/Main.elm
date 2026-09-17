@@ -330,6 +330,7 @@ subscriptions model =
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
             :: Ports.incomingPanelShow Update.Tabs.panelShowFromOtherTab
+            :: Ports.logRowOverflow LogRowOverflowReported
             :: settingsSubs
             ++ clearMenuSubs
             ++ conditionPresetLoadMenuSubs
@@ -572,6 +573,7 @@ init flags url key =
         , flashedHpLogSeq = 0
         , flashedRollSeq = 0
         , expandedLogRows = Set.empty
+        , overflowingLogRows = Set.empty
         , saveChainLog = []
         , saveChainLogOpen = False
         , hpEdit = Nothing
@@ -1067,6 +1069,9 @@ updateInner msg model =
 
         DicePanelPopupAnchored total measured ->
             Update.Dice.dicePanelPopupAnchored total measured model
+
+        LogRowOverflowReported measured ->
+            Update.LogRow.overflowReported measured model
 
         DiceRollFromOtherTab raw ->
             Update.Dice.rollFromOtherTab raw model

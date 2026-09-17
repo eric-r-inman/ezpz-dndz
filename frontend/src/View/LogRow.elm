@@ -1,8 +1,8 @@
-module View.LogRow exposing (foldToggle, openable, sentence)
+module View.LogRow exposing (foldGap, foldToggle, openable, sentence)
 
 {-| The parts the editors' log rows share.
 
-@docs foldToggle, openable, sentence
+@docs foldGap, foldToggle, openable, sentence
 
 -}
 
@@ -53,6 +53,14 @@ foldToggle key expanded =
                 "▶"
             )
         ]
+
+
+{-| Stands in the caret's place on a row that reads whole already,
+so the rows above and below it still line up on their text.
+-}
+foldGap : Html Msg
+foldGap =
+    span [ class "log-row__fold log-row__fold--none" ] [ text "▶" ]
 
 
 {-| A text span's class, with the wrapping modifier once the row
