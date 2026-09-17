@@ -251,6 +251,10 @@ panelFor model index panel =
                     (View.Inline.HpChange.view
                         { selectedCount = selectedCount
                         , placeholderWarning = placeholderWarning ui.target
+                        , targetTempHp =
+                            Encounter.creatureNamed ui.target model.encounter
+                                |> Maybe.map .tempHp
+                                |> Maybe.withDefault 0
                         , log = model.hpChangeLog
                         , logOpen = model.hpLogOpen
                         , setOpen = model.hpSetOpen

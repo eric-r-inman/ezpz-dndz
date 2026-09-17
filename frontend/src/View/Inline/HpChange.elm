@@ -17,6 +17,7 @@ the dice roller's log shows only the ones a roll produced.
 -}
 
 import Dice
+import HpChange
 import Html exposing (Html, button, div, input, span, text)
 import Html.Attributes as Attr exposing (attribute, autofocus, class, disabled, for, id, maxlength, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
@@ -31,13 +32,12 @@ import View.Tooltips as Tooltips
 
 
 {-| The model fragments the editor consumes beyond its own Ui
-record: the selection drives the scope controls, and the log
-renders with the fold state, the seq it last flashed, and the rows
-the GM has unfolded.
+record.
 -}
 type alias Context =
     { selectedCount : Int
     , placeholderWarning : Bool
+    , targetTempHp : Int
     , log : List HpChangeEntry
     , logOpen : Bool
     , setOpen : Bool
@@ -50,7 +50,7 @@ view : Context -> HpChangeUi -> Html Msg
 view ctx ui =
     div [ class "editor-body" ]
         [ div [ class "cond-section" ]
-            [ amount ctx.selectedCount ui
+            [ amount ctx.selectedCount ctx.targetTempHp ui
             , parseErrorHint ui.parseError
             , freshRollOption ctx.selectedCount ui
             , actionButtons
@@ -196,14 +196,13 @@ poolField rolling extraClass fieldId label current field =
         ]
 
 
-{-| The amount row: the field itself, then the scope checkbox
-(only while something is selected) trailing it. Enter commits as
-`DamageKind` because the expansion has four commit paths; Enter
-isn't safely overloadable across all of them. GMs who want Heal
-/ Temp HP / +Max HP click the corresponding button.
+{-| The amount row. Enter commits as `DamageKind` because the
+expansion has four commit paths; Enter isn't safely overloadable
+across all of them. GMs who want Heal / Temp HP / +Max HP click
+the corresponding button.
 -}
-amount : Int -> HpChangeUi -> Html Msg
-amount selectedCount ui =
+amount : Int -> Int -> HpChangeUi -> Html Msg
+amount selectedCount targetTempHp ui =
     div [ class "cond-row" ]
         [ Html.label [ class "cond-label", for "hp-amount" ]
             [ text "HP:" ]
@@ -219,8 +218,37 @@ amount selectedCount ui =
             , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
             ]
             []
+        , tempHpCap targetTempHp ui
         , applyScope selectedCount ui
         ]
+
+
+{-| An amount that would leave the creature's existing temp HP
+standing lands as nothing at all, so this names what it is up
+against — "4 < 8" — beside the field, where a GM sees it before
+committing rather than after. A formula reads as no amount, since
+its total is not known until it is rolled.
+-}
+tempHpCap : Int -> HpChangeUi -> Html Msg
+tempHpCap targetTempHp ui =
+    let
+        typed =
+            String.toInt (String.trim ui.amountText)
+                |> Maybe.withDefault 0
+
+        relation =
+            if typed == targetTempHp then
+                " = "
+
+            else
+                " < "
+    in
+    if typed > 0 && targetTempHp > 0 && HpChange.keepsExistingTempHp typed targetTempHp then
+        span [ class "hp-change__temp-cap" ]
+            [ text (String.fromInt typed ++ relation ++ String.fromInt targetTempHp) ]
+
+    else
+        text ""
 
 
 parseErrorHint : Maybe Dice.Error -> Html Msg

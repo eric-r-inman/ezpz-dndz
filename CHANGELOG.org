@@ -5,7 +5,12 @@
 ** Added
 1. The Condition/Effect editor's quick-apply caret carries the note along with
    the condition.  No action needed.
+2. The Manage HP editor shows the target's current temporary hit points beside
+   the amount field whenever the amount typed would not raise them.  No action
+   needed.
 ** Fixes
+1. The Manage HP editor's log keeps its undo button on the row, and reads from
+   the left when folded.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

@@ -15,7 +15,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, rosterDirty
+    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -616,6 +616,16 @@ editor aimed at one that has left is aimed at nothing.
 hasCreature : String -> Encounter -> Bool
 hasCreature name enc =
     List.any (\c -> c.name == name) enc.creatures
+
+
+{-| The creature a name points at, for an editor that needs what
+the creature currently holds rather than only its name.
+-}
+creatureNamed : String -> Encounter -> Maybe Creature
+creatureNamed name enc =
+    enc.creatures
+        |> List.filter (\c -> c.name == name)
+        |> List.head
 
 
 {-| Whether the named creature already carries a condition of

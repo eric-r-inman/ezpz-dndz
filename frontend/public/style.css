@@ -8582,6 +8582,15 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 600;
 }
 
+/* Beside the amount field: the temp HP the target already holds,
+   shown when it would outlast the amount typed. */
+.hp-change__temp-cap {
+  color: var(--color-temp-blue);
+  font-size: var(--font-size-field);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .hp-change__log-list {
   list-style: none;
   margin: 0;
@@ -8596,7 +8605,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .hp-change__log-entry {
   display: grid;
   /* The leading track is the fold caret. */
-  grid-template-columns: auto 64px minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto 64px minmax(0, 1fr) auto minmax(0, auto) auto;
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
@@ -8636,7 +8645,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .hp-change__log-kind {
   font-size: 0.65rem;
   font-weight: 700;
-  text-align: center;
+  text-align: left;
 }
 
 .hp-change__log-kind--damage {
@@ -8738,16 +8747,24 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-weight: 600;
 }
 
+/* The before → after slug is the row's widest part and never
+   wraps, so folded it gives way with an ellipsis; without that it
+   pushes the undo button off the row's right edge. */
 .hp-change__log-trans {
   color: var(--color-text);
   font-family: ui-monospace, "Menlo", monospace;
   font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .hp-change__log-trans--open {
   white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 /* The caret at a log row's left edge that unfolds it.  Bare
