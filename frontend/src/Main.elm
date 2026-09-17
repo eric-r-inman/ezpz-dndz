@@ -582,6 +582,9 @@ init flags url key =
         , conditionLog = []
         , conditionLogOpen = False
         , nextConditionLogSeq = 1
+        , statusLog = []
+        , statusLogOpen = False
+        , nextStatusLogSeq = 1
         , duplicateLog = []
         , duplicateLogOpen = False
         , nextDuplicateLogSeq = 1
@@ -1527,6 +1530,12 @@ updateInner msg model =
 
         ConditionLogToggle ->
             Update.Condition.logToggle model
+
+        StatusUndoLatest ->
+            Update.Status.undoLatest model
+
+        StatusLogToggle ->
+            Update.Status.logToggle model
 
         DuplicateLogToggle ->
             Update.Duplicate.logToggle model

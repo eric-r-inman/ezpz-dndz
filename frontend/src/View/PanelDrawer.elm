@@ -267,7 +267,15 @@ panelFor model index panel =
             SurfaceStatus ui ->
                 editor "Status"
                     ("Target: " ++ ui.target)
-                    (View.Inline.Status.view selectedCount (placeholderWarning ui.target) ui)
+                    (View.Inline.Status.view
+                        { selectedCount = selectedCount
+                        , placeholderWarning = placeholderWarning ui.target
+                        , log = model.statusLog
+                        , logOpen = model.statusLogOpen
+                        , expanded = model.expandedLogRows
+                        }
+                        ui
+                    )
 
             SurfaceCondition ui ->
                 editor "Condition/Effect"

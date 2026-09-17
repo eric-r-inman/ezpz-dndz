@@ -10,15 +10,29 @@ import Html exposing (Html, button, div, input, span, text)
 import Html.Attributes exposing (attribute, class, maxlength, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (Msg(..), StatusFlag(..))
-import Ui.Status exposing (StatusUi)
+import Set exposing (Set)
+import Ui.Status exposing (StatusLogEntry, StatusUi)
 import Update.Status
 import View.FlyHeight
 import View.Inline.ApplyButton as ApplyButton
+import View.StatusLog
 import View.Tooltips as Tooltips
 
 
-view : Int -> Bool -> StatusUi -> Html Msg
-view selectedCount placeholderWarning ui =
+{-| The model fragments the editor consumes beyond its own Ui
+record.
+-}
+type alias Context =
+    { selectedCount : Int
+    , placeholderWarning : Bool
+    , log : List StatusLogEntry
+    , logOpen : Bool
+    , expanded : Set String
+    }
+
+
+view : Context -> StatusUi -> Html Msg
+view ctx ui =
     div [ class "editor-body" ]
         [ div [ class "status-toggle-rows" ]
             [ div [ class "status-toggles" ]
@@ -53,19 +67,24 @@ view selectedCount placeholderWarning ui =
                 , label = "Target"
                 }
             , ApplyButton.view
-                { enabled = selectedCount > 0
+                { enabled = ctx.selectedCount > 0
                 , cls = "action-btn action-btn--green"
                 , msg = StatusApplySelected
                 , tip =
-                    if selectedCount == 0 then
+                    if ctx.selectedCount == 0 then
                         "Select creatures first"
 
                     else
                         "Add these statuses to every selected creature"
-                , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
+                , label = "Selected (" ++ String.fromInt ctx.selectedCount ++ ")"
                 }
             ]
-        , ApplyButton.placeholderNotice placeholderWarning
+        , ApplyButton.placeholderNotice ctx.placeholderWarning
+        , View.StatusLog.section
+            { open = ctx.logOpen
+            , expanded = ctx.expanded
+            }
+            ctx.log
         ]
 
 

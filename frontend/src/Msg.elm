@@ -734,6 +734,8 @@ type Msg
     | StatusFlyHeightAdjust Int
     | StatusApplyTarget
     | StatusApplySelected
+    | StatusLogToggle
+    | StatusUndoLatest
       -- Initiative.  Manual entry and the auto-roll batch land
       -- through the same re-sort.
     | InitiativeOpenFor String
