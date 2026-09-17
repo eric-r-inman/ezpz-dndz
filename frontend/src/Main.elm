@@ -1065,6 +1065,9 @@ updateInner msg model =
         DiceRollLanded roll ->
             Update.Dice.rollLanded roll model
 
+        DicePanelPopupAnchored total measured ->
+            Update.Dice.dicePanelPopupAnchored total measured model
+
         DiceRollFromOtherTab raw ->
             Update.Dice.rollFromOtherTab raw model
 

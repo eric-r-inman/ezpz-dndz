@@ -4,6 +4,7 @@ module Update.Dice exposing
     , clearResponse
     , countAdjust
     , countChanged
+    , dicePanelPopupAnchored
     , flipCoin
     , historyLoaded
     , historyToggle
@@ -43,6 +44,7 @@ so `withDice` is a flat lens over `model.dice` rather than a
 -}
 
 import Auth
+import Browser.Dom
 import Dice
 import Effects
 import Http
@@ -305,11 +307,10 @@ clearHistory model =
     ( cleared, cmd )
 
 
-{-| A roll fired from anywhere in the app landed. Update the local
-history immediately for snappy UI; fire the persistence POST in
-parallel. The server response replaces the local view in
-`DicePersistResponse` so the two stay in sync (and any older entries
-surfacing from disk after init come through that same path).
+{-| A roll fired in the dice roller pane landed. The server's
+response replaces the local view in `DicePersistResponse` so the
+two stay in sync, and any older entries surfacing from disk after
+init come through that same path.
 -}
 rollLanded : Dice.Roll -> Model -> ( Model, Cmd Msg )
 rollLanded roll model =
@@ -318,8 +319,39 @@ rollLanded roll model =
             Effects.pushDiceRoll roll model
     in
     ( pushed
-    , Cmd.batch [ persistRollFor model.auth roll, broadcastCmd ]
+    , Cmd.batch
+        [ persistRollFor model.auth roll
+        , broadcastCmd
+        , Effects.anchorDicePopup roll.total
+        ]
     )
+
+
+{-| Float a panel roll's total from the roller's own field, the
+way a stat block's rolls float from the cursor. The measurement
+fails when the pane is folded away, and a roll nobody is looking
+at wants no popup, so that failure is the answer rather than an
+error.
+
+`Browser.Dom` measures against the document while the popup is
+placed against the viewport, so the page's own scroll comes back
+off the position.
+
+-}
+dicePanelPopupAnchored : Int -> Result Browser.Dom.Error Browser.Dom.Element -> Model -> ( Model, Cmd Msg )
+dicePanelPopupAnchored total measured model =
+    measured
+        |> Result.map
+            (\el ->
+                spawnRollPopup
+                    { x = round (el.element.x - el.viewport.x + el.element.width / 2)
+                    , y = round (el.element.y - el.viewport.y)
+                    , total = total
+                    , color = Model.PopupPlain
+                    }
+                    model
+            )
+        |> Result.withDefault ( model, Cmd.none )
 
 
 {-| A peer tab fired a roll and broadcast it over the
@@ -431,18 +463,16 @@ clearResponse _ model =
 
 
 {-| Click on inline dice notation in a stat-block trait. Fire the
-roll through the same code path as the panel's own buttons, but
-do NOT open the panel — the result lands silently in the dice
-history and the panel marks its title unread, so the GM can open
-the log when they want to see it.
+roll through the roller's own machinery, but do NOT open the
+panel — the result lands silently in the dice history and the
+panel marks its title unread, so the GM can open the log when
+they want to see it.
 The source is tagged "Stat block" with the creature name so it
 shows up in the history as "Stat block → Brakka, Ogre Brute".
 
-`x` / `y` are the click position captured from the DOM event so
-the spawned floating popup can anchor to where the user clicked.
-The result lands in `StatBlockRollLanded` (rather than the shared
-`DiceRollLanded`) so we know to spawn a popup; manual rolls in
-the dice modal route through `DiceRollLanded` as before.
+`x` / `y` are the click position captured from the DOM event, and
+the result lands in `StatBlockRollLanded` rather than the shared
+`DiceRollLanded` so the popup can rise from the cursor.
 
 -}
 rollFromStatBlock : String -> Dice.Expression -> Int -> Int -> Model -> ( Model, Cmd Msg )
@@ -454,9 +484,9 @@ rollFromStatBlock creatureName expr x y model =
     )
 
 
-{-| Result handler for stat-block dice-link clicks. Pushes the
-roll to history (same as `rollLanded` for manual rolls) AND
-spawns a floating popup at the captured cursor position.
+{-| Result handler for stat-block dice-link clicks. The popup
+rises from the captured cursor position rather than from the
+roller pane.
 -}
 statBlockRollLanded : Int -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 statBlockRollLanded x y roll model =
@@ -475,10 +505,9 @@ statBlockRollLanded x y roll model =
 {-| Add a floating popup at the given screen position with the
 given roll total, returning the modified model + the auto-expire
 Cmd. Shared by every roll source that wants the floating-popup
-feedback (stat-block dice links, triple-rolls). The caller is
-responsible for any other roll-landed bookkeeping (push to dice
-history, persist, etc.) and for batching `popupCmd` with whatever
-else the source needs to fire.
+feedback. The caller is responsible for any other roll-landed
+bookkeeping and for batching `popupCmd` with whatever else the
+source needs to fire.
 -}
 spawnRollPopup : { x : Int, y : Int, total : Int, color : Model.PopupColor } -> Model -> ( Model, Cmd Msg )
 spawnRollPopup { x, y, total, color } model =
