@@ -1,6 +1,6 @@
 module Encounter.Xp exposing
-    ( Totals, XpScope(..)
-    , formatThousands, totalsFor
+    ( Line, Totals, XpScope(..)
+    , breakdownFor, formatThousands, totalsFor
     )
 
 {-| XP totals for the encounter. Pure rules code — what XP each
@@ -11,8 +11,8 @@ No `Html`, no `Msg`.
 domain concept (a filter over the creature queue), not a message
 shape. `Msg` re-exposes it for the `XpScopeSet` Msg constructor.
 
-@docs Totals, XpScope
-@docs formatThousands, totalsFor
+@docs Line, Totals, XpScope
+@docs breakdownFor, formatThousands, totalsFor
 
 -}
 
@@ -68,6 +68,34 @@ totalsFor scope enc db =
                 }
             )
             { total = 0, lairTotal = 0 }
+
+
+{-| One creature's contribution to the total, for a readout that
+shows its working.
+-}
+type alias Line =
+    { name : String
+    , xp : Int
+    , lairXp : Int
+    }
+
+
+{-| The creatures the scope picks out, each with the XP it
+contributes. Sums to `totalsFor` over the same encounter and
+scope, because both ask the same question of each creature —
+a readout of the working has to agree with the figure it explains.
+-}
+breakdownFor : XpScope -> Encounter -> Db -> List Line
+breakdownFor scope enc db =
+    enc.creatures
+        |> List.filterMap
+            (\c ->
+                xpForCreature scope db c
+                    |> Maybe.map
+                        (\( base, lair ) ->
+                            { name = c.name, xp = base, lairXp = lair }
+                        )
+            )
 
 
 xpForCreature : XpScope -> Db -> Creature -> Maybe ( Int, Int )

@@ -1232,6 +1232,10 @@ type Msg
     | EncounterControlCancel
     | EncounterRun
     | XpScopeSet XpScope
+      -- The XP panel's calculations tally: whether it shows, and
+      -- which creatures it leaves out of its own sum.
+    | XpCalculationsToggle
+    | XpExcludeToggle String
       -- Bulk: import / export / reset / delete-from-browser
     | CompendiumImportClick
     | CompendiumImportFileChosen File

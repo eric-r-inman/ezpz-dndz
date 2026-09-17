@@ -357,7 +357,13 @@ panelFor model index panel =
                     model.dice
 
             SurfaceXp ->
-                View.Panel.Xp.view header model.encounter model.compendium.db model.xpScope
+                View.Panel.Xp.view header
+                    model.encounter
+                    model.compendium.db
+                    model.xpScope
+                    { open = model.xpCalculationsOpen
+                    , excluded = model.xpExcluded
+                    }
 
             -- Modal and card-inline variants never enter the stack —
             -- their Update modules write `model.surface`, and the
