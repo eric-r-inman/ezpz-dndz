@@ -167,8 +167,10 @@ logRow expanded e =
         { key = key
         , expanded = Set.member key expanded
         , kind = "Replace"
+        , kindClass = "hp-change__log-kind--cond"
         , names = String.join ", " e.olds
         , detail = "→ " ++ String.join ", " e.news
+        , flash = False
         , trail = []
         }
     )

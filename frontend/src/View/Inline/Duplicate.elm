@@ -136,8 +136,10 @@ row expanded e =
         { key = key
         , expanded = Set.member key expanded
         , kind = e.modeLabel
+        , kindClass = "hp-change__log-kind--cond"
         , names = String.join ", " e.sources
         , detail = "→ " ++ String.join ", " e.created
+        , flash = False
         , trail = []
         }
     )

@@ -8603,9 +8603,6 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .hp-change__log-entry {
-  display: grid;
-  /* The leading track is the fold caret. */
-  grid-template-columns: auto 64px minmax(0, 1fr) auto minmax(0, auto) auto;
   align-items: center;
   gap: 8px;
   padding: 4px 8px;
@@ -8700,10 +8697,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   text-overflow: clip;
 }
 
-/* Unfolded, the row stops being a grid: its parts flow inline
-   and wrap as one line of text would, so a long name takes the
-   width it needs rather than the narrow column the folded grid
-   gives it. */
+/* Unfolded, the row's parts flow inline and wrap as one line of
+   text would, so a long name takes the width it needs rather than
+   the single clipped line a folded row holds it to. */
 .hp-change__log-entry--open {
   display: flex;
   flex-wrap: wrap;
@@ -8739,12 +8735,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   white-space: normal;
   overflow: visible;
   overflow-wrap: anywhere;
-}
-
-.hp-change__log-amount {
-  color: var(--color-text-muted);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
 }
 
 /* The before → after slug is the row's widest part and never

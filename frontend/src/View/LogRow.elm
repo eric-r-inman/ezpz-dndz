@@ -82,24 +82,36 @@ sentence :
     { key : String
     , expanded : Bool
     , kind : String
+    , kindClass : String
     , names : String
     , detail : String
+    , flash : Bool
     , trail : List (Html Msg)
     }
     -> Html Msg
 sentence row =
     li
         [ class
-            (if row.expanded then
-                "hp-change__log-entry hp-change__log-entry--sentence hp-change__log-entry--open"
+            (String.join " "
+                (List.filterMap identity
+                    [ Just "hp-change__log-entry hp-change__log-entry--sentence"
+                    , if row.expanded then
+                        Just "hp-change__log-entry--open"
 
-             else
-                "hp-change__log-entry hp-change__log-entry--sentence"
+                      else
+                        Nothing
+                    , if row.flash then
+                        Just "hp-change__log-entry--flash"
+
+                      else
+                        Nothing
+                    ]
+                )
             )
         ]
         (foldToggle row.key row.expanded
             :: span [ class (openable "hp-change__log-text" row.expanded) ]
-                [ span [ class (openable "hp-change__log-kind" row.expanded ++ " hp-change__log-kind--cond") ]
+                [ span [ class (openable "hp-change__log-kind" row.expanded ++ " " ++ row.kindClass) ]
                     [ text row.kind ]
                 , text " "
                 , span [ class (openable "hp-change__log-target" row.expanded) ] [ text row.names ]

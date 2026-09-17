@@ -75,7 +75,9 @@ entry opts e =
         { key = rowKey e
         , expanded = opts.expanded
         , kind = e.conditionName
+        , kindClass = "hp-change__log-kind--cond"
         , names = names
+        , flash = False
         , detail =
             if String.isEmpty e.note then
                 e.summary
