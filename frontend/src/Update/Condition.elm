@@ -800,31 +800,30 @@ submit model =
             ( model, Cmd.none )
 
 
-{-| Apply the condition's name to the target and fold the editor
-away, for the GM who wants it on that creature and nothing more
-said about it. Only the Apply buttons read the rest of the form,
-so the caret cannot carry settings the GM made for something else
-and then forgot.
+{-| Apply the condition, under the note the form gives it, to the
+target and fold the editor away — for the GM who wants it on that
+creature without settling how it ends. The rest of the form stays
+with the Apply buttons, so the caret cannot carry settings the GM
+made for something else and then forgot.
 -}
 quickApply : Model -> ( Model, Cmd Msg )
 quickApply model =
     case drawerSurface model of
         Just (SurfaceCondition ui) ->
-            submitWith nameOnly [ ui.target ] model
+            submitWith quickApplyForm [ ui.target ] model
                 |> Tuple.mapFirst (Model.foldDrawer Model.conditionLens)
 
         _ ->
             ( model, Cmd.none )
 
 
-{-| The form as the caret reads it: the condition's name, and a
-duration the GM ends by hand.
+{-| The form as the caret reads it: the condition's name and its
+note, and a duration the GM ends by hand.
 -}
-nameOnly : ConditionUi -> ConditionUi
-nameOnly ui =
+quickApplyForm : ConditionUi -> ConditionUi
+quickApplyForm ui =
     { ui
-        | note = ""
-        , durationKind = DurKindManual
+        | durationKind = DurKindManual
         , saveToEnd = Nothing
         , companions = []
         , companionDraft = ""
@@ -852,7 +851,8 @@ submitTo =
 {-| Validate that there's a name; empty-name conditions are
 silently dropped. Build a draft, then either insert it (creating)
 or update the edited condition. `prepare` has the say in what the
-form counts as, which is how the caret commits a name alone.
+form counts as, which is how the caret commits a narrower form
+than the Apply buttons do.
 -}
 submitWith : (ConditionUi -> ConditionUi) -> List String -> Model -> ( Model, Cmd Msg )
 submitWith prepare rawTargets model =
