@@ -150,6 +150,22 @@ tempHpSuite =
                     |> HpChange.apply (HpChange.TempHp 3)
                     |> .tempHp
                     |> Expect.equal 8
+        , test "an equal amount leaves the pool untouched too" <|
+            \_ ->
+                { fixture | tempHp = 8 }
+                    |> HpChange.apply (HpChange.TempHp 8)
+                    |> .tempHp
+                    |> Expect.equal 8
+        , test "keepsExistingTempHp holds for a lower or equal amount" <|
+            \_ ->
+                ( HpChange.keepsExistingTempHp 3 8
+                , HpChange.keepsExistingTempHp 8 8
+                )
+                    |> Expect.equal ( True, True )
+        , test "keepsExistingTempHp gives way to a higher amount" <|
+            \_ ->
+                HpChange.keepsExistingTempHp 9 8
+                    |> Expect.equal False
         ]
 
 

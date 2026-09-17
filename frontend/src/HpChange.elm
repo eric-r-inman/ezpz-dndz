@@ -1,6 +1,6 @@
 module HpChange exposing
     ( Change(..)
-    , apply, describe
+    , apply, describe, keepsExistingTempHp
     , setCurrentHp, setMaxHp, setArmorClass, setTempHp
     , restoreHp
     )
@@ -27,7 +27,7 @@ prompts upstream and hand the engine a final integer amount.
 
 # Apply
 
-@docs apply, describe
+@docs apply, describe, keepsExistingTempHp
 
 
 # Manual edit helpers
@@ -200,6 +200,16 @@ clamped to zero.
 applyTempHp : Int -> Creature -> Creature
 applyTempHp n c =
     { c | tempHp = Basics.max c.tempHp (Basics.max 0 n) }
+
+
+{-| Whether an incoming amount would leave the creature's existing
+temp HP standing. The pools never stack and the larger one wins, so
+an equal amount changes nothing either — which an editor wants to
+say before the GM commits it rather than after.
+-}
+keepsExistingTempHp : Int -> Int -> Bool
+keepsExistingTempHp incoming current =
+    incoming <= current
 
 
 {-| +Max HP: raise maxHp by N and add N to currentHp too. Mirrors
