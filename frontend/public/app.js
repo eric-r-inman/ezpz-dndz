@@ -707,3 +707,56 @@ document.addEventListener(
     true,
   );
 })();
+
+// A folded log row offers a caret only when its text is too wide
+// to read on one line — and whether it fits is a rendered width,
+// which only the browser can measure.  Each measurable row marks
+// itself with `data-log-key`; we compare the clipped width to the
+// visible one and hand Elm the verdict.
+//
+// The report is sent only when it differs from the last one, which
+// is what keeps this from looping: Elm re-renders on our message,
+// the mutation observer sees that render, and an unchanged verdict
+// stops there.
+(function () {
+  if (!(app.ports && app.ports.logRowOverflow)) return;
+
+  var last = null;
+
+  function report() {
+    try {
+      var out = {};
+      var rows = document.querySelectorAll("[data-log-key]");
+      for (var i = 0; i < rows.length; i++) {
+        // A pixel of slack: sub-pixel layout rounds scrollWidth up
+        // on text that actually fits.
+        out[rows[i].getAttribute("data-log-key")] =
+          rows[i].scrollWidth > rows[i].clientWidth + 1;
+      }
+      var serialized = JSON.stringify(out);
+      if (serialized === last) return;
+      last = serialized;
+      app.ports.logRowOverflow.send(out);
+    } catch (_) {}
+  }
+
+  var scheduled = false;
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () {
+      scheduled = false;
+      report();
+    });
+  }
+
+  try {
+    new MutationObserver(schedule).observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  } catch (_) {}
+  window.addEventListener("resize", schedule);
+  schedule();
+})();

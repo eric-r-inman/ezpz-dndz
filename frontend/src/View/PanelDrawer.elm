@@ -343,6 +343,7 @@ panelFor model index panel =
                 View.Panel.Dice.view header
                     { hpChangeLog = model.hpChangeLog
                     , expanded = model.expandedLogRows
+                    , overflowing = model.overflowingLogRows
                     , flashedRollSeq = model.flashedRollSeq
                     }
                     model.dice

@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, incomingPanelShow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
+    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, incomingPanelShow, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -185,6 +185,12 @@ handled both). Payload shape is whatever `Dice.encodeRoll`
 produces.
 -}
 port incomingDiceRoll : (D.Value -> msg) -> Sub msg
+
+
+{-| Subscription reporting which log rows are too wide to read
+whole on one line, as an object of row key to boolean.
+-}
+port logRowOverflow : (D.Value -> msg) -> Sub msg
 
 
 {-| Broadcast the current encounter to every other tab so a

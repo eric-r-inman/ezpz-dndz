@@ -529,8 +529,8 @@ type Msg
     | DiceHistoryToggle
     | DiceClearHistory
     | DiceRollLanded Dice.Roll
-      -- The roller's own expression field, measured so a panel
-      -- roll's floating total has somewhere to rise from.
+      -- Payload is the roll's total and the measured expression
+      -- field.
     | DicePanelPopupAnchored Int (Result Browser.Dom.Error Browser.Dom.Element)
       -- A peer tab broadcast a freshly-landed roll over the
       -- BroadcastChannel.  Payload is the encoded `Dice.Roll`;
@@ -1385,6 +1385,9 @@ type Msg
     | DrawerFoldNewest
       -- Unfold or refold one log row, by the key its log built.
     | LogRowToggle String
+      -- Which log rows the browser measured as too wide to read
+      -- on one line.
+    | LogRowOverflowReported Decode.Value
       -- Treasure.  The roller reads the encounter's own CR; the
       -- loot it produces lives on `model.encounter.treasure`, so
       -- it persists with the encounter.

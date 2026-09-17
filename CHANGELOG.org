@@ -13,6 +13,8 @@
 ** Fixes
 1. The Manage HP editor's log keeps its undo button on the row, and reads from
    the left when folded.  No action needed.
+2. A Dice Roller log row offers its fold only when the text is too wide to read
+   on one line.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

@@ -33,6 +33,7 @@ state.
 type alias Log =
     { hpChangeLog : List HpChangeEntry
     , expanded : Set String
+    , overflowing : Set String
     , flashedRollSeq : Int
     }
 
@@ -292,6 +293,7 @@ history log ui =
                             { key = key
                             , flash = ordinal > log.flashedRollSeq
                             , expanded = Set.member key log.expanded
+                            , overflowing = Set.member key log.overflowing
                             }
                             roll
                       )
@@ -373,7 +375,7 @@ and everything else flows on the row beneath, wrapping as a long
 formula or a long creature name needs.
 
 -}
-historyEntry : DiceUi -> Int -> { key : String, flash : Bool, expanded : Bool } -> Dice.Roll -> Html Msg
+historyEntry : DiceUi -> Int -> { key : String, flash : Bool, expanded : Bool, overflowing : Bool } -> Dice.Roll -> Html Msg
 historyEntry ui idx opts roll =
     let
         isMenuOpen =
@@ -427,8 +429,18 @@ historyEntry ui idx opts roll =
 
     else
         li [ class rowClass ]
-            [ View.LogRow.foldToggle opts.key opts.expanded
-            , div [ class "dice-history__formula" ]
+            [ if opts.overflowing then
+                View.LogRow.foldToggle opts.key opts.expanded
+
+              else
+                View.LogRow.foldGap
+            , div
+                [ class "dice-history__formula"
+
+                -- What the browser measures to decide whether this
+                -- row has anything to unfold.
+                , attribute "data-log-key" opts.key
+                ]
                 (rollSource roll.source :: text (tightFormula roll ++ ":") :: rolledAndType)
             , div [ class "dice-history__total" ] [ text (String.fromInt roll.total) ]
             , rerunControl idx isMenuOpen roll
