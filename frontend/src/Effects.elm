@@ -8,7 +8,7 @@ module Effects exposing
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
-    , areaRollCmd, areaRollCmdsFor, changePassword, compendiumListId, damageSaveCmd, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , anchorDicePopup, areaRollCmd, areaRollCmdsFor, changePassword, compendiumListId, damageSaveCmd, diceInputId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -112,6 +112,24 @@ encounterPanelBodyId =
 compendiumListId : String
 compendiumListId =
     "compendium-list"
+
+
+{-| DOM id of the dice roller's expression field. A roll fired in
+the pane carries no screen position of its own, so its floating
+total rises from this instead.
+-}
+diceInputId : String
+diceInputId =
+    "dice-input"
+
+
+{-| Measure the dice roller's expression field, so a roll made in
+the pane has somewhere to float its total from.
+-}
+anchorDicePopup : Int -> Cmd Msg
+anchorDicePopup total =
+    Browser.Dom.getElement diceInputId
+        |> Task.attempt (DicePanelPopupAnchored total)
 
 
 {-| Stable HTML id for one compendium list row, keyed by the

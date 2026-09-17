@@ -10,6 +10,7 @@ rolls nothing, so the roller is the only place it would show.
 -}
 
 import Dice
+import Effects
 import Html exposing (Html, button, div, input, label, li, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, class, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
@@ -128,9 +129,9 @@ form : DiceUi -> Html Msg
 form ui =
     div [ class "dice-form" ]
         [ div [ class "cond-row" ]
-            [ label [ for "dice-input", class "cond-label" ] [ text "Expression:" ]
+            [ label [ for Effects.diceInputId, class "cond-label" ] [ text "Expression:" ]
             , input
-                [ id "dice-input"
+                [ id Effects.diceInputId
                 , class "cond-input cond-input--grow"
                 , type_ "text"
                 , placeholder "e.g. 2d6+3"
