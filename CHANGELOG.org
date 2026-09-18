@@ -6,8 +6,10 @@
 ** Fixes
 ** Breaking
 ** Maintenance
-1. The project is synced to the current rust-template.  No action needed.
 ** Security
+* v0.18.0
+** Maintenance
+1. The project is synced to the current rust-template.  No action needed.
 * v0.17.0
 ** Added
 1. The Condition/Effect editor's quick-apply caret carries the note along with
