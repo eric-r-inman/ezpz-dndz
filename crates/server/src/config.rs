@@ -138,7 +138,6 @@ pub struct Config {
   /// Unix socket, or sd-listen to inherit from systemd.
   #[merge_config(
     name = "listen",
-    env,
     default = "\"127.0.0.1:3000\".to_string()",
     parse
   )]
@@ -148,12 +147,12 @@ pub struct Config {
   /// database, the legacy JSON import inputs, and the backups all
   /// live at fixed names inside this directory, so deployments only
   /// have to bind-mount a single directory.
-  #[merge_config(env, default = "std::path::PathBuf::from(\".\")")]
+  #[merge_config(default = "std::path::PathBuf::from(\".\")")]
   pub data_dir: PathBuf,
 
   /// Base URL of the service (e.g. https://example.com), used to
   /// construct the OIDC redirect URI.
-  #[merge_config(env, default = "\"http://localhost:3000\".to_string()")]
+  #[merge_config(default = "\"http://localhost:3000\".to_string()")]
   pub base_url: String,
 
   /// Resolved on-disk locations of the legacy JSON files — inputs
