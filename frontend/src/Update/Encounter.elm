@@ -127,9 +127,18 @@ nextTurn model =
     -- blinking dice glyph on the active creature's spent recharge
     -- chip and the GM clicks to roll, so we don't include the
     -- recharge cmds in the turn-advance batch any more.
-    ( { model | encounter = newEnc, flashConditions = flashes }
+    ( releaseTarget { model | encounter = newEnc, flashConditions = flashes }
     , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls ++ flashCmds)
     )
+
+
+{-| A creature taking the turn lets the highlight go, so every
+per-creature editor re-aims at the creature whose turn it now is.
+The GM highlights a card again to aim them somewhere else.
+-}
+releaseTarget : Model -> Model
+releaseTarget model =
+    Model.aimEditorsAtTarget { model | targetName = Nothing }
 
 
 {-| Clear the save-reminder pulse. Fired by the `Process.sleep`
@@ -149,7 +158,7 @@ end-of-turn scroll, not explicit user-initiated focus changes.
 -}
 setActive : String -> Model -> ( Model, Cmd Msg )
 setActive name model =
-    ( withEncounter (Encounter.setActive name) model
+    ( releaseTarget (withEncounter (Encounter.setActive name) model)
     , Effects.scrollActiveIntoView name
     )
 
