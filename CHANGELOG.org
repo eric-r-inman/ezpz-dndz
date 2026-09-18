@@ -4,6 +4,8 @@
 * Upcoming
 ** Added
 ** Fixes
+1. The Condition/Effect editor stops offering to change a condition that no
+   longer exists, and offers to apply a new one instead.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

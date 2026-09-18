@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, duplicateLens, foldAllDrawer, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
+    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -496,6 +496,29 @@ already aimed elsewhere is re-aimed too.
 aimEditorsAtTarget : Model -> Model
 aimEditorsAtTarget =
     reaimWhere (always True)
+
+
+{-| An editor opened on a condition changes that one condition, so
+once that condition is gone there is nothing left to change, and
+the editor goes back to applying a new one with the form as the GM
+left it. Left alone, it would keep offering a change that lands
+nowhere.
+-}
+dropStaleConditionEdit : Model -> Model
+dropStaleConditionEdit model =
+    mapDrawer conditionLens
+        (\ui ->
+            { ui
+                | editingId =
+                    ui.editingId
+                        |> Maybe.andThen
+                            (\id ->
+                                Encounter.findCondition ui.target id model.encounter
+                                    |> Maybe.map (always id)
+                            )
+            }
+        )
+        model
 
 
 {-| The creature an editor should aim at absent a better idea:
