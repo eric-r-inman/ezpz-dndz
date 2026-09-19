@@ -372,9 +372,9 @@ checksum = "7b02b629252fe8ef6460461409564e2c21d0c8e77e0944f3d189ff06c4e932ad"
 
 [[package]]
 name = "cc"
-version = "1.4.6"
+version = "1.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3eb0f42d6c360dc3f8a821f6bf2fdea7f72bfd36b3076eb0e6d1e9e0752fff4"
+checksum = "54413ede23c2daf518f35156dfde027feb2374004d63bd497f983c8db9c0e313"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -1056,9 +1056,9 @@ checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
 
 [[package]]
 name = "find-msvc-tools"
-version = "0.1.12"
+version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e0f1c7c3a72c66fd80abe965175f7523475c0489a87d3ff9d6e8c87d87a9d2d"
+checksum = "ef25905e51abafe4dcea6c15fec58c57b601cdbd0ee53d22ea1d3016c587d39b"
 
 [[package]]
 name = "flume"
@@ -2876,8 +2876,8 @@ dependencies = [
 
 [[package]]
 name = "rust-template-foundation"
-version = "0.127.0"
-source = "git+https://github.com/LoganBarnett/rust-template.git#e79256a4f41103631dc967e8743b02b7fa8ee42e"
+version = "0.128.0"
+source = "git+https://github.com/LoganBarnett/rust-template.git#868667b8759a62fefa9f3c7350cf8169102cb6c3"
 dependencies = [
  "aide",
  "axum",
@@ -2910,8 +2910,8 @@ dependencies = [
 
 [[package]]
 name = "rust-template-foundation-derive"
-version = "0.127.0"
-source = "git+https://github.com/LoganBarnett/rust-template.git#e79256a4f41103631dc967e8743b02b7fa8ee42e"
+version = "0.128.0"
+source = "git+https://github.com/LoganBarnett/rust-template.git#868667b8759a62fefa9f3c7350cf8169102cb6c3"
 dependencies = [
  "proc-macro2",
  "quote",

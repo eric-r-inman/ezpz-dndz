@@ -6,6 +6,10 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump cc from 1.4.6 to 1.4.7
+2. Bump find-msvc-tools from 0.1.12 to 0.1.13
+3. Bump rust-template-foundation from 0.127.0 to 0.128.0
+4. Bump rust-template-foundation-derive from 0.127.0 to 0.128.0
 ** Security
 * v0.19.0
 ** Maintenance
