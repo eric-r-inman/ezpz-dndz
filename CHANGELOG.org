@@ -6,6 +6,9 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump rand from 0.10.2 to 0.10.3
+2. Bump rust-template-foundation from 0.128.0 to 0.129.0
+3. Bump rust-template-foundation-derive from 0.128.0 to 0.129.0
 ** Security
 * v0.20.0
 ** Maintenance
