@@ -6,6 +6,9 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump hyper-rustls from 0.27.9 to 0.27.10
+2. Bump rust-template-foundation from 0.129.0 to 0.130.0
+3. Bump rust-template-foundation-derive from 0.129.0 to 0.130.0
 ** Security
 * v0.21.0
 ** Maintenance
