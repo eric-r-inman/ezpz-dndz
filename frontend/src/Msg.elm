@@ -589,17 +589,13 @@ type Msg
     | HpChangeManualRollChanged String
     | HpChangeManualRollClear
     | HpChangeManualRollLanded String Dice.Roll
-      -- Fold or unfold the editor's log, or its Roll or Set section.
+      -- Fold or unfold the editor's log, or its Set HP section.
     | HpChangeLogToggle
     | HpChangeSetToggle
     | HpChangeAmountChanged String
+    | HpChangeAmountRollChanged String
     | HpChangeApplyToSelectedToggle
-      -- Commits the modal's current amount as the given kind,
-      -- then closes.  The amount text is parsed at commit time:
-      -- an integer applies immediately; a dice formula routes
-      -- through `HpChangeRollLanded` after rolling; a parse
-      -- failure surfaces the error inline and leaves the modal
-      -- open.
+      -- Commits the editor's current amount as the given kind.
     | HpChangeApplyAs HpKind
     | HpChangeRollLanded Dice.Roll
     | HpChangeFreshRollToggle

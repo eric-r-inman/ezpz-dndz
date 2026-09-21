@@ -12,6 +12,13 @@
 4. The editor column's Next Turn control is wider and the Clear and Reset
    controls beside it are narrower, so the button pressed every round is the
    easiest of the three to hit.  No action needed.
+5. The Manage HP editor takes an amount either typed or rolled, from two fields
+   side by side, in place of the one field that accepted both.  A formula now
+   goes in the Roll field; the greyed-out field is the one that will not commit.
+6. The Manage HP editor's Set HP section labels each field with the pool it
+   sets.  No action needed.
+7. The Set HP section raises a creature's maximum to meet hit points set above
+   it, unless a maximum is typed alongside them.  No action needed.
 ** Fixes
 1. The Condition/Effect editor stops offering to change a condition that no
    longer exists, and offers to apply a new one instead.  No action needed.

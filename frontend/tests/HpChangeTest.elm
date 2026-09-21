@@ -186,6 +186,30 @@ setHpSuite =
                         [ \c -> c.maxHp |> Expect.equal 10
                         , \c -> c.currentHp |> Expect.equal 10
                         ]
+        , test "setCurrentHpRaisingMax carries the maximum up to meet it" <|
+            \_ ->
+                { fixture | currentHp = 12, maxHp = 21 }
+                    |> HpChange.setCurrentHpRaisingMax 45
+                    |> Expect.all
+                        [ \c -> c.currentHp |> Expect.equal 45
+                        , \c -> c.maxHp |> Expect.equal 45
+                        ]
+        , test "setCurrentHpRaisingMax leaves a maximum it fits under alone" <|
+            \_ ->
+                { fixture | currentHp = 12, maxHp = 21 }
+                    |> HpChange.setCurrentHpRaisingMax 15
+                    |> Expect.all
+                        [ \c -> c.currentHp |> Expect.equal 15
+                        , \c -> c.maxHp |> Expect.equal 21
+                        ]
+        , test "setCurrentHpRaisingMax restores a maximum the GM had lowered" <|
+            \_ ->
+                { fixture | currentHp = 10, maxHp = 10, originalMaxHp = 21 }
+                    |> HpChange.setCurrentHpRaisingMax 21
+                    |> Expect.all
+                        [ \c -> c.currentHp |> Expect.equal 21
+                        , \c -> c.maxHp |> Expect.equal 21
+                        ]
         ]
 
 

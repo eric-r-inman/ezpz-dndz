@@ -85,6 +85,8 @@ module View.Tooltips exposing
     , fullCover
     , halfCover
     , hiding
+    , hpAmountRoll
+    , hpAmountRollClear
     , hpOpenManage
     , hpRoll
     , hpRollClear
@@ -915,12 +917,22 @@ foldToggle =
 -}
 hpRoll : String
 hpRoll =
-    "Roll this for each target and set its hit points, current and maximum, to the total — a monster's hit dice in place of its average"
+    "Roll this for each target and set its hit points to the total — a monster's hit dice in place of its average"
 
 
 hpRollClear : String
 hpRollClear =
-    "Clear the roll and set the pools by hand again"
+    "Clear the roll and type the hit points instead"
+
+
+hpAmountRoll : String
+hpAmountRoll =
+    "Roll this for the amount, in place of typing one"
+
+
+hpAmountRollClear : String
+hpAmountRollClear =
+    "Clear the roll and type the amount instead"
 
 
 diceReset : String
