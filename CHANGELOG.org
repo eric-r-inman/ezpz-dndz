@@ -3,7 +3,11 @@
 
 * Upcoming
 ** Added
+1. After applying a condition to the target, the Condition/Effect editor offers
+   Apply Changes so it can be adjusted straight away.  No action needed.
 ** Fixes
+1. The Condition/Effect editor stops offering to change a condition that no
+   longer exists, and offers to apply a new one instead.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

@@ -715,6 +715,7 @@ update msg model =
         ( next, innerCmd ) =
             updateInner msg model
                 |> Update.Condition.damageTriggered msg model
+                |> Tuple.mapFirst Model.dropStaleConditionEdit
 
         encounterCmd =
             if Effects.shouldPersistAfter msg && next.encounter /= model.encounter then

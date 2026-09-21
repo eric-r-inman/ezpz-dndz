@@ -788,16 +788,37 @@ presetCategoryToggle category model =
     )
 
 
-{-| Apply the form to the editor's own target.
+{-| Apply the form to the editor's own target, leaving the editor
+on what it just put there so the GM can adjust it straight away.
 -}
 submit : Model -> ( Model, Cmd Msg )
 submit model =
     case drawerSurface model of
         Just (SurfaceCondition ui) ->
             submitTo [ ui.target ] model
+                |> Tuple.mapFirst (editApplied model.nextConditionLogSeq)
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Point the editor at the condition an apply just logged, when it
+logged exactly one. An apply that logged nothing leaves the form as
+it was.
+-}
+editApplied : Int -> Model -> Model
+editApplied seq model =
+    case model.conditionLog of
+        entry :: _ ->
+            case ( entry.seq == seq, entry.targets ) of
+                ( True, [ applied ] ) ->
+                    withConditionUi (\u -> { u | editingId = Just applied.conditionId }) model
+
+                _ ->
+                    model
+
+        [] ->
+            model
 
 
 {-| Apply the condition, under the note the form gives it, to the
