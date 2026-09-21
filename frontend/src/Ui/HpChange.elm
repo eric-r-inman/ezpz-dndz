@@ -6,11 +6,9 @@ module Ui.HpChange exposing
 {-| HP-change editor state plus the inline-HP edit and the
 recent-changes log entries.
 
-`amountText` mirrors the `<input>` characters so a transient
-mid-typing state (a bare `-` or the `2d` prefix of a formula
-in flight) doesn't get clobbered by the controlled input.
-The single field accepts either a plain integer or a dice
-formula; the apply handler parses it at commit time.
+The text fields mirror the `<input>` characters so a transient
+mid-typing state — the `2d` prefix of a formula in flight —
+doesn't get clobbered by the controlled input.
 
 @docs HpChangeUi, HpChangeEntry, HpEdit, maxHpLogEntries, fresh
 @docs HpChangeTargetSnapshot, HpLogKind
@@ -30,12 +28,12 @@ type alias HpChangeUi =
     -- action buttons commits.
     , kind : HpKind
 
-    -- Raw input text — parsed at apply time into either an
-    -- integer (applied directly) or a dice expression
-    -- (rolled, then the total is applied).  See
-    -- `Update.HpChange.applyAs` for the parse-then-apply
-    -- routing.
+    -- The amount a verb applies, as a flat number or as a formula
+    -- to roll for it.  Only one of the pair is ever live — a verb
+    -- has one amount — and whichever holds text disables the
+    -- other, so the field a GM typed in is the one that commits.
     , amountText : String
+    , amountRollText : String
     , parseError : Maybe Dice.Error
     , applyToSelected : Bool
 
@@ -52,9 +50,10 @@ type alias HpChangeUi =
     , manualMaxHpText : String
     , manualTempHpText : String
 
-    -- A formula the Set section rolls for each target's hit
-    -- points instead — a monster's hit dice, in place of its
-    -- average.  While it holds text the pool fields stand aside.
+    -- A formula rolled for each target's hit points in place of
+    -- `manualHpText`, the two disabling each other as the verb
+    -- row's pair do.  The maximum and temporary fields are
+    -- unaffected and still apply alongside whichever wins.
     , manualRollText : String
     , manualRollError : Maybe Dice.Error
     }
@@ -147,6 +146,7 @@ fresh target =
     { target = target
     , kind = DamageKind
     , amountText = ""
+    , amountRollText = ""
     , parseError = Nothing
     , applyToSelected = False
     , freshRollPerTarget = False

@@ -1,7 +1,7 @@
 module HpChange exposing
     ( Change(..)
     , apply, describe, keepsExistingTempHp
-    , setCurrentHp, setMaxHp, setArmorClass, setTempHp
+    , setCurrentHp, setCurrentHpRaisingMax, setMaxHp, setArmorClass, setTempHp
     , restoreHp
     )
 
@@ -32,7 +32,7 @@ prompts upstream and hand the engine a final integer amount.
 
 # Manual edit helpers
 
-@docs setCurrentHp, setMaxHp, setArmorClass, setTempHp
+@docs setCurrentHp, setCurrentHpRaisingMax, setMaxHp, setArmorClass, setTempHp
 
 
 # Undo
@@ -254,6 +254,19 @@ setCurrentHp n c =
             Basics.max 0 (Basics.min c.maxHp n)
     in
     recomputeBloodied { c | currentHp = clamped }
+
+
+{-| Write `currentHp` with the maximum carried up to meet it
+rather than capping it. A GM saying what a creature's hit points
+are is not asking to be told what a stat block, or a maximum they
+lowered earlier, thinks the ceiling should be — so the ceiling
+moves instead of the answer.
+-}
+setCurrentHpRaisingMax : Int -> Creature -> Creature
+setCurrentHpRaisingMax n c =
+    c
+        |> setMaxHp (Basics.max n c.maxHp)
+        |> setCurrentHp n
 
 
 {-| Manual GM override: write `maxHp` directly, clamped to >= 1.

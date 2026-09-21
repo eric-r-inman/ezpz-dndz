@@ -1152,6 +1152,9 @@ updateInner msg model =
         HpChangeAmountChanged text ->
             Update.HpChange.amountChanged text model
 
+        HpChangeAmountRollChanged text ->
+            Update.HpChange.amountRollChanged text model
+
         HpChangeApplyToSelectedToggle ->
             Update.HpChange.applyToSelectedToggle model
 

@@ -3,13 +3,12 @@ module View.Inline.HpChange exposing (Context, view)
 {-| Manage HP as a drawer panel — every way of changing a
 creature's pools on one surface, without covering the queue.
 
-The verb buttons share a smart amount input: type a plain
-integer (`8`) to apply that value directly, or a dice formula
-(`2d6+3`) to roll and apply the total. Parse errors surface
-inline underneath the input, and the input decides which path a
-verb takes. Below them, behind a fold, the Roll or Set section
-rolls a formula for each target's hit points or writes the pools
-to typed values instead.
+An amount is either typed or rolled, and the two fields offering
+that choice sit side by side with the one left alone greyed out,
+so which of them a verb will commit is visible before it is
+clicked. Parse errors surface inline underneath. Below them,
+behind a fold, the Set HP section writes pools to absolute values
+on the same typed-or-rolled terms.
 
 The editor's log holds every change, behind a fold of its own;
 the dice roller's log shows only the ones a roll produced.
@@ -19,7 +18,7 @@ the dice roller's log shows only the ones a roll produced.
 import Dice
 import HpChange
 import Html exposing (Html, button, div, input, span, text)
-import Html.Attributes as Attr exposing (attribute, autofocus, class, disabled, for, id, maxlength, placeholder, type_, value)
+import Html.Attributes as Attr exposing (attribute, autofocus, class, disabled, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (HpField(..), HpKind(..), Msg(..))
 import Set exposing (Set)
@@ -56,7 +55,7 @@ view ctx ui =
             , actionButtons
             , ApplyButton.placeholderNotice ctx.placeholderWarning
             ]
-        , rollOrSetSection ctx ui
+        , setHpSection ctx ui
         , View.HpLog.section
             { open = ctx.logOpen
             , flashedSeq = ctx.flashedSeq
@@ -67,18 +66,16 @@ view ctx ui =
 
 
 {-| Hit points set outright rather than changed, behind a fold.
-A formula in the Roll field, applied, rolls once per target and
-sets that creature's hit points to the total, the way a monster's
-hit dice roll stands in for its average; while it holds one the
-pool fields below stand aside. Otherwise the pools are set to
-what was typed, a blank field leaving its pool alone so one can
-be set without restating the others.
+The hit-points value is typed or rolled on the same terms as the
+verb row's amount; the maximum and temporary fields sit below it
+and apply either way. A blank field leaves its pool alone, so one
+pool can be set without restating the others.
 -}
-rollOrSetSection : Context -> HpChangeUi -> Html Msg
-rollOrSetSection ctx ui =
+setHpSection : Context -> HpChangeUi -> Html Msg
+setHpSection ctx ui =
     let
         rolling =
-            not (String.isEmpty (String.trim ui.manualRollText))
+            holdsText ui.manualRollText
 
         applyTip scope =
             if rolling then
@@ -90,7 +87,7 @@ rollOrSetSection ctx ui =
     div [ class "cond-section" ]
         (Field.foldHead
             { open = ctx.setOpen
-            , title = "Roll or Set"
+            , title = "Set HP"
             , msg = HpChangeSetToggle
             , trail = []
             }
@@ -98,11 +95,13 @@ rollOrSetSection ctx ui =
                     []
 
                 else
-                    [ div [ class "cond-row" ]
-                        [ Html.label [ for "manual-roll", class "cond-label" ] [ text "Roll:" ]
-                        , input
-                            [ id "manual-roll"
-                            , class "cond-input cond-input--w12"
+                    [ div [ class "cond-row cond-row--pools" ]
+                        [ poolField rolling "" "manual-hp" "Set HP to:" ui.manualHpText CurrentHpField
+                        , fieldPair (holdsText ui.manualHpText)
+                            split
+                            "manual-roll"
+                            "or Roll HP:"
+                            [ class "cond-input cond-input--w12"
                             , type_ "text"
                             , placeholder "e.g. 2d6+3"
                             , value ui.manualRollText
@@ -110,34 +109,12 @@ rollOrSetSection ctx ui =
                             , Html.Events.on "keydown" (Util.Keyboard.enterKey HpChangeManualApplyTarget)
                             , Tooltips.attr Tooltips.hpRoll
                             ]
-                            []
-                        , if rolling then
-                            button
-                                [ class "icon-btn icon-btn--sm icon-btn--red"
-                                , type_ "button"
-                                , onClick HpChangeManualRollClear
-                                , Tooltips.attr Tooltips.hpRollClear
-                                , attribute "aria-label" "Clear the roll"
-                                ]
-                                [ text "×" ]
-
-                          else
-                            text ""
+                            [ clearRoll ui.manualRollText HpChangeManualRollClear Tooltips.hpRollClear ]
                         ]
                     , parseErrorHint ui.manualRollError
-                    , div
-                        [ class
-                            (if rolling then
-                                "cond-row cond-row--pools cond-row--muted"
-
-                             else
-                                "cond-row cond-row--pools"
-                            )
-                        ]
-                        [ Html.label [ class "cond-label" ] [ text "or Set:" ]
-                        , poolField rolling "" "manual-hp" "HP" ui.manualHpText CurrentHpField
-                        , poolField rolling split "manual-max-hp" "Max HP" ui.manualMaxHpText MaxHpField
-                        , poolField rolling split "manual-temp-hp" "Temp HP" ui.manualTempHpText TempHpField
+                    , div [ class "cond-row cond-row--pools" ]
+                        [ poolField False "" "manual-max-hp" "Set Max HP to:" ui.manualMaxHpText MaxHpField
+                        , poolField False split "manual-temp-hp" "Set Temp HP to:" ui.manualTempHpText TempHpField
                         ]
                     , ApplyButton.row "Apply to:"
                         [ ApplyButton.view
@@ -175,25 +152,80 @@ split =
     "cond-pair--split"
 
 
-{-| One pool field, standing aside while the Roll field holds a
-formula.
+{-| One pool field, standing aside while the field beside it has
+taken its job over.
 -}
 poolField : Bool -> String -> String -> String -> String -> HpField -> Html Msg
-poolField rolling extraClass fieldId label current field =
-    span [ class ("cond-pair " ++ extraClass) ]
-        [ Html.label [ for fieldId, class "cond-label" ] [ text label ]
-        , input
-            [ id fieldId
-            , class "cond-input cond-input--pool"
-            , type_ "number"
-            , Attr.min "0"
-            , Attr.max "999"
-            , value current
-            , disabled rolling
-            , onInput (HpChangeManualChanged field)
-            ]
-            []
+poolField muted extraClass fieldId label current field =
+    fieldPair muted
+        extraClass
+        fieldId
+        label
+        [ class "cond-input cond-input--pool"
+        , type_ "number"
+        , Attr.min "0"
+        , Attr.max "999"
+        , value current
+        , onInput (HpChangeManualChanged field)
         ]
+        []
+
+
+{-| A labelled field that greys out as a whole — label included —
+once something else is supplying its value, so the field a click
+will actually commit is the one still in full colour. Anything
+trailing the field belongs to it, and rides along when a narrow
+panel wraps the pair onto its own line.
+-}
+fieldPair : Bool -> String -> String -> String -> List (Html.Attribute Msg) -> List (Html Msg) -> Html Msg
+fieldPair muted extraClass fieldId label attrs trail =
+    span
+        [ class
+            (String.join " "
+                (List.filterMap identity
+                    [ Just "cond-pair"
+                    , if String.isEmpty extraClass then
+                        Nothing
+
+                      else
+                        Just extraClass
+                    , if muted then
+                        Just "cond-pair--muted"
+
+                      else
+                        Nothing
+                    ]
+                )
+            )
+        ]
+        (Html.label [ for fieldId, class "cond-label" ] [ text label ]
+            :: input (id fieldId :: disabled muted :: attrs) []
+            :: trail
+        )
+
+
+{-| Empties a formula field, which is what hands the job back to
+the number beside it.
+-}
+clearRoll : String -> Msg -> String -> Html Msg
+clearRoll current msg tip =
+    if holdsText current then
+        button
+            [ class "icon-btn icon-btn--sm icon-btn--red"
+            , type_ "button"
+            , onClick msg
+            , Tooltips.attr tip
+            , attribute "aria-label" "Clear the roll"
+            ]
+            [ text "×" ]
+
+    else
+        text ""
+
+
+holdsText : String -> Bool
+holdsText =
+    not << String.isEmpty << String.trim
 
 
 {-| The amount row. Enter commits as `DamageKind` because the
@@ -204,20 +236,34 @@ the corresponding button.
 amount : Int -> Int -> HpChangeUi -> Html Msg
 amount selectedCount targetTempHp ui =
     div [ class "cond-row" ]
-        [ Html.label [ class "cond-label", for "hp-amount" ]
-            [ text "HP:" ]
-        , input
-            [ id "hp-amount"
-            , class "cond-input cond-input--narrow"
-            , type_ "text"
+        [ fieldPair (holdsText ui.amountRollText)
+            ""
+            "hp-amount"
+            "HP:"
+            [ class "cond-input cond-input--pool"
+            , type_ "number"
+            , Attr.min "0"
+            , Attr.max "999"
             , placeholder "12"
-            , maxlength 3
             , value ui.amountText
             , autofocus True
             , onInput HpChangeAmountChanged
             , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
             ]
             []
+        , fieldPair (holdsText ui.amountText)
+            split
+            "hp-amount-roll"
+            "or Roll:"
+            [ class "cond-input cond-input--w12"
+            , type_ "text"
+            , placeholder "e.g. 2d6+3"
+            , value ui.amountRollText
+            , onInput HpChangeAmountRollChanged
+            , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
+            , Tooltips.attr Tooltips.hpAmountRoll
+            ]
+            [ clearRoll ui.amountRollText (HpChangeAmountRollChanged "") Tooltips.hpAmountRollClear ]
         , tempHpCap targetTempHp ui
         , applyScope selectedCount ui
         ]
@@ -280,14 +326,13 @@ applyScope selectedCount ui =
             }
 
 
-{-| When the amount reads as a dice formula and a selection is
-in play, offer a fresh roll per creature instead of one shared
-total; an integer amount hides it, since there is nothing to
-reroll.
+{-| With a formula in hand and a selection in play, offer a fresh
+roll per creature instead of one shared total; a typed amount
+hides it, since there is nothing to reroll.
 -}
 freshRollOption : Int -> HpChangeUi -> Html Msg
 freshRollOption selectedCount ui =
-    if selectedCount > 0 && isFormula ui.amountText then
+    if selectedCount > 0 && holdsText ui.amountRollText then
         div [ class "cond-row" ]
             [ Field.checkbox
                 { checked = ui.freshRollPerTarget
@@ -299,26 +344,6 @@ freshRollOption selectedCount ui =
 
     else
         text ""
-
-
-{-| True when the amount text parses as a dice formula rather
-than a plain integer.
--}
-isFormula : String -> Bool
-isFormula raw =
-    let
-        trimmed =
-            String.trim raw
-    in
-    not (String.isEmpty trimmed)
-        && (String.toInt trimmed == Nothing)
-        && (case Dice.parse trimmed of
-                Ok _ ->
-                    True
-
-                Err _ ->
-                    False
-           )
 
 
 {-| Four action buttons — each commits the current amount using

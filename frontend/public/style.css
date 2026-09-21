@@ -100,6 +100,10 @@
      set, with a glyph sized to fill each face. */
   --action-btn-size: 30px;
   --font-size-action-glyph: 1rem;
+  /* What a control fades to while something else is supplying
+     its value: dim enough to read as inactive, legible enough
+     that what it holds can still be checked. */
+  --opacity-stood-aside: 0.5;
   /* Room the newest roll's flash needs beyond the space its
      resting text occupies — the scale it grows by plus the reach
      of its glow.  The badge row clips, so without this the flash
@@ -9415,10 +9419,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: var(--space-0);
 }
 
-/* A row standing aside while another control has taken over its
-   job, still readable for what it holds. */
-.cond-row--muted {
-  opacity: 0.5;
+/* A labelled field standing aside while another control has
+   taken over its job — still readable for what it holds. */
+.cond-pair--muted {
+  opacity: var(--opacity-stood-aside);
 }
 
 /* The duration picker's block: the kind chips and the sub-row the
