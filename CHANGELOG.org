@@ -9,9 +9,14 @@
    the active creature.  Highlight a card again to aim them elsewhere.
 3. A Condition/Effect log row names the preset it came from, when the preset was
    applied unchanged.  No action needed.
+4. The editor column's Next Turn control is wider and the Clear and Reset
+   controls beside it are narrower, so the button pressed every round is the
+   easiest of the three to hit.  No action needed.
 ** Fixes
 1. The Condition/Effect editor stops offering to change a condition that no
    longer exists, and offers to apply a new one instead.  No action needed.
+2. The newest dice result in the editor column shows its flash whole instead of
+   clipping at the edge of the row.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

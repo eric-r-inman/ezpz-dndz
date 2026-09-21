@@ -100,6 +100,11 @@
      set, with a glyph sized to fill each face. */
   --action-btn-size: 30px;
   --font-size-action-glyph: 1rem;
+  /* Room the newest roll's flash needs beyond the space its
+     resting text occupies — the scale it grows by plus the reach
+     of its glow.  The badge row clips, so without this the flash
+     is cut off at the moment it is meant to catch the eye. */
+  --recent-roll-flash-room: 10px;
 
   /* Type for the muted group label.  Most rules wearing that
      shape still spell the values out; converting them is
@@ -4085,6 +4090,7 @@ body {
   gap: var(--space-1);
   min-width: 0;
   overflow: hidden;
+  padding-inline: var(--recent-roll-flash-room);
 }
 
 .recent-roll {
@@ -6219,11 +6225,18 @@ button.creature-card__lifecycle--dead:focus-visible {
   --btn-bd: var(--action-btn-bd);
 }
 
-/* Start/next-turn control: 25% wider than its Clear/Reset row-
-   mates, so the button the GM reaches for every round is the
-   easiest of the three to land a click on. */
+/* Start/next-turn control, and the destructive pair it sits
+   beside.  The width the three share is spent unevenly on
+   purpose: the button pressed every round is the easiest of them
+   to land a click on, and the two that throw work away are the
+   hardest to hit by accident. */
 .drawer-controls__btn--wide {
-  width: calc(var(--action-btn-size) * 1.25);
+  width: calc(var(--action-btn-size) * 1.25 + var(--space-2));
+}
+
+.drawer-controls__btn--narrow {
+  min-width: calc(var(--action-btn-size) - var(--space-1));
+  width: calc(var(--action-btn-size) - var(--space-1));
 }
 
 /* The d20's label is digits where its neighbours are glyphs, so
