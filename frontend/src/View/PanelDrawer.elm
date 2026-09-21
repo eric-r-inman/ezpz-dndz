@@ -68,11 +68,11 @@ encounterControls model =
             , View.Panel.Dice.recentBadges model.dice.history model.dice.rollBadgeOverride
             ]
         , div [ class "drawer-controls__encounter" ]
-            [ controlButton "action-btn action-btn--red"
+            [ controlButton "action-btn action-btn--red drawer-controls__btn--narrow"
                 EncounterClear
                 Tooltips.clear
                 "🗑️"
-            , controlButton "action-btn action-btn--orange"
+            , controlButton "action-btn action-btn--orange drawer-controls__btn--narrow"
                 EncounterReset
                 Tooltips.reset
                 "⏮"
