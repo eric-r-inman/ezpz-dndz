@@ -1349,7 +1349,30 @@ commitCondition targets ui name model =
                     , note = draft.note
                     , summary = summarize draft.duration saveToEnd ++ companionSummary companions
                     , targets = List.reverse result.applied
+                    , presetName = untouchedPresetName ui model
                     }
+            )
+
+
+{-| The preset the form came from, while the form still holds
+everything that preset set. A preset the GM has since edited goes
+unnamed: the name would promise the row matches the preset, and it
+no longer does.
+-}
+untouchedPresetName : ConditionUi -> Model -> Maybe String
+untouchedPresetName ui model =
+    ui.loadedPresetName
+        |> Maybe.andThen
+            (\name ->
+                Dict.get name (Dict.union model.conditionPresets Bundled.defaults)
+                    |> Maybe.andThen
+                        (\preset ->
+                            if ConditionUi.matchesPreset preset ui then
+                                Just name
+
+                            else
+                                Nothing
+                        )
             )
 
 

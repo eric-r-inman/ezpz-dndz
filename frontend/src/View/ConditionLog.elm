@@ -70,6 +70,13 @@ entry opts e =
     let
         names =
             String.join ", " (List.map .name e.targets)
+
+        body =
+            if String.isEmpty e.note then
+                e.summary
+
+            else
+                e.summary ++ " · " ++ e.note
     in
     View.LogRow.sentence
         { key = rowKey e
@@ -79,11 +86,9 @@ entry opts e =
         , names = names
         , flash = False
         , detail =
-            if String.isEmpty e.note then
-                e.summary
-
-            else
-                e.summary ++ " · " ++ e.note
+            e.presetName
+                |> Maybe.map (\name -> body ++ " (" ++ name ++ ")")
+                |> Maybe.withDefault body
         , trail =
             if opts.undoable then
                 [ button

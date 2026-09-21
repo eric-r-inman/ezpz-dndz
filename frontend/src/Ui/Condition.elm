@@ -98,6 +98,12 @@ type alias ConditionLogEntry =
     , note : String
     , summary : String
     , targets : List { name : String, conditionId : Int }
+
+    -- The preset the application came from, set only while the
+    -- form still held that preset unchanged.  A form edited after
+    -- loading no longer describes the preset, so naming it would
+    -- point at settings the row does not record.
+    , presetName : Maybe String
     }
 
 

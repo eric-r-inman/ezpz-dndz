@@ -7,6 +7,8 @@
    Apply Changes so it can be adjusted straight away.  No action needed.
 2. Next Turn and Make Active clear the highlighted card, and the editors follow
    the active creature.  Highlight a card again to aim them elsewhere.
+3. A Condition/Effect log row names the preset it came from, when the preset was
+   applied unchanged.  No action needed.
 ** Fixes
 1. The Condition/Effect editor stops offering to change a condition that no
    longer exists, and offers to apply a new one instead.  No action needed.
