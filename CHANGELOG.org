@@ -3,6 +3,12 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.23.0
+** Added
 1. After applying a condition to the target, the Condition/Effect editor offers
    Apply Changes so it can be adjusted straight away.  No action needed.
 2. Next Turn and Make Active clear the highlighted card, and the editors follow
@@ -24,9 +30,6 @@
    longer exists, and offers to apply a new one instead.  No action needed.
 2. The newest dice result in the editor column shows its flash whole instead of
    clipping at the edge of the row.  No action needed.
-** Breaking
-** Maintenance
-** Security
 * v0.22.0
 ** Maintenance
 1. Bump hyper-rustls from 0.27.9 to 0.27.10
