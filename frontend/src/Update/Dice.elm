@@ -69,22 +69,28 @@ markRead model =
         { model | flashedRollSeq = model.dice.history.pushed }
 
 
-{-| The rail's 🎲 icon: unfold the Dice Roller and scroll it to
-the top of the column, whether it was already open, folded, or
-buried under other panels. It has no per-creature target, so
-there is nothing to re-aim.
+{-| The rail's 🎲 icon: bring the Dice Roller to the top of the
+column, or fold it away again when it is already showing. The one
+icon both summons and dismisses, so a GM who opened it mid-turn
+puts it back where they found it rather than hunting for the
+panel's own fold. It has no per-creature target, so there is
+nothing to re-aim.
 -}
 openPanel : Model -> ( Model, Cmd Msg )
 openPanel model =
-    let
-        nextModel =
-            Model.unfoldDrawer Model.diceLens model
-    in
-    ( nextModel
-    , Model.drawerIndexOf Model.diceLens nextModel
-        |> Maybe.map Effects.scrollDrawerIndexToTop
-        |> Maybe.withDefault Cmd.none
-    )
+    if Model.drawerShows Model.diceLens model then
+        ( Model.foldDrawer Model.diceLens model, Cmd.none )
+
+    else
+        let
+            nextModel =
+                Model.unfoldDrawer Model.diceLens model
+        in
+        ( nextModel
+        , Model.drawerIndexOf Model.diceLens nextModel
+            |> Maybe.map Effects.scrollDrawerIndexToTop
+            |> Maybe.withDefault Cmd.none
+        )
 
 
 inputChanged : String -> Model -> ( Model, Cmd Msg )
@@ -657,18 +663,22 @@ popupColor kind =
 
 {-| Horizontal spread so a triple-roll's three popups float up
 side by side instead of stacked exactly on top of one another.
+They read straight, advantage, disadvantage from the left, which
+is the order the rail's badge strip holds them in — the popups
+fade and the strip does not, so a GM reading one after the other
+should not have to re-learn which total sits where.
 -}
 popupOffset : Dice.RollKind -> Int
 popupOffset kind =
     case kind of
         Dice.Advantage ->
-            -60
+            0
 
         Dice.Disadvantage ->
             60
 
         _ ->
-            0
+            -60
 
 
 {-| Roll-popup lifetime in milliseconds. Must match the CSS
