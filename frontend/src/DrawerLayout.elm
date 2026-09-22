@@ -15,9 +15,9 @@ saved under, so a release that moves panels can tell an
 arrangement that predates the move from one the GM has since
 settled, and move the panels once rather than every boot.
 
-The fold state is deliberately absent. The column is designed to
-open with every editor collapsed to its heading row, so restoring
-a session's open panels would fight that.
+The fold state is deliberately absent. Which editors a column
+opens with is the build's call — see `Model.defaultDrawer` — so
+restoring a session's open panels would fight that.
 
 @docs Entry, Stored, current, decoder, encode
 
@@ -43,12 +43,13 @@ type alias Stored =
     }
 
 
-{-| The version of the arrangement rules this build writes.
-Version 2 put the panels still marked beta at the bottom.
+{-| The version of the arrangement rules this build writes. Each
+version's rearrangement is described on the function that
+performs it, under `Model.applyDrawerLayout`.
 -}
 current : Int
 current =
-    2
+    3
 
 
 encode : List Entry -> Encode.Value

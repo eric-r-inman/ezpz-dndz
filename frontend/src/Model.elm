@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, groupEditLens, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
+    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -196,7 +196,12 @@ parkCreatureEditor model =
             model
 
 
-{-| The drawer's boot contents, folded to their heading rows.
+{-| The drawer's boot contents, folded to their heading rows
+below a pinned, already-open Manage HP.
+
+Changing a creature's hit points is what a GM does between every
+roll, and paying an unfold for it every session is the one cost
+the column should not ask.
 
 The per-creature editors take no target here — the encounter
 arrives after `init` — so they come up unaimed and
@@ -206,26 +211,28 @@ the queue the first time one is expanded.
 -}
 defaultDrawer : List DrawerPanel
 defaultDrawer =
-    List.map (\s -> { surface = s, collapsed = True, pinned = False })
-        [ SurfaceDice
-        , SurfaceHpChange (Ui.HpChange.fresh "")
-        , SurfaceStatus (Ui.Status.fresh "")
-        , SurfaceCondition (UiCondition.fresh "")
-        , SurfaceInitiative (Ui.Initiative.fresh "")
-        , SurfaceDuplicate (Ui.Duplicate.fresh "")
-        , SurfaceReplace (Ui.Replace.fresh "")
-        , SurfaceCrCalculator Ui.CrCalculator.fresh
-        , SurfaceXp
-        , SurfaceSaveLoad Ui.SaveLoad.fresh
-        , SurfaceQuickAdd Ui.QuickAdd.fresh
-        , SurfaceSaveChain (Ui.SaveChain.fresh "")
-        , SurfaceTreasure Ui.Treasure.fresh
-        , SurfaceRandomEncounter Ui.RandomEncounter.fresh
-        ]
+    { surface = SurfaceHpChange (Ui.HpChange.fresh "")
+    , collapsed = False
+    , pinned = True
+    }
+        :: List.map (\s -> { surface = s, collapsed = True, pinned = False })
+            [ SurfaceDice
+            , SurfaceStatus (Ui.Status.fresh "")
+            , SurfaceCondition (UiCondition.fresh "")
+            , SurfaceInitiative (Ui.Initiative.fresh "")
+            , SurfaceDuplicate (Ui.Duplicate.fresh "")
+            , SurfaceReplace (Ui.Replace.fresh "")
+            , SurfaceCrCalculator Ui.CrCalculator.fresh
+            , SurfaceXp
+            , SurfaceSaveLoad Ui.SaveLoad.fresh
+            , SurfaceQuickAdd Ui.QuickAdd.fresh
+            , SurfaceSaveChain (Ui.SaveChain.fresh "")
+            , SurfaceTreasure Ui.Treasure.fresh
+            , SurfaceRandomEncounter Ui.RandomEncounter.fresh
+            ]
 
 
-{-| The keys of the panels the second layout version moved to the
-bottom of the column: the ones still marked beta.
+{-| The keys of the panels still marked beta.
 -}
 settledLast : List String
 settledLast =
@@ -399,11 +406,13 @@ without disturbing arrangements already saved. A key the build no
 longer knows is simply absent from the result, since the panels
 come from the current drawer rather than from the layout.
 
-A layout saved before the current rules version has the panels
-those rules moved to the bottom moved there, unless the GM pinned
-one, which is as deliberate a placement as there is. The layout
-is written back at the current version on the GM's next change,
-so the move happens once.
+A layout carries the rules version it was saved under, and each
+rearrangement is gated on the fixed version that introduced it,
+never on `DrawerLayout.current` — gating on that would run every
+past rearrangement again the moment it is raised, against an
+arrangement the GM has since settled. The layout is written back
+at the current version on the GM's next change, so each
+rearrangement happens once.
 
 -}
 applyDrawerLayout : DrawerLayout.Stored -> Model -> Model
@@ -413,20 +422,9 @@ applyDrawerLayout stored model =
             stored.entries
 
         settle panels =
-            if stored.version >= DrawerLayout.current then
-                panels
-
-            else
-                let
-                    ( moved, kept ) =
-                        List.partition
-                            (\panel ->
-                                not panel.pinned
-                                    && List.member (surfaceKey panel.surface) settledLast
-                            )
-                            panels
-                in
-                kept ++ moved
+            panels
+                |> settleBeta stored.version
+                |> holdHpChange stored.version
 
         entryFor panel =
             layout
@@ -464,6 +462,48 @@ applyDrawerLayout stored model =
             List.partition .pinned (settle ordered)
     in
     { model | drawer = held ++ loose }
+
+
+{-| The second layout version sent the panels still marked beta
+to the bottom, leaving a pinned one where it was — a pin is as
+deliberate a placement as there is.
+-}
+settleBeta : Int -> List DrawerPanel -> List DrawerPanel
+settleBeta version panels =
+    if version >= 2 then
+        panels
+
+    else
+        let
+            ( moved, kept ) =
+                List.partition
+                    (\panel ->
+                        not panel.pinned
+                            && List.member (surfaceKey panel.surface) settledLast
+                    )
+                    panels
+        in
+        kept ++ moved
+
+
+{-| The third layout version put Manage HP at the top, pinned,
+where a fresh column now boots it. An arrangement that already
+knows this rule is the GM's own and is left alone, pin and place
+both.
+-}
+holdHpChange : Int -> List DrawerPanel -> List DrawerPanel
+holdHpChange version panels =
+    if version >= 3 then
+        panels
+
+    else
+        let
+            ( hp, others ) =
+                List.partition
+                    (\panel -> hpChangeLens.extract panel.surface /= Nothing)
+                    panels
+        in
+        List.map (\panel -> { panel | pinned = True }) hp ++ others
 
 
 {-| Re-aim every per-creature editor whose creature has left the
