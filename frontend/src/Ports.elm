@@ -31,7 +31,7 @@ import Json.Encode as E
 
 {-| Send a preference snapshot to the JS host. The Elm side is
 responsible for serializing the relevant fields; the JS side
-just persists what arrives. Today the only field is `theme`.
+just persists what arrives, a field at a time.
 -}
 port savePreferences : E.Value -> Cmd msg
 

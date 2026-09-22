@@ -141,13 +141,22 @@ stack model =
             -- Keyed by surface so a reorder moves DOM nodes
             -- instead of rewriting every panel in place, which
             -- would drop focus and replay the mount animation.
+            -- Keyed and indexed before the profile filters, so a
+            -- panel keeps its identity and its stack index — the
+            -- messages its heading fires name a position in the
+            -- whole stack, not in what the profile lets through.
             Html.Keyed.node "div"
                 [ class "drawer-stack", Attr.id Effects.drawerStackId ]
-                (List.indexedMap
-                    (\index panel ->
-                        ( Model.surfaceKey panel.surface, panelFor model index panel )
-                    )
-                    panels
+                (panels
+                    |> List.indexedMap Tuple.pair
+                    |> List.filter
+                        (\( _, panel ) ->
+                            Model.profileShows model.preferences.profile panel
+                        )
+                    |> List.map
+                        (\( index, panel ) ->
+                            ( Model.surfaceKey panel.surface, panelFor model index panel )
+                        )
                 )
 
 

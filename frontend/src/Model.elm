@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
+    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -49,7 +49,7 @@ import Encounter.SaveChain exposing (SaveChain)
 import Encounter.Treasure
 import Encounter.Xp exposing (XpScope)
 import Json.Decode as Decode
-import Msg exposing (MeStatus)
+import Msg exposing (MeStatus, Profile(..))
 import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Set exposing (Set)
@@ -234,6 +234,60 @@ defaultDrawer =
 settledLast : List String
 settledLast =
     [ "save-chain", "treasure", "random-encounter" ]
+
+
+{-| Which panels a profile keeps out of the column.
+-}
+profileHiddenKeys : Profile -> List String
+profileHiddenKeys profile =
+    case profile of
+        -- Running a fight has no use for the editors that
+        -- assemble one.
+        Session ->
+            [ "replace", "cr-calculator", "xp", "quick-add" ] ++ settledLast
+
+        -- Assembling an encounter has no use for the editors
+        -- that run one.
+        Builder ->
+            [ "dice", "hp-change", "status", "condition" ] ++ settledLast
+
+        Beta ->
+            []
+
+
+{-| Whether the column shows this panel under the profile. A
+profile hides folded heading rows, not capabilities: the card
+and rail triggers that unfold a hidden panel still put it on
+screen, and folding it is what puts it away again.
+-}
+profileShows : Profile -> DrawerPanel -> Bool
+profileShows profile panel =
+    not panel.collapsed
+        || not (List.member (surfaceKey panel.surface) (profileHiddenKeys profile))
+
+
+{-| Fold the panels the profile hides, so picking one snaps the
+column to it rather than leaving whatever happened to be open
+standing in a profile that excludes it.
+-}
+foldProfileHidden : Profile -> List DrawerPanel -> List DrawerPanel
+foldProfileHidden profile =
+    List.map
+        (\panel ->
+            if List.member (surfaceKey panel.surface) (profileHiddenKeys profile) then
+                { panel | collapsed = True }
+
+            else
+                panel
+        )
+
+
+{-| `foldProfileHidden`, addressed at the model for the callers
+that hold one.
+-}
+foldProfileHiddenIn : Profile -> Model -> Model
+foldProfileHiddenIn profile model =
+    { model | drawer = foldProfileHidden profile model.drawer }
 
 
 {-| Move the panel at `from` so it sits at `to`, or as near it

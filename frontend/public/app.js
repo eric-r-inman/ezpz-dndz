@@ -9,6 +9,7 @@
 var savedTheme = "modern";
 try {
   var raw = localStorage.getItem("theme");
+  var savedProfile = localStorage.getItem("profile") || "beta";
   if (raw === "light" || raw === "auto") raw = "modern";
   if (raw === "modern" || raw === "dark" || raw === "accessible") {
     savedTheme = raw;
@@ -160,6 +161,7 @@ var app = Elm.Main.init({
   node: document.getElementById("app"),
   flags: {
     theme: savedTheme,
+    profile: savedProfile,
     localEncounter: localEncounter,
     migrationDateLabel: migrationDateLabel,
     localDiceHistory: localDiceHistory,
@@ -181,6 +183,9 @@ var app = Elm.Main.init({
 if (app.ports && app.ports.savePreferences) {
   app.ports.savePreferences.subscribe(function (prefs) {
     try {
+      if (prefs && typeof prefs.profile === "string") {
+        localStorage.setItem("profile", prefs.profile);
+      }
       if (prefs && typeof prefs.theme === "string") {
         localStorage.setItem("theme", prefs.theme);
         document.documentElement.setAttribute(

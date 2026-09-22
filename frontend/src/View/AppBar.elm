@@ -40,7 +40,7 @@ import Html
 import Html.Attributes as Attr exposing (attribute, class, href, name, type_)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
-import Msg exposing (MeStatus(..), Msg(..), Theme(..))
+import Msg exposing (MeStatus(..), Msg(..), Profile(..), Theme(..))
 import Route exposing (Route(..))
 import View.Tooltips as Tooltips
 
@@ -50,6 +50,7 @@ view :
     , encounterMenuOpen : Bool
     , encounterUnsaved : Bool
     , theme : Theme
+    , profile : Profile
     , user : Maybe Auth.User
     , route : Route
     }
@@ -93,7 +94,7 @@ view cfg =
                 , href "/donate"
                 ]
                 [ text "Donate" ]
-            , settings cfg.settingsOpen cfg.theme
+            , settings cfg.settingsOpen cfg.theme cfg.profile
             ]
         ]
 
@@ -239,8 +240,8 @@ doesn't bubble up to the document-level "click-outside closes"
 handler in `Main.subscriptions`. The trigger button itself
 reports its open state via `aria-expanded` for screen readers.
 -}
-settings : Bool -> Theme -> Html Msg
-settings isOpen theme =
+settings : Bool -> Theme -> Profile -> Html Msg
+settings isOpen theme profile =
     let
         wrapperClass =
             if isOpen then
@@ -288,10 +289,41 @@ settings isOpen theme =
                 , attribute "aria-label" "Settings"
                 ]
                 [ themeRow theme
+                , profileRow profile
                 ]
 
           else
             text ""
+        ]
+
+
+{-| Which role's editors the column offers. Sits under Theme
+because both answer "how should this table look", one in colour
+and one in furniture.
+-}
+profileRow : Profile -> Html Msg
+profileRow current =
+    fieldset [ class "app-settings__row" ]
+        [ legend [ class "app-settings__row-label" ] [ text "Profile" ]
+        , div [ class "app-settings__radio-group" ]
+            [ profileRadio current Session "Session"
+            , profileRadio current Builder "Builder"
+            , profileRadio current Beta "Beta"
+            ]
+        ]
+
+
+profileRadio : Profile -> Profile -> String -> Html Msg
+profileRadio current value labelText =
+    label [ class "app-settings__radio" ]
+        [ Html.input
+            [ type_ "radio"
+            , name "profile"
+            , Attr.checked (current == value)
+            , onClick (PreferencesProfileSet value)
+            ]
+            []
+        , text labelText
         ]
 
 
