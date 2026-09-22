@@ -8,6 +8,9 @@
 2. A d20's three floating results read straight, advantage, disadvantage from
    the left, matching the order of the totals in the editor column.  No action
    needed.
+3. The editor column opens with Manage HP pinned to the top and already
+   unfolded; its Set HP section still starts folded.  Columns arranged before
+   this release are moved once — unpin or fold it to put it back.
 ** Fixes
 ** Breaking
 ** Maintenance
