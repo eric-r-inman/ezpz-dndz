@@ -3,6 +3,11 @@
 
 * Upcoming
 ** Added
+1. The editor column's dice icon folds the Dice Roller away when it is already
+   showing.  No action needed.
+2. A d20's three floating results read straight, advantage, disadvantage from
+   the left, matching the order of the totals in the editor column.  No action
+   needed.
 ** Fixes
 ** Breaking
 ** Maintenance
