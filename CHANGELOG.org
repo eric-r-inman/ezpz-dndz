@@ -3,6 +3,12 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.27.0
+** Added
 1. A dot beside Encounter in the top bar, and beside Save in its menu, marks an
    encounter that has changed since it was last saved or loaded.  No action
    needed.
@@ -11,10 +17,6 @@
 3. A Profile setting in the settings popover picks which editors the column
    offers — Session, Builder, or Beta — and defaults to offering all of them.
    No action needed.
-** Fixes
-** Breaking
-** Maintenance
-** Security
 * v0.26.0
 ** Added
 1. The editor column's dice icon folds the Dice Roller away when it is already
