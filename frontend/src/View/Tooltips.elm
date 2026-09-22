@@ -76,6 +76,7 @@ module View.Tooltips exposing
     , drawerPinPanel
     , drawerUnpinPanel
     , encounterBarSpellList
+    , encounterUnsaved
     , exhaustionStep
     , fallDamage
     , flyHeightDown
@@ -279,6 +280,11 @@ roundSet =
 sourceUnsaved : String
 sourceUnsaved =
     "from file: (unsaved)"
+
+
+encounterUnsaved : String
+encounterUnsaved =
+    "Unsaved changes since the last save or load"
 
 
 encounterBarSpellList : String

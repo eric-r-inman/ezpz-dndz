@@ -28,8 +28,11 @@ in another form: they hold the settings of editors that are
 CLOSED, which by definition cannot live inside the ADT that
 models what is open.
 
-`savedAs` records the name the encounter was last saved under,
-so re-saving doesn't make the user retype the filename.
+`savedSnapshot` is the encounter as it stood at the most recent
+save or load, which is what the unsaved-changes mark in the app
+bar compares against. `savedAs` parallels it, recording the name
+it was saved under so re-saving doesn't make the user retype the
+filename.
 
 @docs Surface, Model
 
@@ -1343,6 +1346,7 @@ type alias Model =
     , auth : AuthState
     , loginUi : LoginUi
     , encounter : Encounter
+    , savedSnapshot : Maybe Encounter
     , savedAs : Maybe String
     , dice : DiceUi
 

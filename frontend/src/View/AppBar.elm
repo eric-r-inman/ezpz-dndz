@@ -48,6 +48,7 @@ import View.Tooltips as Tooltips
 view :
     { settingsOpen : Bool
     , encounterMenuOpen : Bool
+    , encounterUnsaved : Bool
     , theme : Theme
     , user : Maybe Auth.User
     , route : Route
@@ -80,7 +81,7 @@ view cfg =
               -- and hover bubbles on every item turn the bar
               -- into noise.  Settings (⚙) keeps its tooltip
               -- because it's icon-only.
-              encounterMenu cfg.encounterMenuOpen
+              encounterMenu cfg.encounterMenuOpen cfg.encounterUnsaved
             , userLink cfg.user cfg.route
             , a
                 [ class "app-bar__about"
@@ -106,9 +107,14 @@ than a `<details>`, so the Esc and click-outside subscriptions in
 `Main` can close it — and stopping mousedown from bubbling is
 what keeps a click on the menu itself from closing it first.
 
+The unsaved mark rides both the closed item and the Save inside
+it: on the item so a GM who is not looking at the menu still
+sees it, and on Save so the answer sits on the thing that
+resolves it.
+
 -}
-encounterMenu : Bool -> Html Msg
-encounterMenu isOpen =
+encounterMenu : Bool -> Bool -> Html Msg
+encounterMenu isOpen unsaved =
     div
         [ class "app-menu"
         , stopPropagationOn "mousedown" (Decode.succeed ( NoOp, True ))
@@ -132,15 +138,15 @@ encounterMenu isOpen =
                 )
             , onClick EncounterMenuToggle
             ]
-            [ text "Encounter" ]
+            [ text "Encounter", unsavedMark unsaved ]
         , if isOpen then
             div
                 [ class "app-menu__items"
                 , attribute "role" "menu"
                 , attribute "aria-label" "Encounter"
                 ]
-                [ menuItem EncounterSaveOpen "Save"
-                , menuItem EncounterLoadOpen "Load"
+                [ menuItem EncounterSaveOpen "Save" (unsavedMark unsaved)
+                , menuItem EncounterLoadOpen "Load" (text "")
                 ]
 
           else
@@ -148,15 +154,34 @@ encounterMenu isOpen =
         ]
 
 
-menuItem : Msg -> String -> Html Msg
-menuItem msg label =
+menuItem : Msg -> String -> Html Msg -> Html Msg
+menuItem msg label trail =
     button
         [ class "app-menu__item"
         , type_ "button"
         , attribute "role" "menuitem"
         , onClick msg
         ]
-        [ text label ]
+        [ text label, trail ]
+
+
+{-| A dot saying the encounter has moved on from the last thing
+saved. Carries its own label rather than relying on colour, which
+a dot this small cannot convey on its own.
+-}
+unsavedMark : Bool -> Html Msg
+unsavedMark unsaved =
+    if unsaved then
+        span
+            [ class "app-menu__unsaved"
+            , Tooltips.attr Tooltips.encounterUnsaved
+            , attribute "role" "img"
+            , attribute "aria-label" Tooltips.encounterUnsaved
+            ]
+            []
+
+    else
+        text ""
 
 
 {-| Italic prompt sitting next to the brand. Only shown when the

@@ -565,6 +565,7 @@ init flags url key =
         , auth = Auth.AuthLoading
         , loginUi = LoginUi.empty
         , encounter = Encounter.empty
+        , savedSnapshot = Nothing
         , savedAs = Nothing
         , dice = DiceUi.empty
         , targetName = Nothing
@@ -2868,6 +2869,8 @@ appShell maybeUser model =
         View.AppBar.view
             { settingsOpen = model.settingsOpen
             , encounterMenuOpen = model.encounterMenuOpen
+            , encounterUnsaved =
+                Encounter.unsavedChanges model.encounter model.savedSnapshot
             , theme = model.preferences.theme
             , user = maybeUser
             , route = model.route

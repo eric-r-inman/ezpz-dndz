@@ -99,6 +99,9 @@
   /* The editor column's control row: square enough to read as a
      set, with a glyph sized to fill each face. */
   --action-btn-size: 30px;
+  /* A status dot: small enough to read as punctuation beside a
+     label rather than as a control of its own. */
+  --dot-size: 6px;
   --font-size-action-glyph: 1rem;
   /* What a control fades to while something else is supplying
      its value: dim enough to read as inactive, legible enough
@@ -1583,6 +1586,19 @@ body {
 
 .app-menu__item:hover {
   background: var(--color-surface-2);
+}
+
+/* Sized and coloured like the Condition/Effect editor's
+   loaded-preset dot, since both say the same thing. */
+.app-menu__unsaved {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  margin-left: var(--space-1);
+  border-radius: 50%;
+  background: var(--color-danger);
+  vertical-align: middle;
 }
 
 .app-settings__row {
@@ -9722,8 +9738,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 /* Marks a loaded preset whose settings have changed since. */
 .cond-loaded__dirty {
   flex: 0 0 auto;
-  width: 6px;
-  height: 6px;
+  width: var(--dot-size);
+  height: var(--dot-size);
   border-radius: 50%;
   background: var(--color-danger);
 }

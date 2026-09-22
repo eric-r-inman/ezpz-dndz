@@ -62,6 +62,14 @@ withUi =
     Model.mapSurface Model.saveLoadLens
 
 
+{-| The encounter on screen is now what is saved under `name`,
+so the unsaved-changes mark goes dark until it is touched again.
+-}
+markSaved : String -> Model -> Model
+markSaved name model =
+    { model | savedSnapshot = Just model.encounter, savedAs = Just name }
+
+
 {-| Done with the modal. A save or a load that lands ends here,
 so neither leaves the GM to dismiss it by hand.
 -}
@@ -211,7 +219,7 @@ submit model =
         Just ui ->
             case ui.storage of
                 StorageDevice ->
-                    ( close model
+                    ( close (markSaved (downloadName ui model) model)
                     , downloadEncounter (downloadName ui model) model.encounter
                     )
 
@@ -289,9 +297,7 @@ persistResponse name result model =
         Ok () ->
             let
                 named =
-                    { model
-                        | savedAs = Just name
-                    }
+                    markSaved name model
             in
             Update.Toast.push ToastSuccess
                 ("Saved \"" ++ name ++ "\".")
@@ -544,6 +550,7 @@ serverResponse name result model =
                     Model.reaimStale
                         { model
                             | encounter = fresh
+                            , savedSnapshot = Just fresh
                             , savedAs = Just name
                         }
             in
@@ -591,6 +598,7 @@ deviceFileRead raw model =
                     Model.reaimStale
                         { model
                             | encounter = fresh
+                            , savedSnapshot = Just fresh
                             , savedAs = Nothing
                         }
             in
