@@ -3,6 +3,12 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.26.0
+** Added
 1. The editor column's dice icon folds the Dice Roller away when it is already
    showing.  No action needed.
 2. A d20's three floating results read straight, advantage, disadvantage from
@@ -15,13 +21,10 @@
    and can set the typed value on the whole queue.  No action needed.
 5. Saving and loading an encounter now live under Encounter in the top bar, to a
    file on this device or to the server under a name.  No action needed.
-** Fixes
 ** Breaking
 1. An encounter can no longer be saved under a name in the browser, and ones
    named there before this release are no longer listed.  Sign in, or save to a
    file, to keep an encounter between sessions.
-** Maintenance
-** Security
 * v0.25.0
 ** Maintenance
 1. Bump libredox from 0.1.24 to 0.1.25
