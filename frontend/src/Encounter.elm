@@ -15,7 +15,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, rosterDirty
+    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, rosterDirty
     )
 
 {-| Domain layer for the encounter manager.
@@ -626,6 +626,16 @@ creatureNamed name enc =
     enc.creatures
         |> List.filter (\c -> c.name == name)
         |> List.head
+
+
+{-| Whether a creature is one the party is fighting. The badge is
+a free-form string on the wire, so the comparison lives here
+rather than at each of the places that wants the other side of
+the table.
+-}
+isEnemy : Creature -> Bool
+isEnemy creature =
+    creature.creatureKind == "enemy"
 
 
 {-| Whether the named creature already carries a condition of

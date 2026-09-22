@@ -116,7 +116,7 @@ enemyBrackets model =
                     Compendium.fromList []
     in
     model.encounter.creatures
-        |> List.filter (\c -> c.creatureKind == "enemy" && not c.isPlaceholder)
+        |> List.filter (\c -> Encounter.isEnemy c && not c.isPlaceholder)
         |> List.map (creatureBracket db)
 
 

@@ -174,7 +174,7 @@ enemyInfos model =
             loadedDb model
     in
     model.encounter.creatures
-        |> List.filter (\c -> c.creatureKind == "enemy" && not c.isPlaceholder)
+        |> List.filter (\c -> Encounter.isEnemy c && not c.isPlaceholder)
         |> List.map
             (\c ->
                 { name = c.name

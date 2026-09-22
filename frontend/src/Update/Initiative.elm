@@ -1,6 +1,5 @@
 module Update.Initiative exposing
-    ( applySelected
-    , applyTarget
+    ( apply
     , autoRoll
     , customChanged
     , initiativeExpression
@@ -106,36 +105,22 @@ autoRoll scope model =
             ( model, Cmd.none )
 
 
-{-| Manual override for the editor's own target.
+{-| Manual override: stamp the typed value onto whoever the scope
+picks out, which is the same reckoning the roll buttons use.
 -}
-applyTarget : Model -> ( Model, Cmd Msg )
-applyTarget model =
-    ( applyCustomTo (\ui -> [ ui.target ]) model, Cmd.none )
-
-
-{-| Manual override for every selected creature.
--}
-applySelected : Model -> ( Model, Cmd Msg )
-applySelected model =
-    ( applyCustomTo
-        (\_ ->
-            model.encounter.creatures
-                |> List.filter .selected
-                |> List.map .name
-        )
-        model
-    , Cmd.none
-    )
-
-
-applyCustomTo : (InitiativeUi -> List String) -> Model -> Model
-applyCustomTo targetsFor model =
+apply : RollScope -> Model -> ( Model, Cmd Msg )
+apply scope model =
     case drawerSurface model of
         Just (SurfaceInitiative ui) ->
-            applyCustomInitiative (targetsFor ui) ui model
+            ( applyCustomInitiative
+                (List.map .name (scopeCreatures scope model))
+                ui
+                model
+            , Cmd.none
+            )
 
         _ ->
-            model
+            ( model, Cmd.none )
 
 
 rollModeSet : RollMode -> Model -> ( Model, Cmd Msg )
@@ -159,6 +144,9 @@ scopeCreatures scope model =
 
         ScopeSelected ->
             List.filter .selected model.encounter.creatures
+
+        ScopeEnemies ->
+            List.filter Encounter.isEnemy model.encounter.creatures
 
 
 {-| Fold each (creature name, roll) pair into a fresh `Model`:

@@ -170,13 +170,15 @@ type SaveChainRollMode
 -- ── INITIATIVE AUX ───────────────────────────────────────────────────────────
 
 
-{-| Whether an initiative auto-roll applies to the click target,
-the entire queue, or only selected creatures.
+{-| Who an initiative change lands on: the click target, the
+entire queue, only selected creatures, or only the ones the party
+is fighting.
 -}
 type RollScope
     = ScopeTarget
     | ScopeAll
     | ScopeSelected
+    | ScopeEnemies
 
 
 {-| Roll-mode for initiative auto-roll: standard 1d20, 5e
@@ -739,8 +741,7 @@ type Msg
     | InitiativeQuickSort
     | InitiativeRollModeSet RollMode
     | InitiativeAutoRoll RollScope
-    | InitiativeApplyTarget
-    | InitiativeApplySelected
+    | InitiativeApply RollScope
     | InitiativeRollsLanded (List ( String, Dice.Roll ))
     | ActiveCardScrollChecked (Result Browser.Dom.Error ())
       -- Encounter-bar active-name click: scroll the panel body
