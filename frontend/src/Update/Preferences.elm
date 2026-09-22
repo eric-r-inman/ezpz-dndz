@@ -1,21 +1,15 @@
-module Update.Preferences exposing (themeKey, themeSet)
+module Update.Preferences exposing (profileKey, profileSet, themeKey, themeSet)
 
 {-| Update branches for the user-preferences blob on
-`Model.preferences`. Currently a one-function module — the only
-preference plumbed through to the UI today is `theme`, set from
-the AppBar settings popover.
+`Model.preferences`, set from the AppBar settings popover.
 
-The function lives in its own module (rather than in
-`Update.Shell`) so the next preference (`cardDensity`) and any
-that follow have an obvious home.
-
-@docs themeKey, themeSet
+@docs profileKey, profileSet, themeKey, themeSet
 
 -}
 
 import Json.Encode as E
 import Model exposing (Model)
-import Msg exposing (Msg, Theme(..))
+import Msg exposing (Msg, Profile(..), Theme(..))
 import Ports
 import Preferences
 
@@ -59,3 +53,40 @@ themeKey theme =
 
         Accessible ->
             "accessible"
+
+
+{-| Replace the profile choice and snap the column to it: the
+panels the profile hides are folded on the spot, so picking one
+takes effect where the GM is looking rather than on the next
+fold. The `localStorage` write is what makes the next reload
+boot into the same profile.
+-}
+profileSet : Profile -> Model -> ( Model, Cmd Msg )
+profileSet profile model =
+    let
+        prefs =
+            model.preferences
+    in
+    ( { model
+        | preferences = { prefs | profile = profile }
+        , drawer = Model.foldProfileHidden profile model.drawer
+      }
+    , Ports.savePreferences (E.object [ ( "profile", E.string (profileKey profile) ) ])
+    )
+
+
+{-| Stable string key for a `Profile`, as `themeKey` is for a
+`Theme`: the `localStorage` value, and what the boot flag reads
+back.
+-}
+profileKey : Profile -> String
+profileKey profile =
+    case profile of
+        Session ->
+            "session"
+
+        Builder ->
+            "builder"
+
+        Beta ->
+            "beta"

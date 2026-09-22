@@ -471,6 +471,22 @@ themeFromFlag raw =
             Modern
 
 
+{-| An unrecognized or missing value falls back to `Beta`, the
+show-everything profile.
+-}
+profileFromFlag : String -> Msg.Profile
+profileFromFlag raw =
+    case raw of
+        "session" ->
+            Msg.Session
+
+        "builder" ->
+            Msg.Builder
+
+        _ ->
+            Msg.Beta
+
+
 {-| Init flags handed in by `index.html`.
 
   - `theme` — user's previously-saved theme (read from
@@ -501,6 +517,7 @@ themeFromFlag raw =
 -}
 type alias Flags =
     { theme : String
+    , profile : String
     , localEncounter : Maybe Decode.Value
     , migrationDateLabel : String
     , localDiceHistory : Maybe Decode.Value
@@ -538,7 +555,10 @@ init flags url key =
             Preferences.default
 
         prefs =
-            { defaultPrefs | theme = themeFromFlag flags.theme }
+            { defaultPrefs
+                | theme = themeFromFlag flags.theme
+                , profile = profileFromFlag flags.profile
+            }
 
         partyFromFlags =
             flags.localParty
@@ -557,7 +577,9 @@ init flags url key =
                     (Decode.decodeValue DrawerLayout.decoder >> Result.toMaybe)
                 |> Maybe.withDefault { version = DrawerLayout.current, entries = [] }
     in
-    ( Model.applyDrawerLayout savedLayout
+    ( (Model.applyDrawerLayout savedLayout
+        >> Model.foldProfileHiddenIn prefs.profile
+      )
         { key = key
         , url = url
         , route = route
@@ -2695,6 +2717,9 @@ updateInner msg model =
         ToastDismiss id ->
             Update.Toast.dismiss id model
 
+        PreferencesProfileSet profile ->
+            Update.Preferences.profileSet profile model
+
         PreferencesThemeSet theme ->
             Update.Preferences.themeSet theme model
 
@@ -2875,6 +2900,7 @@ appShell maybeUser model =
             , encounterUnsaved =
                 Encounter.unsavedChanges model.encounter model.savedSnapshot
             , theme = model.preferences.theme
+            , profile = model.preferences.profile
             , user = maybeUser
             , route = model.route
             }

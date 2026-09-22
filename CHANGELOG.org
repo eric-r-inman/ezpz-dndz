@@ -8,6 +8,9 @@
    needed.
 2. The Manage HP editor's ↩ button puts a creature back to the hit points it
    entered the encounter with and clears its temporary ones.  No action needed.
+3. A Profile setting in the settings popover picks which editors the column
+   offers — Session, Builder, or Beta — and defaults to offering all of them.
+   No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance

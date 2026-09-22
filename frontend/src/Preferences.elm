@@ -19,7 +19,7 @@ live only in memory.
 -}
 
 import Dict exposing (Dict)
-import Msg exposing (CompendiumSort(..), Theme(..))
+import Msg exposing (CompendiumSort(..), Profile(..), Theme(..))
 
 
 
@@ -40,6 +40,7 @@ type CardDensity
 
 type alias Preferences =
     { theme : Theme
+    , profile : Profile
     , cardDensity : CardDensity
     , soundEnabled : Bool
     , autoScrollActiveCard : Bool
@@ -55,6 +56,8 @@ GM tweaks something.
 
   - Theme `Modern` as the default light palette; the GM picks
     Dark or Accessible from the AppBar settings popover.
+  - Profile `Beta`, which shows every editor — what the column
+    always did before profiles existed.
   - Density `Normal` because that's the only thing the CSS
     currently renders.
   - Sound on.
@@ -71,6 +74,7 @@ GM tweaks something.
 default : Preferences
 default =
     { theme = Modern
+    , profile = Beta
     , cardDensity = Normal
     , soundEnabled = True
     , autoScrollActiveCard = True

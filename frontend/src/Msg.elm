@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), DurationEdit(..), FlatCategory(..), ModalChromeEdge(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveStorage(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), DurationEdit(..), FlatCategory(..), ModalChromeEdge(..), Profile(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveStorage(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -242,6 +242,17 @@ type Theme
     = Modern
     | Dark
     | Accessible
+
+
+{-| Which role's editors the column shows: Session keeps the
+ones a fight in progress needs, Builder the ones that assemble
+an encounter beforehand, and Beta keeps everything. Defined in
+`Msg` for the same cycle-avoidance reason as `Theme` above.
+-}
+type Profile
+    = Session
+    | Builder
+    | Beta
 
 
 
@@ -1272,6 +1283,7 @@ type Msg
     | ToastDismiss Int
       -- User preferences (theme, density, etc.)
     | PreferencesThemeSet Theme
+    | PreferencesProfileSet Profile
       -- AppBar settings popover
     | SettingsToggle
     | SettingsClose
