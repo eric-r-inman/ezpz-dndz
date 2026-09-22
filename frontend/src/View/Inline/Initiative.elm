@@ -62,6 +62,13 @@ rollSection selectedCount ui =
             , ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
+                , msg = InitiativeAutoRoll ScopeEnemies
+                , tip = "Roll for every creature tagged Enemy"
+                , label = "Enemies only"
+                }
+            , ApplyButton.view
+                { enabled = True
+                , cls = "action-btn action-btn--green"
                 , msg = InitiativeAutoRoll ScopeAll
                 , tip = "Roll for the whole queue"
                 , label = "All"
@@ -82,7 +89,7 @@ manualSection selectedCount ui =
                 , maxlength 2
                 , value ui.customValueText
                 , onInput InitiativeCustomChanged
-                , Html.Events.on "keydown" (Util.Keyboard.enterKey InitiativeApplyTarget)
+                , Html.Events.on "keydown" (Util.Keyboard.enterKey (InitiativeApply ScopeTarget))
                 ]
                 []
             ]
@@ -90,14 +97,14 @@ manualSection selectedCount ui =
             [ ApplyButton.view
                 { enabled = True
                 , cls = "action-btn action-btn--green"
-                , msg = InitiativeApplyTarget
+                , msg = InitiativeApply ScopeTarget
                 , tip = "Set " ++ ui.target ++ "'s initiative to the typed value"
                 , label = "Target"
                 }
             , ApplyButton.view
                 { enabled = selectedCount > 0
                 , cls = "action-btn action-btn--green"
-                , msg = InitiativeApplySelected
+                , msg = InitiativeApply ScopeSelected
                 , tip =
                     if selectedCount == 0 then
                         Tooltips.initSelectedNone
@@ -105,6 +112,20 @@ manualSection selectedCount ui =
                     else
                         "Set every selected creature to the typed value"
                 , label = "Selected (" ++ String.fromInt selectedCount ++ ")"
+                }
+            , ApplyButton.view
+                { enabled = True
+                , cls = "action-btn action-btn--green"
+                , msg = InitiativeApply ScopeEnemies
+                , tip = "Set every creature tagged Enemy to the typed value"
+                , label = "Enemies only"
+                }
+            , ApplyButton.view
+                { enabled = True
+                , cls = "action-btn action-btn--green"
+                , msg = InitiativeApply ScopeAll
+                , tip = "Set the whole queue to the typed value"
+                , label = "All"
                 }
             ]
         ]

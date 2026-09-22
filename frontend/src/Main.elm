@@ -1368,11 +1368,8 @@ updateInner msg model =
         InitiativeRollModeSet mode ->
             Update.Initiative.rollModeSet mode model
 
-        InitiativeApplyTarget ->
-            Update.Initiative.applyTarget model
-
-        InitiativeApplySelected ->
-            Update.Initiative.applySelected model
+        InitiativeApply scope ->
+            Update.Initiative.apply scope model
 
         InitiativeRollsLanded results ->
             Update.Initiative.rollsLanded results model

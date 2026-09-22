@@ -11,6 +11,8 @@
 3. The editor column opens with Manage HP pinned to the top and already
    unfolded; its Set HP section still starts folded.  Columns arranged before
    this release are moved once — unpin or fold it to put it back.
+4. The Initiative editor can roll for, or set, only the creatures tagged Enemy,
+   and can set the typed value on the whole queue.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance
