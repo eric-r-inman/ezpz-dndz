@@ -6,6 +6,8 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump rust-template-foundation from `0dcd931` to `62490b1`
+   (https://github.com/eric-r-inman/ezpz-dndz/pull/143)
 ** Security
 * v0.23.0
 ** Added
