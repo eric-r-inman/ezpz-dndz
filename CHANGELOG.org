@@ -8,6 +8,9 @@
 2. A d20's three floating results read straight, advantage, disadvantage from
    the left, matching the order of the totals in the editor column.  No action
    needed.
+3. The editor column carries the Manage HP verb controls above its panels, so a
+   creature can be damaged or healed without unfolding the editor, and those
+   changes join its log as any other.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance

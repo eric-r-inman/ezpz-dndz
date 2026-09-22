@@ -43,8 +43,68 @@ view : Model -> Html Msg
 view model =
     div [ class "drawer-column" ]
         [ encounterControls model
+        , quickHp model
         , stack model
         ]
+
+
+{-| The Manage HP editor's verb controls, kept out of the stack
+and out of a fold: damaging or healing whoever is up is the
+commonest thing a GM does, and it should not cost an unfold
+first. They edit the editor's own state, so a change made here
+lands in its log and the two never hold different amounts.
+
+Nothing is shown before the queue has a creature, since there is
+nothing to aim at and an empty target strip only takes up room.
+
+-}
+quickHp : Model -> Html Msg
+quickHp model =
+    case ( model.encounter.creatures, Model.drawerGet Model.hpChangeLens model ) of
+        ( [], _ ) ->
+            text ""
+
+        ( _, Nothing ) ->
+            text ""
+
+        ( _, Just ui ) ->
+            let
+                selectedCount =
+                    List.length (List.filter .selected model.encounter.creatures)
+            in
+            div [ class "quick-hp" ]
+                [ div [ class "panel-drawer__target" ]
+                    [ text (scopeLabel ui.target ui.applyToSelected selectedCount) ]
+                , View.Inline.HpChange.controls
+                    { selectedCount = selectedCount
+                    , placeholderWarning =
+                        Encounter.isPlaceholderName model.encounter ui.target
+                            || (model.encounter.creatures
+                                    |> List.filter .selected
+                                    |> List.any .isPlaceholder
+                               )
+                    , targetTempHp =
+                        Encounter.creatureNamed ui.target model.encounter
+                            |> Maybe.map .tempHp
+                            |> Maybe.withDefault 0
+                    , idPrefix = "rail-"
+                    , focusOnMount = False
+                    }
+                    ui
+                ]
+
+
+{-| Manage HP and Save Chain still choose their scope with a
+checkbox, so their strip has to name the selection when it is
+ticked; the button-scoped editors always name their own target.
+-}
+scopeLabel : String -> Bool -> Int -> String
+scopeLabel targetName applyToSelected selectedCount =
+    if applyToSelected && selectedCount > 0 then
+        "Target: Selected (" ++ String.fromInt selectedCount ++ ")"
+
+    else
+        "Target: " ++ targetName
 
 
 {-| The encounter's own controls, above the editors they sit
@@ -202,16 +262,8 @@ panelFor model index panel =
             Encounter.isPlaceholderName model.encounter targetName
                 || selectedHasPlaceholder
 
-        -- Manage HP and Save Chain still choose their scope with
-        -- a checkbox, so their strip has to name the selection
-        -- when it is ticked; the button-scoped editors always
-        -- name their own target.
         scopedLabel targetName applyToSelected =
-            if applyToSelected && selectedCount > 0 then
-                "Target: Selected (" ++ String.fromInt selectedCount ++ ")"
-
-            else
-                "Target: " ++ targetName
+            scopeLabel targetName applyToSelected selectedCount
 
         editor title subtitle body =
             editorTagged title Nothing subtitle body

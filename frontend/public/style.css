@@ -4225,6 +4225,19 @@ body {
   color: var(--color-text-muted);
 }
 
+/* The verb controls standing outside the panel stack, between
+   the encounter controls and the editors.  It wears no panel
+   chrome on purpose: it has no title to fold and nothing to
+   drag, so the rule underneath is all that separates it from the
+   stack below. */
+.quick-hp {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+}
+
 .xp-panel__total {
   font-size: var(--font-size-readout);
   font-weight: var(--font-weight-label);

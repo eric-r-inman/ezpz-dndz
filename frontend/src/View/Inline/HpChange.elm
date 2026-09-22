@@ -1,4 +1,4 @@
-module View.Inline.HpChange exposing (Context, view)
+module View.Inline.HpChange exposing (Context, Controls, controls, view)
 
 {-| Manage HP as a drawer panel — every way of changing a
 creature's pools on one surface, without covering the queue.
@@ -12,6 +12,10 @@ on the same typed-or-rolled terms.
 
 The editor's log holds every change, behind a fold of its own;
 the dice roller's log shows only the ones a roll produced.
+
+The verb controls are also mounted on their own at the top of
+the editor column — see `controls` — so the two are one surface
+rendered twice rather than two that can disagree.
 
 -}
 
@@ -45,16 +49,55 @@ type alias Context =
     }
 
 
+{-| What the verb controls alone need, which is less than the
+whole editor does.
+
+`idPrefix` keeps the two mounts' element ids apart. Two nodes
+answering to one id is invalid, and the concrete cost is that
+every label points at whichever copy the document happens to
+reach first. `focusOnMount` belongs to the copy that appears in
+answer to something the GM did; the copy that is always on
+screen must not take the caret on load.
+
+-}
+type alias Controls =
+    { selectedCount : Int
+    , placeholderWarning : Bool
+    , targetTempHp : Int
+    , idPrefix : String
+    , focusOnMount : Bool
+    }
+
+
+{-| An amount, who it lands on, and the four verbs that commit
+it. The editor column mounts this on its own above the panel
+stack, so the commonest change to a creature is one click away
+with no panel unfolded; both copies drive the same editor state,
+which is what keeps the two in step and puts every change through
+the editor's log.
+-}
+controls : Controls -> HpChangeUi -> Html Msg
+controls ctx ui =
+    div [ class "cond-section" ]
+        [ amount ctx ui
+        , parseErrorHint ui.parseError
+        , freshRollOption ctx.selectedCount ui
+        , actionButtons
+        , ApplyButton.placeholderNotice ctx.placeholderWarning
+        ]
+
+
 view : Context -> HpChangeUi -> Html Msg
 view ctx ui =
     div [ class "editor-body" ]
-        [ div [ class "cond-section" ]
-            [ amount ctx.selectedCount ctx.targetTempHp ui
-            , parseErrorHint ui.parseError
-            , freshRollOption ctx.selectedCount ui
-            , actionButtons
-            , ApplyButton.placeholderNotice ctx.placeholderWarning
-            ]
+        [ controls
+            { selectedCount = ctx.selectedCount
+            , placeholderWarning = ctx.placeholderWarning
+            , targetTempHp = ctx.targetTempHp
+            , idPrefix = ""
+            , focusOnMount = True
+            }
+            ui
         , setHpSection ctx ui
         , View.HpLog.section
             { open = ctx.logOpen
@@ -233,12 +276,12 @@ expansion has four commit paths; Enter isn't safely overloadable
 across all of them. GMs who want Heal / Temp HP / +Max HP click
 the corresponding button.
 -}
-amount : Int -> Int -> HpChangeUi -> Html Msg
-amount selectedCount targetTempHp ui =
+amount : Controls -> HpChangeUi -> Html Msg
+amount ctx ui =
     div [ class "cond-row" ]
         [ fieldPair (holdsText ui.amountRollText)
             ""
-            "hp-amount"
+            (ctx.idPrefix ++ "hp-amount")
             "HP:"
             [ class "cond-input cond-input--pool"
             , type_ "number"
@@ -246,14 +289,14 @@ amount selectedCount targetTempHp ui =
             , Attr.max "999"
             , placeholder "12"
             , value ui.amountText
-            , autofocus True
+            , autofocus ctx.focusOnMount
             , onInput HpChangeAmountChanged
             , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
             ]
             []
         , fieldPair (holdsText ui.amountText)
             split
-            "hp-amount-roll"
+            (ctx.idPrefix ++ "hp-amount-roll")
             "or Roll:"
             [ class "cond-input cond-input--w12"
             , type_ "text"
@@ -264,8 +307,8 @@ amount selectedCount targetTempHp ui =
             , Tooltips.attr Tooltips.hpAmountRoll
             ]
             [ clearRoll ui.amountRollText (HpChangeAmountRollChanged "") Tooltips.hpAmountRollClear ]
-        , tempHpCap targetTempHp ui
-        , applyScope selectedCount ui
+        , tempHpCap ctx.targetTempHp ui
+        , applyScope ctx.selectedCount ui
         ]
 
 
