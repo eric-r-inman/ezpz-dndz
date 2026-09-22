@@ -6,8 +6,10 @@
 ** Fixes
 ** Breaking
 ** Maintenance
-1. Bump libredox from 0.1.24 to 0.1.25
 ** Security
+* v0.25.0
+** Maintenance
+1. Bump libredox from 0.1.24 to 0.1.25
 * v0.24.0
 ** Maintenance
 1. Bump rust-template-foundation from `0dcd931` to `62490b1`
