@@ -6,6 +6,7 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump libredox from 0.1.24 to 0.1.25
 ** Security
 * v0.24.0
 ** Maintenance
