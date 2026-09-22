@@ -3,6 +3,7 @@ module HpChange exposing
     , apply, describe, keepsExistingTempHp
     , setCurrentHp, setCurrentHpRaisingMax, setMaxHp, setArmorClass, setTempHp
     , restoreHp
+    , resetPools
     )
 
 {-| HP-change engine.
@@ -267,6 +268,25 @@ setCurrentHpRaisingMax n c =
     c
         |> setMaxHp (Basics.max n c.maxHp)
         |> setCurrentHp n
+
+
+{-| Put a creature's pools back the way it arrived: the maximum
+it entered the encounter with, full, and no temporary hit points.
+
+`originalMaxHp` is that arrival snapshot, which is also what a
+card shows in parentheses once the two diverge. It is used rather
+than the compendium entry so a creature with no entry behind it —
+seeded, hand-built, or duplicated — resets to something too, and
+so a later edit to the library does not retroactively change what
+a creature in play resets to.
+
+-}
+resetPools : Creature -> Creature
+resetPools c =
+    c
+        |> setMaxHp c.originalMaxHp
+        |> setCurrentHp c.originalMaxHp
+        |> setTempHp 0
 
 
 {-| Manual GM override: write `maxHp` directly, clamped to >= 1.

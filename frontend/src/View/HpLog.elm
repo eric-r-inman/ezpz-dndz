@@ -111,6 +111,9 @@ entry opts e =
                 RolledHp ->
                     ( "Roll", "hp-change__log-kind--roll" )
 
+                ResetPools ->
+                    ( "Reset", "hp-change__log-kind--reset" )
+
         names =
             String.join ", " (List.map .name e.targets)
 

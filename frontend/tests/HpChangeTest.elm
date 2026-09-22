@@ -202,6 +202,23 @@ setHpSuite =
                         [ \c -> c.currentHp |> Expect.equal 15
                         , \c -> c.maxHp |> Expect.equal 21
                         ]
+        , test "resetPools puts the pools back the way the creature arrived" <|
+            \_ ->
+                { fixture | currentHp = 3, maxHp = 40, originalMaxHp = 21, tempHp = 9 }
+                    |> HpChange.resetPools
+                    |> Expect.all
+                        [ \c -> c.currentHp |> Expect.equal 21
+                        , \c -> c.maxHp |> Expect.equal 21
+                        , \c -> c.tempHp |> Expect.equal 0
+                        ]
+        , test "resetPools raises a maximum the GM had lowered below it" <|
+            \_ ->
+                { fixture | currentHp = 4, maxHp = 8, originalMaxHp = 21, tempHp = 0 }
+                    |> HpChange.resetPools
+                    |> Expect.all
+                        [ \c -> c.currentHp |> Expect.equal 21
+                        , \c -> c.maxHp |> Expect.equal 21
+                        ]
         , test "setCurrentHpRaisingMax restores a maximum the GM had lowered" <|
             \_ ->
                 { fixture | currentHp = 10, maxHp = 10, originalMaxHp = 21 }

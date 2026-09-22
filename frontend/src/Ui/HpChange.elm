@@ -94,14 +94,16 @@ type alias HpChangeEntry =
     }
 
 
-{-| What a log row records: one of the verb buttons' changes, the
-Set section writing typed pools, or the Set section rolling hit
-points.
+{-| What a log row records.
 -}
 type HpLogKind
     = Applied HpKind
+      -- The Set section writing typed pools.
     | SetPools
+      -- The Set section rolling hit points.
     | RolledHp
+      -- A creature put back the way it arrived.
+    | ResetPools
 
 
 {-| Per-creature before/after capture inside one log entry.

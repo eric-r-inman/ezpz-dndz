@@ -1148,6 +1148,9 @@ updateInner msg model =
         HpChangeApplyToSelectedToggle ->
             Update.HpChange.applyToSelectedToggle model
 
+        HpChangeResetToDefault ->
+            Update.HpChange.resetToDefault model
+
         HpChangeApplyAs kind ->
             Update.HpChange.applyAs kind model
 
