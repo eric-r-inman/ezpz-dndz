@@ -15,7 +15,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, rosterDirty
+    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt
     )
 
 {-| Domain layer for the encounter manager.
@@ -648,37 +648,6 @@ hasConditionNamed creatureName conditionName enc =
         |> List.filter (\c -> c.name == creatureName)
         |> List.concatMap .conditions
         |> List.any (\cond -> String.toLower cond.name == String.toLower conditionName)
-
-
-{-| `True` when the current encounter's roster differs from the
-last-saved snapshot — i.e. a creature has been added or removed
-since the last Save (or Load). Compared by the _set_ of creature
-names (sorted before comparison), so reordering the initiative
-queue does NOT count as dirty, and neither does HP / condition /
-position drift inside an unchanged roster.
-
-A `Nothing` snapshot (the app has never been saved nor loaded) is
-treated as an empty roster, so a fresh queue with creatures shows
-dirty until the first save.
-
-The Encounter Saves panel marks its title when this is true.
-
--}
-rosterDirty : Encounter -> Maybe Encounter -> Bool
-rosterDirty current snapshot =
-    let
-        currentNames =
-            List.sort (List.map .name current.creatures)
-
-        snapshotNames =
-            case snapshot of
-                Just snap ->
-                    List.sort (List.map .name snap.creatures)
-
-                Nothing ->
-                    []
-    in
-    currentNames /= snapshotNames
 
 
 

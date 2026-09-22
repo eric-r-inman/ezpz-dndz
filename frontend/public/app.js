@@ -72,16 +72,6 @@ try {
   }
 } catch (_) {}
 
-// Anonymous named encounter saves
-// ({ "<name>": { encounter, created_at, updated_at } }).
-var localEncounterSaves = null;
-try {
-  var savesRaw = localStorage.getItem("encounterSaves");
-  if (savesRaw) {
-    localEncounterSaves = JSON.parse(savesRaw);
-  }
-} catch (_) {}
-
 // User-named condition presets ({ "<name>": preset-body }).
 // Backs the Save/Load row in the Add-Condition modal.
 var localConditionPresets = null;
@@ -174,7 +164,6 @@ var app = Elm.Main.init({
     migrationDateLabel: migrationDateLabel,
     localDiceHistory: localDiceHistory,
     localCompendium: localCompendium,
-    localEncounterSaves: localEncounterSaves,
     localConditionPresets: localConditionPresets,
     localDrawerLayout: localDrawerLayout,
     localTimerPresets: localTimerPresets,
@@ -182,7 +171,6 @@ var app = Elm.Main.init({
     localParty: localParty,
     localUserLoreGroups: localUserLoreGroups,
     localUserTreasureTable: localUserTreasureTable,
-    bootMs: Date.now(),
   },
 });
 
@@ -343,22 +331,6 @@ if (app.ports && app.ports.persistLocalUserTreasureTable) {
         "userTreasureTable",
         JSON.stringify(value),
       );
-    } catch (_) {}
-  });
-}
-
-// Anonymous named encounter saves dict writer + eraser.
-if (app.ports && app.ports.persistLocalEncounterSaves) {
-  app.ports.persistLocalEncounterSaves.subscribe(function (value) {
-    try {
-      localStorage.setItem("encounterSaves", JSON.stringify(value));
-    } catch (_) {}
-  });
-}
-if (app.ports && app.ports.clearLocalEncounterSaves) {
-  app.ports.clearLocalEncounterSaves.subscribe(function () {
-    try {
-      localStorage.removeItem("encounterSaves");
     } catch (_) {}
   });
 }

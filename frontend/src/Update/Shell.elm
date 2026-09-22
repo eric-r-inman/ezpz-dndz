@@ -1,5 +1,7 @@
 module Update.Shell exposing
     ( encounterLoaded
+    , encounterMenuClose
+    , encounterMenuToggle
     , encounterPersisted
     , gotMe
     , noOp
@@ -147,3 +149,21 @@ when the popover is open.
 settingsClose : Model -> ( Model, Cmd Msg )
 settingsClose model =
     ( { model | settingsOpen = False }, Cmd.none )
+
+
+{-| The Encounter nav item; `View.AppBar` has what it is for.
+-}
+encounterMenuToggle : Model -> ( Model, Cmd Msg )
+encounterMenuToggle model =
+    ( { model | encounterMenuOpen = not model.encounterMenuOpen }
+    , if model.route == Route.Home then
+        Cmd.none
+
+      else
+        Nav.pushUrl model.key "/"
+    )
+
+
+encounterMenuClose : Model -> ( Model, Cmd Msg )
+encounterMenuClose model =
+    ( { model | encounterMenuOpen = False }, Cmd.none )

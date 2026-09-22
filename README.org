@@ -103,8 +103,8 @@ persists in browser ~localStorage~, no account required.  A banner at the top
 reminds you that anonymous data is local-only.
 
 To switch to a server-backed account, click *Sign in* in the top-right and
-*Create one* to register.  Anything you built up in anonymous mode (encounters,
-custom creatures, named saves) migrates into the new account automatically.
+*Create one* to register.  Anything you built up in anonymous mode (encounters
+and custom creatures) migrates into the new account automatically.
 
 ** Running the tests
 

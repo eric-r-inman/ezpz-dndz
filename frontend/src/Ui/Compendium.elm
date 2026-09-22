@@ -244,7 +244,7 @@ currentCreatures ui =
 {-| Apply the post-save bookkeeping: clear the dirty flag (the
 on-disk snapshot is now in sync) and remember the snapshot name
 so the next open of the Save modal pre-fills it. Mirrors the
-encounter modal's `savedAs` / `savedSnapshot` discipline.
+encounter modal's `savedAs` discipline.
 -}
 markSaved : String -> CompendiumUi -> CompendiumUi
 markSaved name ui =

@@ -170,9 +170,7 @@ type SaveChainRollMode
 -- ── INITIATIVE AUX ───────────────────────────────────────────────────────────
 
 
-{-| Who an initiative change lands on: the click target, the
-entire queue, only selected creatures, or only the ones the party
-is fighting.
+{-| Who an initiative change lands on.
 -}
 type RollScope
     = ScopeTarget
@@ -344,9 +342,8 @@ type DamagePicker
 
 {-| Where a save lives.
 
-  - `StorageServer` — the server's named-save endpoints for a
-    signed-in GM, or `localStorage` for an anonymous one. Same
-    constructor either way; the handlers pick the backend.
+  - `StorageServer` — the server's named-save endpoints, which
+    want an account.
   - `StorageDevice` — a file on the GM's machine, written by
     download and read back through the file picker.
 
@@ -1122,16 +1119,20 @@ type Msg
       -- Live-encounter persistence
     | EncounterLoaded (Result Http.Error (Maybe Encounter))
     | EncounterPersisted (Result Http.Error ())
+      -- The Encounter nav item's menu; see `View.AppBar`.
+    | EncounterMenuToggle
+    | EncounterMenuClose
+    | EncounterSaveOpen
+    | EncounterLoadOpen
+    | SaveLoadClose
       -- Named saves, on the server or the GM's own machine.
     | SaveLoadStorageSet SaveStorage
     | SaveLoadFilenameChanged String
     | SaveLoadSaveSubmit
       -- The saves list, and the save its actions work on.
-    | SaveLoadSavesToggle
     | SaveLoadSelect String
       -- Actions on the picked save.
     | SaveLoadLoadRequested String
-    | SaveLoadOverwriteRequested String
     | SaveLoadDeleteRequested String
     | SaveLoadConfirmCancel
     | SaveLoadConfirmConfirm

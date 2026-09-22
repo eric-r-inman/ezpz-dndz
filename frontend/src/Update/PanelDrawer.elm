@@ -14,7 +14,6 @@ module Update.PanelDrawer exposing
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 import Update.Dice
-import Update.SaveLoad
 
 
 {-| Fold one panel's body away, or open it back up. The panel
@@ -31,9 +30,10 @@ toggleCollapse index model =
                 |> Maybe.withDefault False
     in
     if expanding then
-        Model.toggleCollapsedAt index model
+        ( Model.toggleCollapsedAt index model
             |> (Model.reaimStale >> markRead index >> ackHpLog index)
-            |> primeList index
+        , Cmd.none
+        )
 
     else
         ( Model.toggleCollapsedAt index model, Cmd.none )
@@ -61,19 +61,6 @@ foldNewest model =
     Model.newestShowing model
         |> Maybe.map (\( i, _ ) -> ( Model.collapseAt i model, Cmd.none ))
         |> Maybe.withDefault ( model, Cmd.none )
-
-
-{-| The saves listing is only worth fetching once the panel can
-show it, so expanding is what asks for it.
--}
-primeList : Int -> Model -> ( Model, Cmd Msg )
-primeList index model =
-    case Maybe.map .surface (Model.drawerPanelAt index model) of
-        Just (SurfaceSaveLoad _) ->
-            Update.SaveLoad.primeList model
-
-        _ ->
-            ( model, Cmd.none )
 
 
 {-| Expanding the HP editor shows whatever the log already held,

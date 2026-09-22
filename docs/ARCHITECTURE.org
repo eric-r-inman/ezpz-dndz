@@ -252,10 +252,8 @@ one modal open at a time" invariant is now type-enforced rather than convention.
 In addition, the model carries small non-modal pieces of UI state that are
 scoped to the workspace shell rather than to a single feature:
 
-- ~savedSnapshot : Maybe Encounter~ + ~savedAs : Maybe String~ — the most recent
-  persisted state of the encounter and the name it was saved under.  Set by Save
-  / Load success and consumed by the Encounter Saves panel, which marks its
-  title when the live roster differs from the snapshot.
+- ~savedAs : Maybe String~ — the name the encounter was most recently saved
+  under.  Set by Save / Load success, and pre-fills the Save modal's name.
 - ~panelCreaturePin : Maybe { id, name }~ — the drawer's pinned creature.
   Carries both the compendium id (canonical UUID lookup) and the encounter
   creature's display name (so a name fallback covers older saved encounters
@@ -540,7 +538,6 @@ CASCADE~ back to ~users~), defined across the migrations under
 | ~compendium_groups~ → ~compendium_group_entries~ | 0003 | Per-user creature groups (a.k.a. Hordes); see [[*Compendium groups (Hordes)][Compendium groups (Hordes)]]. |
 | ~compendium_saves~ → ~compendium_save_nodes~ | 0003 | Named compendium snapshots: typed metadata (name + timestamps) over a contractually opaque body stored as a relational JSON node tree — one row per node, numbers kept as their canonical serde token so int/float fidelity survives.  Save-name uniqueness is per-user. |
 | ~encounters~ (+ creatures / conditions / save notices / recharge abilities / pips / treasure + its contributions / items) | 0004, 0005, 0006, 0008 | The live encounter, fully typed — treasure settings flatten onto the ~encounters~ row itself; absent row reads as ~null~. |
-| ~encounter_saves~ → ~encounter_save_nodes~ | 0004 | Named encounter saves; same metadata-over-node-tree shape as compendium saves.  Alice + Bob can both have a "Goblin Ambush". |
 
 The five preset families share a *presence-parent* pattern: ~GET~ returns ~null~
 when the user has never persisted the feature (no ~_sets~ row) and the canonical
@@ -684,9 +681,9 @@ auth states (server vs.  localStorage adopt vs. public bundled JSON).
     server is empty and the anonymous session had local data, PUTs the local
     snapshot up as a one-shot migration.
 - ~Err _~ — adopts every ~localStorage~ snapshot into ~Model~ (encounter, dice
-  history, compendium creatures + groups, named encounter saves, presets, party,
-  lore groups, treasure table) and falls back to ~/bundled-creatures.json~ for
-  the compendium if the local snapshot is absent.
+  history, compendium creatures + groups, presets, party, lore groups, treasure
+  table) and falls back to ~/bundled-creatures.json~ for the compendium if the
+  local snapshot is absent.
 
 The login form is mode-toggleable (Sign in ↔ Create account) and lives on
 ~Model.loginUi : LoginUi~ at ~Route.Login~ — anonymous users navigate there via
@@ -744,7 +741,8 @@ by ~localStorage~.  Anonymous users get the same modal stack, encounter UI,
 compendium browser, and dice roller as authenticated users — the only
 differences are storage destination and a handful of sign-in nudges on
 genuinely-server-only features (server-side compendium snapshots via the
-Save/Load Compendium modals).
+Save/Load Compendium modals, and named encounter saves via the Encounter menu's
+Save and Load modals).
 
 ** Per-surface persistence routing
 
@@ -754,7 +752,6 @@ analogue; ~model.auth~ picks at write time, the boot path picks at read time.
 | Surface            | Authenticated                        | Anonymous (~localStorage~ key)  |
 |--------------------+--------------------------------------+---------------------------------|
 | Live encounter     | =PUT /api/encounter=                 | =encounter=                     |
-| Named encounter saves | =PUT /api/encounter/saves/:name=  | =encounterSaves= (dict by name) |
 | Dice history       | =/api/dice/history= (per-roll POST)  | =diceHistory= (full list, diff-and-write) |
 | Compendium creatures + groups + ~nextLocalId~ counter | =/api/compendium/*= + =/api/compendium/groups/*= | =compendium= (one combined snapshot) |
 | Condition presets  | =PUT /api/condition-presets=         | =conditionPresets=              |
@@ -783,7 +780,6 @@ surface:
 encounterCmd           = if next.encounter /= model.encounter ...
 diceHistoryCmd         = if next.dice.history.entries /= model.dice.history.entries ...
 compendiumCmd          = if Effects.compendiumChanged model next ...
-encounterSavesCmd      = if next.localEncounterSaves /= model.localEncounterSaves ...
 conditionPresetsCmd    = if next.conditionPresets /= model.conditionPresets ...
 saveChainPresetsCmd    = if next.saveChainPresets /= model.saveChainPresets ...
 timerPresetsCmd        = if next.timerPresets /= model.timerPresets ...
@@ -833,7 +829,6 @@ the stylesheet loads.)
 | =localEncounter=         | =encounter=            | ~Model.encounter~ on anonymous boot    |
 | =localDiceHistory=       | =diceHistory=          | ~Model.dice.history.entries~           |
 | =localCompendium=        | =compendium=           | ~Model.compendium.db~ + ~groups~ + ~nextLocalCreatureId~ |
-| =localEncounterSaves=    | =encounterSaves=       | ~Model.localEncounterSaves~ (Dict)     |
 | =localConditionPresets=  | =conditionPresets=     | ~Model.conditionPresets~ (Dict)        |
 | =localTimerPresets=      | =timerPresets=         | ~Model.timerPresets~ (Dict)            |
 | =localSaveChainPresets=  | =saveChainPresets=     | ~Model.saveChainPresets~ (Dict)        |
@@ -842,7 +837,6 @@ the stylesheet loads.)
 | =localUserLoreGroups=    | =userLoreGroups=       | ~Model.userLoreGroups~                 |
 | =localUserTreasureTable= | =userTreasureTable=    | ~Model.userTreasureTable~              |
 | =migrationDateLabel=     | (computed: ~Date().toLocaleDateString()~) | Suffix for ~Local — <date>~ slot names |
-| =bootMs=                 | (computed: ~Date.now()~) | Timestamp for anonymous-session named-save writes |
 
 ~Json.Decode.Value~ Maybe fields stash the raw JSON on ~localEncounterRaw~ /
 ~localDiceHistoryRaw~ / ~localCompendiumRaw~ for one-shot adoption — they're
@@ -861,7 +855,6 @@ the server in parallel with the normal data fetches:
 | Compendium (creatures + groups) | =POST /api/compendium/import= (full bundle body)                |
 | Lore groups / condition presets / Save Chain presets / treasure table / treasure profiles | One-shot PUT from =Update/UserSync.elm= when the server's copy comes back empty but the local snapshot has data |
 | Dice history          | *Not migrated* — server history takes over on next reload                 |
-| Named encounter saves | *Not auto-migrated* — manual re-save preserves explicit control           |
 
 Success handlers clear the matching ~localStorage~ key via the
 ~clearLocalEncounter~ / ~clearLocalCompendium~ ports and push a success toast
@@ -884,10 +877,9 @@ tooltipWhenAuthed auth normalTooltip signInTooltip = ...
 #+end_src
 
 The gated control stays visible (so the affordance doesn't appear/disappear with
-auth state); click → ~/login~; tooltip swaps to a sign-in nudge.  The saves
-panel's storage toggle uses a different shape — the server button reads
-"Browser" anonymously, and the handlers in =Update.SaveLoad= branch on
-~model.auth~ to pick the backend.
+auth state); click → ~/login~; tooltip swaps to a sign-in nudge.  The Save and
+Load modals use a different shape — the server destination shows an anonymous GM
+a sign-in notice where the account's saves would be.
 
 * Persistence
 
@@ -908,7 +900,7 @@ maintains.
 |-----------------------------------+-------------------------------------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------|
 | ~/api/auth/{register,login,me}~   | ~users~                                               | n/a       | Account database — Argon2id hashes, never crosses the wire.                                                                                        |
 | ~/api/encounter~ GET / PUT        | ~encounters~ + children                               | yes       | Live encounter state, fully typed; auto-saved on every mutation.  GET returns ~null~ before the first PUT; a body that fails the wire decoder 400s. |
-| ~/api/encounter/saves(/:name)*~   | ~encounter_saves~ + ~encounter_save_nodes~            | yes       | User-named encounter saves (the saves panel).  Opaque bodies, exact echo.  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
+| ~/api/encounter/saves(/:name)*~   | ~encounter_saves~ + ~encounter_save_nodes~            | yes       | User-named encounter saves (the Encounter menu's Save and Load modals).  Opaque bodies, exact echo.  PUT supports ?overwrite=true; rename / delete endpoints sit alongside; semantic 409 / 404 / 400 errors. |
 | ~/api/compendium/*~               | ~user_creatures~ + children                           | yes       | Per-user creatures; the bundled bestiary merges in at request time from the binary.                                                               |
 | ~/api/compendium/saves(/:name)*~  | ~compendium_saves~ + ~compendium_save_nodes~          | yes       | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
 | ~/api/compendium/groups(/:id)*~   | ~compendium_groups~ + ~compendium_group_entries~      | yes       | Creature groups (a.k.a. Hordes) keyed by server-issued UUID.  REST CRUD: GET list / POST draft / PUT full record / DELETE; ~created_at~ preserved server-side. |
@@ -971,19 +963,19 @@ vanilla encounters keep their existing title-bar / card-grid layout.
 
 * Encounter controls
 
-The editor column runs a small set of named flows that the rest of the app
-routes through:
+The app runs a small set of named encounter flows that the rest of it routes
+through:
 
-- *Saves* — one drawer panel, =View.Panel.SaveLoad=, covering both directions.
-  The row affordances are shared because they hit the same endpoints.
+- *Saves* — two modals off the Encounter menu, =View.Modal.SaveLoad=, one each
+  way.  The row affordances sit on the load side.
 
   - Server uploads PUT to ~/api/encounter/saves/:name~ (the server returns 409
-    on a name collision, surfaced as the panel's overwrite-confirm banner;
+    on a name collision, surfaced as the modal's overwrite-confirm banner;
     ~?overwrite=true~ upserts on confirm).  Device writes go through
     ~File.Download.string~ and reads through ~File.Select.file~.
   - Loading replaces the live encounter and forces ~round = 1~ + ~activeName =
     ""~ so the GM lands in pre-combat mode.  Successful loads also populate
-    ~savedSnapshot~ + ~savedAs~.
+    ~savedAs~.
 
 - *Reset* / *Clear* — staged as ~SurfaceConfirm~ so a misclick can't drop combat
   state.  The first click opens the confirmation modal (Cancel / coloured
@@ -1078,12 +1070,13 @@ click-outside subscriptions have a single handler to close them all.
 - *Reset* — single button (no popover); restores the bundled creature set via
   ~/api/compendium/reset~.
 
-The Save / Load Compendium modals themselves mirror the encounter saves panel:
-filename input, list of existing snapshots, inline overwrite-confirm banner.
-The MVP omits per-row rename / delete affordances — re-saving under an existing
-name fires the overwrite-confirm prompt, which covers the common case.
-Successful save / load clears ~compendiumDirty~ and stamps the snapshot's name
-into ~CompendiumUi.savedAs~ so the next Save modal opens pre-populated.
+The Save / Load Compendium modals themselves mirror the Encounter menu's Save
+and Load modals: filename input, list of existing snapshots, inline
+overwrite-confirm banner.  The MVP omits per-row rename / delete affordances —
+re-saving under an existing name fires the overwrite-confirm prompt, which
+covers the common case.  Successful save / load clears ~compendiumDirty~ and
+stamps the snapshot's name into ~CompendiumUi.savedAs~ so the next Save modal
+opens pre-populated.
 
 ** Selection-driven right-pane actions
 

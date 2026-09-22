@@ -19,12 +19,9 @@ local device (as a JSON download). The modal is opened with
 its destination preselected via `Compendium → Export → Server /
 Device` so the user lands on the right radio.
 
-`pushSnapshot` semantics differ from the encounter modal: a
-successful server save flips `compendiumDirty` back to `False`
-(the on-disk snapshot is now in sync with the canonical server
-copy on display), whereas a successful save does not change
-`savedSnapshot` — there's no compendium analogue of the
-encounter Reset.
+A successful server save flips `compendiumDirty` back to
+`False`, since the on-disk snapshot is then in sync with the
+server copy on display.
 
 -}
 

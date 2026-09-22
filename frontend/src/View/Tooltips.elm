@@ -140,7 +140,6 @@ module View.Tooltips exposing
     , saveLoadRowLoad
     , saveNoticeDismiss
     , saveRowDelete
-    , saveRowOverwrite
     , saveRowRename
     , savedAgainstNotice
     , showStatBlock
@@ -855,11 +854,6 @@ compendiumEditRemoveTag =
 saveLoadPickFirst : String
 saveLoadPickFirst =
     "Pick a saved encounter first"
-
-
-saveRowOverwrite : String
-saveRowOverwrite =
-    "Overwrite this save with current encounter"
 
 
 saveRowRename : String

@@ -77,6 +77,7 @@ import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
 import Ui.ModalChrome
 import Ui.QueuePanels
+import Ui.SaveLoad
 import Ui.Timer.Wire
 import Ui.Toast
 import Update.AbilitySave
@@ -144,6 +145,7 @@ import View.Modal.LoreEdit
 import View.Modal.Notice
 import View.Modal.RoundSet
 import View.Modal.SaveCompendium
+import View.Modal.SaveLoad
 import View.Modal.TreasureTable
 import View.Page.Compendium
 import View.Page.CompendiumStandalone
@@ -192,6 +194,15 @@ subscriptions model =
             if model.settingsOpen then
                 [ Browser.Events.onKeyDown (escKey SettingsClose)
                 , Browser.Events.onMouseDown (Decode.succeed SettingsClose)
+                ]
+
+            else
+                []
+
+        encounterMenuSubs =
+            if model.encounterMenuOpen then
+                [ Browser.Events.onKeyDown (escKey EncounterMenuClose)
+                , Browser.Events.onMouseDown (Decode.succeed EncounterMenuClose)
                 ]
 
             else
@@ -332,6 +343,7 @@ subscriptions model =
             :: Ports.incomingPanelShow Update.Tabs.panelShowFromOtherTab
             :: Ports.logRowOverflow LogRowOverflowReported
             :: settingsSubs
+            ++ encounterMenuSubs
             ++ clearMenuSubs
             ++ conditionPresetLoadMenuSubs
             ++ timerPresetLoadMenuSubs
@@ -485,11 +497,6 @@ themeFromFlag raw =
     compendium (creatures + groups + next-local-id counter).
     When present the anonymous boot branch decodes and adopts
     it in place of fetching the bundled JSON.
-  - `localEncounterSaves` — anonymous named-encounter-saves
-    dict (`{ name → { encounter, created_at, updated_at } }`)
-    that the Save / Load modals consult instead of `/api/encounter/saves`.
-  - `bootMs` — `Date.now()` at boot, used as the timestamp on
-    every anonymous named-save write done this session.
 
 -}
 type alias Flags =
@@ -498,7 +505,6 @@ type alias Flags =
     , migrationDateLabel : String
     , localDiceHistory : Maybe Decode.Value
     , localCompendium : Maybe Decode.Value
-    , localEncounterSaves : Maybe Decode.Value
     , localConditionPresets : Maybe Decode.Value
     , localDrawerLayout : Maybe Decode.Value
     , localTimerPresets : Maybe Decode.Value
@@ -506,7 +512,6 @@ type alias Flags =
     , localParty : Maybe Decode.Value
     , localUserLoreGroups : Maybe Decode.Value
     , localUserTreasureTable : Maybe Decode.Value
-    , bootMs : Int
     }
 
 
@@ -560,7 +565,6 @@ init flags url key =
         , auth = Auth.AuthLoading
         , loginUi = LoginUi.empty
         , encounter = Encounter.empty
-        , savedSnapshot = Nothing
         , savedAs = Nothing
         , dice = DiceUi.empty
         , targetName = Nothing
@@ -602,6 +606,7 @@ init flags url key =
         , queueDrag = Nothing
         , compendiumEditDraft = Nothing
         , settingsOpen = False
+        , encounterMenuOpen = False
         , toasts = []
         , nextToastId = 0
         , rollPopups = []
@@ -616,13 +621,6 @@ init flags url key =
         , localCompendiumRaw = flags.localCompendium
         , pendingBundleMerge = False
         , nextLocalCreatureId = 1
-        , localEncounterSaves =
-            flags.localEncounterSaves
-                |> Maybe.andThen
-                    (Decode.decodeValue Encounter.Wire.decodeLocalEncounterSaves
-                        >> Result.toMaybe
-                    )
-                |> Maybe.withDefault Dict.empty
         , conditionPresets =
             case flags.localConditionPresets of
                 Just raw ->
@@ -669,7 +667,6 @@ init flags url key =
                     )
         , userTreasureProfiles = Dict.empty
         , userTreasureProfileNameDraft = ""
-        , bootMs = flags.bootMs
         }
       -- The auth-dependent data fetches (encounter, compendium,
       -- groups, dice history) all live in
@@ -752,13 +749,6 @@ update msg model =
         compendiumCmd =
             if Effects.shouldPersistAfter msg && Effects.compendiumChanged model next then
                 Effects.persistCompendiumFor next
-
-            else
-                Cmd.none
-
-        encounterSavesCmd =
-            if Effects.shouldPersistAfter msg && model.localEncounterSaves /= next.localEncounterSaves then
-                Effects.persistEncounterSavesFor next
 
             else
                 Cmd.none
@@ -913,7 +903,6 @@ update msg model =
         , encounterBroadcastCmd
         , diceHistoryCmd
         , compendiumCmd
-        , encounterSavesCmd
         , conditionPresetsCmd
         , saveChainPresetsCmd
         , timerPresetsCmd
@@ -2429,6 +2418,21 @@ updateInner msg model =
         EncounterPersisted result ->
             Update.Shell.encounterPersisted result model
 
+        EncounterMenuToggle ->
+            Update.Shell.encounterMenuToggle model
+
+        EncounterMenuClose ->
+            Update.Shell.encounterMenuClose model
+
+        EncounterSaveOpen ->
+            Update.SaveLoad.open Ui.SaveLoad.ForSave model
+
+        EncounterLoadOpen ->
+            Update.SaveLoad.open Ui.SaveLoad.ForLoad model
+
+        SaveLoadClose ->
+            Update.SaveLoad.dismiss model
+
         SaveLoadStorageSet storage ->
             Update.SaveLoad.storageSet storage model
 
@@ -2437,9 +2441,6 @@ updateInner msg model =
 
         SaveLoadSaveSubmit ->
             Update.SaveLoad.submit model
-
-        SaveLoadSavesToggle ->
-            Update.SaveLoad.savesToggle model
 
         SaveLoadSelect name ->
             Update.SaveLoad.select name model
@@ -2452,9 +2453,6 @@ updateInner msg model =
 
         SaveLoadLoadRequested name ->
             Update.SaveLoad.loadRequested name model
-
-        SaveLoadOverwriteRequested name ->
-            Update.SaveLoad.overwriteRequested name model
 
         SaveLoadDeleteRequested name ->
             Update.SaveLoad.deleteRequested name model
@@ -2869,6 +2867,7 @@ appShell maybeUser model =
       else
         View.AppBar.view
             { settingsOpen = model.settingsOpen
+            , encounterMenuOpen = model.encounterMenuOpen
             , theme = model.preferences.theme
             , user = maybeUser
             , route = model.route
@@ -2879,6 +2878,7 @@ appShell maybeUser model =
     , View.Modal.Notice.view model
     , View.Modal.RoundSet.view model
     , View.Modal.SaveCompendium.view model
+    , View.Modal.SaveLoad.view model
     , View.Modal.LoadCompendium.view model
     , View.Modal.LoreEdit.view model
     , View.Modal.TreasureTable.view model

@@ -1,13 +1,18 @@
-module View.Panel.SaveLoad exposing (view)
+module View.Modal.SaveLoad exposing (view)
 
-{-| Encounter save/load panel; the chrome comes from
-`View.Panel`.
+{-| The two modals the Encounter menu opens.
+
+Saving asks where first, because the two destinations want
+different things: a file needs nowhere to put it, and the server
+needs an account and a name. Loading asks the same question by
+offering both sources at once — the account's saves as a list,
+and the GM's own machine behind a file picker.
+
 -}
 
 import Auth
-import Encounter
 import Encounter.Wire exposing (SavedEncounterMeta)
-import Html exposing (Html, button, div, input, li, p, span, text, ul)
+import Html exposing (Html, a, button, div, input, li, p, span, text, ul)
 import Html.Attributes
     exposing
         ( attribute
@@ -15,121 +20,91 @@ import Html.Attributes
         , class
         , disabled
         , for
+        , href
         , id
         , maxlength
         , type_
         , value
         )
 import Html.Events exposing (onClick, onInput)
-import Model exposing (Model)
+import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..), SaveStorage(..))
 import Ui.SaveLoad as SaveLoadUi
     exposing
         ( ConfirmAction(..)
         , ListState(..)
+        , Purpose(..)
         , SaveLoadUi
         )
 import Util.Keyboard
 import View.Inline.ApplyButton as ApplyButton
-import View.Inline.Field as Field
-import View.Panel
+import View.Modal
 import View.Tooltips as Tooltips
 
 
-view : View.Panel.Header -> Model -> Html Msg
-view header model =
-    case Model.drawerGet Model.saveLoadLens model of
-        Just ui ->
-            View.Panel.view
-                { title = "Save/Load Encounter"
-                , titleTrail =
-                    View.Panel.titleMarkIf
-                        (Encounter.rosterDirty model.encounter model.savedSnapshot)
-                , subtitle = Nothing
-                , header = header
-                , extraClass = "panel-drawer--save-load"
+view : Model -> Html Msg
+view model =
+    case model.surface of
+        Just (SurfaceSaveLoad ui) ->
+            View.Modal.view
+                { close = SaveLoadClose
+                , noOp = NoOp
+                , title =
+                    case ui.purpose of
+                        ForSave ->
+                            "Save Encounter"
+
+                        ForLoad ->
+                            "Load Encounter"
+                , extraClass = "modal--save"
+                , chrome = model.modalChrome
                 , body =
-                    [ storageSection model.auth ui
-                    , confirmBanner ui
+                    [ confirmBanner ui
                     , errorBanner ui
-                    , bodyForStorage ui
+                    , case ui.purpose of
+                        ForSave ->
+                            saveBody model.auth ui
+
+                        ForLoad ->
+                            loadBody model.auth ui
                     ]
                 }
 
-        Nothing ->
+        _ ->
             text ""
 
 
-{-| The server option names the browser for an anonymous GM,
-because their saves land in `localStorage` rather than an
-account.
--}
-storageSection : Auth.AuthState -> SaveLoadUi -> Html Msg
-storageSection auth ui =
-    let
-        serverLabel =
-            case auth of
-                Auth.AuthAuthenticated _ ->
-                    "This server"
 
-                _ ->
-                    "This browser"
-    in
-    div [ class "save-load__storage-block" ]
-        [ span [ class "cond-label" ] [ text "Save this encounter to:" ]
-        , div [ class "save-load__storage" ]
-            [ storageButton ui StorageServer serverLabel
-            , storageButton ui StorageDevice "This device"
-            ]
-        ]
+-- SAVE
 
 
-storageButton : SaveLoadUi -> SaveStorage -> String -> Html Msg
-storageButton ui storage label =
-    button
-        [ class
-            (if ui.storage == storage then
-                "action-btn action-btn--blue save-load__storage-btn"
-
-             else
-                "action-btn save-load__storage-btn"
-            )
-        , type_ "button"
-        , onClick (SaveLoadStorageSet storage)
-        , attribute "aria-pressed"
-            (if ui.storage == storage then
-                "true"
-
-             else
-                "false"
-            )
-        ]
-        [ text label ]
-
-
-bodyForStorage : SaveLoadUi -> Html Msg
-bodyForStorage ui =
-    case ui.storage of
-        StorageServer ->
-            div [ class "save-load__server" ]
-                [ saveRow ui
-                , savesSection ui
+saveBody : Auth.AuthState -> SaveLoadUi -> Html Msg
+saveBody auth ui =
+    div [ class "save-load__server" ]
+        [ div [ class "save-load__storage-block" ]
+            [ span [ class "cond-label" ] [ text "Save this encounter to:" ]
+            , div [ class "save-load__storage" ]
+                [ storageButton ui StorageDevice "A file on this device"
+                , storageButton ui StorageServer "This server"
                 ]
+            ]
+        , case ui.storage of
+            StorageDevice ->
+                downloadSection ui
 
-        StorageDevice ->
-            deviceSection ui
+            StorageServer ->
+                serverSaveSection auth ui
+        ]
 
 
-{-| Name-and-write. Enter commits, so the common case — type a
-name, save — never needs the mouse.
--}
-saveRow : SaveLoadUi -> Html Msg
-saveRow ui =
-    div [ class "save-load__save" ]
-        [ div [ class "cond-row" ]
-            [ Html.label
-                [ for "save-load-filename", class "cond-label" ]
-                [ text "Encounter Name:" ]
+downloadSection : SaveLoadUi -> Html Msg
+downloadSection ui =
+    div [ class "save-load__device" ]
+        [ p [ class "cond-section__caption" ]
+            [ text "Writes the encounter to your downloads as a JSON file." ]
+        , div [ class "cond-row" ]
+            [ Html.label [ for "save-load-filename", class "cond-label" ]
+                [ text "File name:" ]
             , input
                 [ id "save-load-filename"
                 , class "cond-input cond-input--grow"
@@ -147,33 +122,98 @@ saveRow ui =
                 [ class "action-btn action-btn--green"
                 , type_ "button"
                 , onClick SaveLoadSaveSubmit
-                , disabled (ui.busy || String.isEmpty (String.trim ui.filename))
+                , disabled ui.busy
                 ]
-                [ text "Save" ]
+                [ text "Download" ]
             ]
         ]
 
 
-{-| The saves fold away until the GM asks for them. A save is
-picked before anything is done to it, so its actions sit once
-under the list rather than on every row.
--}
-savesSection : SaveLoadUi -> Html Msg
-savesSection ui =
-    div [ class "save-load__saves" ]
-        (Field.foldHead
-            { open = ui.savesOpen
-            , title = "Saved Encounters" ++ savesCount ui.saves
-            , msg = SaveLoadSavesToggle
-            , trail = []
-            }
-            :: (if ui.savesOpen then
-                    savesBody ui
+serverSaveSection : Auth.AuthState -> SaveLoadUi -> Html Msg
+serverSaveSection auth ui =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            div [ class "save-load__save" ]
+                [ div [ class "cond-row" ]
+                    [ Html.label [ for "save-load-filename", class "cond-label" ]
+                        [ text "Encounter Name:" ]
+                    , input
+                        [ id "save-load-filename"
+                        , class "cond-input cond-input--grow"
+                        , type_ "text"
+                        , value ui.filename
+                        , maxlength SaveLoadUi.maxNameLength
+                        , autofocus True
+                        , onInput SaveLoadFilenameChanged
+                        , Html.Events.on "keydown" (Util.Keyboard.enterKey SaveLoadSaveSubmit)
+                        ]
+                        []
+                    ]
+                , div [ class "note-edit__buttons note-edit__buttons--start" ]
+                    [ button
+                        [ class "action-btn action-btn--green"
+                        , type_ "button"
+                        , onClick SaveLoadSaveSubmit
+                        , disabled (ui.busy || String.isEmpty (String.trim ui.filename))
+                        ]
+                        [ text "Save" ]
+                    ]
+                , overwriteHint ui
+                ]
 
-                else
-                    []
-               )
-        )
+        _ ->
+            signInNotice "Saving to the server keeps an encounter with your account, on any device you sign in from."
+
+
+{-| A heads-up that a name already on the server is an overwrite,
+shown only once there is a save to collide with.
+-}
+overwriteHint : SaveLoadUi -> Html Msg
+overwriteHint ui =
+    case ui.saves of
+        ListLoaded (_ :: _) ->
+            p [ class "cond-section__caption" ]
+                [ text "Saving under a name you already have will ask before replacing it." ]
+
+        _ ->
+            text ""
+
+
+
+-- LOAD
+
+
+loadBody : Auth.AuthState -> SaveLoadUi -> Html Msg
+loadBody auth ui =
+    div [ class "save-load__server" ]
+        [ div [ class "save-load__device" ]
+            [ p [ class "cond-section__caption" ]
+                [ text "Reads an encounter back from a file on this device." ]
+            , div [ class "note-edit__buttons note-edit__buttons--start" ]
+                [ button
+                    [ class "action-btn action-btn--blue"
+                    , type_ "button"
+                    , onClick SaveLoadDeviceImportClick
+                    , disabled ui.busy
+                    ]
+                    [ text "Load from file…" ]
+                ]
+            ]
+        , div [ class "save-load__saves" ]
+            (span [ class "cond-label" ] [ text ("Saved on this server" ++ savesCount ui.saves) ]
+                :: serverLoadSection auth ui
+            )
+        ]
+
+
+serverLoadSection : Auth.AuthState -> SaveLoadUi -> List (Html Msg)
+serverLoadSection auth ui =
+    case auth of
+        Auth.AuthAuthenticated _ ->
+            savesBody ui
+
+        _ ->
+            [ signInNotice "Sign in to keep encounters on the server and load them from any device." ]
 
 
 savesCount : ListState -> String
@@ -333,13 +373,6 @@ actions ui picked =
                     }
                 , ApplyButton.view
                     { enabled = enabled
-                    , cls = "action-btn action-btn--orange"
-                    , msg = SaveLoadOverwriteRequested name
-                    , tip = tip Tooltips.saveRowOverwrite
-                    , label = "Overwrite"
-                    }
-                , ApplyButton.view
-                    { enabled = enabled
                     , cls = "action-btn action-btn--blue"
                     , msg = SaveLoadRenameStart name
                     , tip = tip Tooltips.saveRowRename
@@ -357,6 +390,44 @@ actions ui picked =
         )
 
 
+
+-- SHARED
+
+
+storageButton : SaveLoadUi -> SaveStorage -> String -> Html Msg
+storageButton ui storage label =
+    button
+        [ class
+            (if ui.storage == storage then
+                "action-btn action-btn--blue save-load__storage-btn"
+
+             else
+                "action-btn save-load__storage-btn"
+            )
+        , type_ "button"
+        , onClick (SaveLoadStorageSet storage)
+        , attribute "aria-pressed"
+            (if ui.storage == storage then
+                "true"
+
+             else
+                "false"
+            )
+        ]
+        [ text label ]
+
+
+{-| What an anonymous GM sees where an account's saves would be,
+with the way to get one.
+-}
+signInNotice : String -> Html Msg
+signInNotice why =
+    div [ class "save-load__device" ]
+        [ p [ class "cond-section__caption" ] [ text why ]
+        , a [ class "action-btn action-btn--blue", href "/login" ] [ text "Sign in" ]
+        ]
+
+
 rowButton : String -> Msg -> Bool -> String -> String -> Html Msg
 rowButton cls msg busy tip label =
     button
@@ -367,33 +438,6 @@ rowButton cls msg busy tip label =
         , Tooltips.attr tip
         ]
         [ text label ]
-
-
-{-| Device storage has no listing to work: a download writes the
-file, and the picker reads one back.
--}
-deviceSection : SaveLoadUi -> Html Msg
-deviceSection ui =
-    div [ class "save-load__device" ]
-        [ p [ class "cond-section__caption" ]
-            [ text "Saves as a file on this device, and reads one back." ]
-        , div [ class "note-edit__buttons note-edit__buttons--start" ]
-            [ button
-                [ class "action-btn action-btn--green"
-                , type_ "button"
-                , onClick SaveLoadSaveSubmit
-                , disabled ui.busy
-                ]
-                [ text "Download" ]
-            , button
-                [ class "action-btn action-btn--blue"
-                , type_ "button"
-                , onClick SaveLoadDeviceImportClick
-                , disabled ui.busy
-                ]
-                [ text "Load from file…" ]
-            ]
-        ]
 
 
 confirmBanner : SaveLoadUi -> Html Msg
