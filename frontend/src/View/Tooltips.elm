@@ -89,6 +89,7 @@ module View.Tooltips exposing
     , hpAmountRoll
     , hpAmountRollClear
     , hpOpenManage
+    , hpResetDefault
     , hpRoll
     , hpRollClear
     , initSelectedNone
@@ -923,6 +924,11 @@ hpRoll =
 hpRollClear : String
 hpRollClear =
     "Clear the roll and type the hit points instead"
+
+
+hpResetDefault : String
+hpResetDefault =
+    "Reset to Default"
 
 
 hpAmountRoll : String

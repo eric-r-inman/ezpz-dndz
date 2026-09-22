@@ -596,6 +596,7 @@ type Msg
     | HpChangeApplyToSelectedToggle
       -- Commits the editor's current amount as the given kind.
     | HpChangeApplyAs HpKind
+    | HpChangeResetToDefault
     | HpChangeRollLanded Dice.Roll
     | HpChangeFreshRollToggle
       -- One fresh-per-creature roll landing.  Carries the kind

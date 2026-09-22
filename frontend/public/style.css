@@ -8841,6 +8841,10 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-accent);
 }
 
+.hp-change__log-kind--reset {
+  color: var(--color-orange);
+}
+
 .hp-change__log-entry--flash {
   animation: log-flash 0.9s ease-out 1;
 }

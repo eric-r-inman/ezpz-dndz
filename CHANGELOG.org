@@ -6,6 +6,8 @@
 1. A dot beside Encounter in the top bar, and beside Save in its menu, marks an
    encounter that has changed since it was last saved or loaded.  No action
    needed.
+2. The Manage HP editor's ↩ button puts a creature back to the hit points it
+   entered the encounter with and clears its temporary ones.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance

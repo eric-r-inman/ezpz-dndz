@@ -346,11 +346,12 @@ freshRollOption selectedCount ui =
         text ""
 
 
-{-| Four action buttons — each commits the current amount using
-that verb. The editor stays open afterwards so the GM can keep
-applying; the ringed trigger, Escape, or the header-less toggle
-close it. Each verb is colour-coded to match the existing
-damage / heal / temp affordances.
+{-| The verb buttons, each committing the current amount, and the
+reset beside them, which takes no amount at all. The editor stays
+open afterwards so the GM can keep applying; the ringed trigger,
+Escape, or the header-less toggle close it. Each verb is
+colour-coded to match the existing damage / heal / temp
+affordances.
 -}
 actionButtons : Html Msg
 actionButtons =
@@ -375,4 +376,11 @@ actionButtons =
             , onClick (HpChangeApplyAs MaxHpKind)
             ]
             [ text "+ Max" ]
+        , button
+            [ class "action-btn action-btn--orange"
+            , onClick HpChangeResetToDefault
+            , Tooltips.attr Tooltips.hpResetDefault
+            , attribute "aria-label" Tooltips.hpResetDefault
+            ]
+            [ text "↩" ]
         ]

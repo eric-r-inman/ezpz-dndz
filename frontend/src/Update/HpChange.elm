@@ -17,6 +17,7 @@ module Update.HpChange exposing
     , manualRollClear
     , manualRollLanded
     , openFor
+    , resetToDefault
     , rollLanded
     , setToggle
     , undoLatest
@@ -324,6 +325,28 @@ freshRollToggle model =
     ( withHpChange (\u -> { u | freshRollPerTarget = not u.freshRollPerTarget }) model
     , Cmd.none
     )
+
+
+{-| Put whoever the verb buttons are pointed at back the way they
+arrived. It takes no amount, so nothing is parsed and neither
+field is read; it lands in the log like any other change, which
+is what gives a misclick its undo.
+-}
+resetToDefault : Model -> ( Model, Cmd Msg )
+resetToDefault model =
+    case drawerSurface model of
+        Just (SurfaceHpChange ui) ->
+            ( applyTransform ResetPools
+                Nothing
+                False
+                (hpChangeTargets ui model.encounter)
+                HpChange.resetPools
+                model
+            , Cmd.none
+            )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 {-| Footer action-button click: commit the editor's amount as
