@@ -1,12 +1,13 @@
 module Ui.SaveLoad exposing
-    ( SaveLoadUi, ListState(..), ConfirmAction(..)
+    ( SaveLoadUi, ListState(..), ConfirmAction(..), Purpose(..)
     , RenameDraft, fresh
     , maxNameLength
     )
 
-{-| Encounter save/load panel state.
+{-| Encounter save/load state, shared by the two modals the
+Encounter menu opens.
 
-@docs SaveLoadUi, ListState, ConfirmAction
+@docs SaveLoadUi, ListState, ConfirmAction, Purpose
 @docs RenameDraft, fresh
 @docs maxNameLength
 
@@ -16,8 +17,15 @@ import Encounter.Wire exposing (SavedEncounterMeta)
 import Msg exposing (SaveStorage(..))
 
 
-{-| Loading state for the save listing. The panel wears
-`ListLoading` until expanding it asks for the saves.
+{-| Which of the two modals this state is driving.
+-}
+type Purpose
+    = ForSave
+    | ForLoad
+
+
+{-| Loading state for the save listing. The modal wears
+`ListLoading` until the fetch lands.
 -}
 type ListState
     = ListLoading
@@ -45,10 +53,10 @@ type alias RenameDraft =
     }
 
 
-{-| Save/load panel state.
+{-| Save/load modal state.
 
-  - `storage` — server for a signed-in GM, browser storage for
-    an anonymous one; or a file on their machine.
+  - `storage` — the account's saves on the server, or a file on
+    the GM's machine.
   - `filename` — what the save will be called; `primeList`
     fills it in from the encounter's last save name.
   - `selected` — the save the list's actions work on. A name the
@@ -58,10 +66,10 @@ type alias RenameDraft =
 
 -}
 type alias SaveLoadUi =
-    { storage : SaveStorage
+    { purpose : Purpose
+    , storage : SaveStorage
     , filename : String
     , saves : ListState
-    , savesOpen : Bool
     , selected : Maybe String
     , busy : Bool
     , error : Maybe String
@@ -70,12 +78,12 @@ type alias SaveLoadUi =
     }
 
 
-fresh : SaveLoadUi
-fresh =
-    { storage = StorageServer
+fresh : Purpose -> SaveLoadUi
+fresh purpose =
+    { purpose = purpose
+    , storage = StorageServer
     , filename = ""
     , saves = ListLoading
-    , savesOpen = False
     , selected = Nothing
     , busy = False
     , error = Nothing

@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, clearLocalEncounterSaves, incomingDiceRoll, incomingEncounter, incomingPanelShow, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalEncounterSaves, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
+    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, incomingDiceRoll, incomingEncounter, incomingPanelShow, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -85,21 +85,6 @@ port persistLocalCompendium : E.Value -> Cmd msg
 login-time migration. Same role as `clearLocalEncounter`.
 -}
 port clearLocalCompendium : () -> Cmd msg
-
-
-{-| Persist the anonymous named-encounter-saves dict
-(`{ name → { encounter, created_at, updated_at } }`) to
-localStorage. Fired by `Update.SaveLoad` after any local
-mutation.
--}
-port persistLocalEncounterSaves : E.Value -> Cmd msg
-
-
-{-| Drop the whole anonymous named-encounter-saves dict. Fired
-after a successful login-time migration that has copied every
-local save into the server.
--}
-port clearLocalEncounterSaves : () -> Cmd msg
 
 
 {-| Persist the user-named condition presets dict to

@@ -33,7 +33,6 @@ import View.Panel.CrCalculator
 import View.Panel.Dice
 import View.Panel.QuickAdd
 import View.Panel.RandomEncounter
-import View.Panel.SaveLoad
 import View.Panel.Treasure
 import View.Panel.Xp
 import View.Tooltips as Tooltips
@@ -340,9 +339,6 @@ panelFor model index panel =
 
             SurfaceQuickAdd _ ->
                 View.Panel.QuickAdd.view header model
-
-            SurfaceSaveLoad _ ->
-                View.Panel.SaveLoad.view header model
 
             SurfaceRandomEncounter _ ->
                 View.Panel.RandomEncounter.view header model

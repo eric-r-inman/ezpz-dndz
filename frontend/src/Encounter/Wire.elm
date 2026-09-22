@@ -3,7 +3,7 @@ module Encounter.Wire exposing
     , decodeEncounter, encodeEncounter
     , fetchEncounterCmd, persistEncounterCmd
     , listSavesCmd, getSaveCmd, putSaveCmd, deleteSaveCmd, renameSaveCmd
-    , LocalEncounterSave, decodeLocalEncounterSaves, decodeTreasureSettings, encodeLocalEncounterSaves, encodeTreasureSettings, localSaveToMeta
+    , decodeTreasureSettings, encodeTreasureSettings
     )
 
 {-| JSON encoders / decoders for `Encounter` and its referenced
@@ -1712,59 +1712,3 @@ decodeTimer =
         (D.field "phase" decodeTurnPhase)
         (D.field "ringing" D.bool)
         (D.oneOf [ D.field "note" D.string, D.succeed "" ])
-
-
-
--- ── LOCAL (ANONYMOUS) NAMED SAVES ────────────────────────────────────────────
---
--- Anonymous sessions store named encounter saves in a single
--- localStorage dict keyed by name.  Each value carries the
--- encoded encounter plus created_at / updated_at millis so the
--- Save / Load modal listings can sort and display dates the
--- same way the server-backed flow does.
-
-
-type alias LocalEncounterSave =
-    { encounter : Encounter
-    , createdAt : Int
-    , updatedAt : Int
-    }
-
-
-{-| Project a dict entry down to the same metadata shape the
-server returns from `GET /api/encounter/saves` so the Save / Load
-modals can use one row renderer for both paths.
--}
-localSaveToMeta : ( String, LocalEncounterSave ) -> SavedEncounterMeta
-localSaveToMeta ( name, save ) =
-    { name = name
-    , createdAt = save.createdAt
-    , updatedAt = save.updatedAt
-    }
-
-
-encodeLocalEncounterSave : LocalEncounterSave -> E.Value
-encodeLocalEncounterSave save =
-    E.object
-        [ ( "encounter", encodeEncounter save.encounter )
-        , ( "created_at", E.int save.createdAt )
-        , ( "updated_at", E.int save.updatedAt )
-        ]
-
-
-decodeLocalEncounterSave : D.Decoder LocalEncounterSave
-decodeLocalEncounterSave =
-    D.map3 LocalEncounterSave
-        (D.field "encounter" decodeEncounter)
-        (D.field "created_at" D.int)
-        (D.field "updated_at" D.int)
-
-
-encodeLocalEncounterSaves : Dict String LocalEncounterSave -> E.Value
-encodeLocalEncounterSaves dict =
-    E.dict identity encodeLocalEncounterSave dict
-
-
-decodeLocalEncounterSaves : D.Decoder (Dict String LocalEncounterSave)
-decodeLocalEncounterSaves =
-    D.dict decodeLocalEncounterSave

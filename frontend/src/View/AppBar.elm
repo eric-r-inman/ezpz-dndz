@@ -47,6 +47,7 @@ import View.Tooltips as Tooltips
 
 view :
     { settingsOpen : Bool
+    , encounterMenuOpen : Bool
     , theme : Theme
     , user : Maybe Auth.User
     , route : Route
@@ -79,7 +80,7 @@ view cfg =
               -- and hover bubbles on every item turn the bar
               -- into noise.  Settings (⚙) keeps its tooltip
               -- because it's icon-only.
-              a [ href "/" ] [ text "Encounter" ]
+              encounterMenu cfg.encounterMenuOpen
             , userLink cfg.user cfg.route
             , a
                 [ class "app-bar__about"
@@ -94,6 +95,68 @@ view cfg =
             , settings cfg.settingsOpen cfg.theme
             ]
         ]
+
+
+{-| The Encounter item is a destination and a menu at once: the
+click that arrives at the encounter is also the one that offers
+saving and loading it, so neither errand costs a second hunt.
+
+Built like the settings popover — a controlled `<div>` rather
+than a `<details>`, so the Esc and click-outside subscriptions in
+`Main` can close it — and stopping mousedown from bubbling is
+what keeps a click on the menu itself from closing it first.
+
+-}
+encounterMenu : Bool -> Html Msg
+encounterMenu isOpen =
+    div
+        [ class "app-menu"
+        , stopPropagationOn "mousedown" (Decode.succeed ( NoOp, True ))
+        ]
+        [ button
+            [ class
+                (if isOpen then
+                    "app-menu__trigger app-menu__trigger--open"
+
+                 else
+                    "app-menu__trigger"
+                )
+            , type_ "button"
+            , attribute "aria-haspopup" "menu"
+            , attribute "aria-expanded"
+                (if isOpen then
+                    "true"
+
+                 else
+                    "false"
+                )
+            , onClick EncounterMenuToggle
+            ]
+            [ text "Encounter" ]
+        , if isOpen then
+            div
+                [ class "app-menu__items"
+                , attribute "role" "menu"
+                , attribute "aria-label" "Encounter"
+                ]
+                [ menuItem EncounterSaveOpen "Save"
+                , menuItem EncounterLoadOpen "Load"
+                ]
+
+          else
+            text ""
+        ]
+
+
+menuItem : Msg -> String -> Html Msg
+menuItem msg label =
+    button
+        [ class "app-menu__item"
+        , type_ "button"
+        , attribute "role" "menuitem"
+        , onClick msg
+        ]
+        [ text label ]
 
 
 {-| Italic prompt sitting next to the brand. Only shown when the

@@ -1522,6 +1522,69 @@ body {
   gap: var(--space-3);
 }
 
+/* A nav item that drops a menu.  Positioned like the settings
+   popover, but anchored to its left edge: it sits at the start
+   of the nav, where a right-anchored menu would hang off the
+   side the bar has least room on. */
+.app-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.app-menu__trigger {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+}
+
+.app-menu__trigger:hover,
+.app-menu__trigger--open {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+}
+
+.app-menu__items {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  min-width: 160px;
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-menu__item {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  padding: var(--space-2);
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.app-menu__item:hover {
+  background: var(--color-surface-2);
+}
+
 .app-settings__row {
   border: none;
   margin: 0;

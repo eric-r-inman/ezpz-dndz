@@ -4,7 +4,7 @@ module Effects exposing
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
-    , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, persistEncounterSavesFor
+    , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
@@ -31,7 +31,7 @@ way: Update modules → Effects.
 @docs autoRollCmdsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs fetchMe, cmdForRoute
-@docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, persistEncounterSavesFor
+@docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
 @docs compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
 @docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
 @docs importCompendiumBundle, clearCompendiumCreatures, resetCompendium
@@ -1176,17 +1176,6 @@ persistCompendiumFor model =
                     , bundledVersion = Compendium.Wire.currentBundledVersion
                     }
                 )
-
-        _ ->
-            Cmd.none
-
-
-persistEncounterSavesFor : Model -> Cmd Msg
-persistEncounterSavesFor model =
-    case model.auth of
-        Auth.AuthAnonymous ->
-            Ports.persistLocalEncounterSaves
-                (Encounter.Wire.encodeLocalEncounterSaves model.localEncounterSaves)
 
         _ ->
             Cmd.none

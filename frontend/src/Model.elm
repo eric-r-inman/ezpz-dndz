@@ -28,12 +28,8 @@ in another form: they hold the settings of editors that are
 CLOSED, which by definition cannot live inside the ADT that
 models what is open.
 
-`savedSnapshot` is the last-known persisted state of the
-encounter — the result of the user's most recent Save (or
-Load) action. It backs the Encounter Saves panel's dirty mark,
-which lights when the live roster differs from it. `savedAs`
-parallels it, recording the name the encounter was last saved
-under so re-saving doesn't make the user retype the filename.
+`savedAs` records the name the encounter was last saved under,
+so re-saving doesn't make the user retype the filename.
 
 @docs Surface, Model
 
@@ -48,7 +44,6 @@ import Encounter.Difficulty as Difficulty
 import Encounter.RandomEncounter.Lore as Lore
 import Encounter.SaveChain exposing (SaveChain)
 import Encounter.Treasure
-import Encounter.Wire as EncounterWire
 import Encounter.Xp exposing (XpScope)
 import Json.Decode as Decode
 import Msg exposing (MeStatus)
@@ -224,7 +219,6 @@ defaultDrawer =
             , SurfaceReplace (Ui.Replace.fresh "")
             , SurfaceCrCalculator Ui.CrCalculator.fresh
             , SurfaceXp
-            , SurfaceSaveLoad Ui.SaveLoad.fresh
             , SurfaceQuickAdd Ui.QuickAdd.fresh
             , SurfaceSaveChain (Ui.SaveChain.fresh "")
             , SurfaceTreasure Ui.Treasure.fresh
@@ -316,9 +310,6 @@ surfaceKey surface =
         SurfaceQuickAdd _ ->
             "quick-add"
 
-        SurfaceSaveLoad _ ->
-            "save-load"
-
         SurfaceRandomEncounter _ ->
             "random-encounter"
 
@@ -333,6 +324,9 @@ surfaceKey surface =
         -- are persisted, so a new drawer-eligible surface has to
         -- fail the compile here rather than quietly inherit
         -- another panel's saved slot.
+        SurfaceSaveLoad _ ->
+            "save-load"
+
         SurfaceNoteEdit _ ->
             "note-edit"
 
@@ -1349,7 +1343,6 @@ type alias Model =
     , auth : AuthState
     , loginUi : LoginUi
     , encounter : Encounter
-    , savedSnapshot : Maybe Encounter
     , savedAs : Maybe String
     , dice : DiceUi
 
@@ -1466,6 +1459,7 @@ type alias Model =
     , xpExcluded : Set String
     , xpCalculationsOpen : Bool
     , settingsOpen : Bool
+    , encounterMenuOpen : Bool
 
     -- The editor column's drawer: every open panel, oldest
     -- first, rendered top to bottom.  A stack rather than a
@@ -1554,12 +1548,6 @@ type alias Model =
     -- creatures use full UUIDs; anonymous use `"local-N"`.
     , nextLocalCreatureId : Int
 
-    -- Anonymous named encounter saves keyed by name.  Authed
-    -- sessions use the server's `/api/encounter/saves` endpoints;
-    -- anonymous sessions mutate this dict and the update-loop
-    -- wrapper persists it to `localStorage.encounterSaves`.
-    , localEncounterSaves : Dict String EncounterWire.LocalEncounterSave
-
     -- User-named presets for the Add-Condition modal, keyed by
     -- the name the GM gave each save.  Mirrors the pattern of
     -- the other localStorage-backed dicts: the modal's Save and
@@ -1603,12 +1591,6 @@ type alias Model =
 
     -- Draft text for the "Save current as profile…" input.
     , userTreasureProfileNameDraft : String
-
-    -- JS `Date.now()` captured at boot, used as the timestamp for
-    -- all anonymous named-save writes done in this session.  All
-    -- saves in one session share this timestamp (cosmetic-only;
-    -- the migration uploads to the server which assigns its own).
-    , bootMs : Int
     }
 
 
