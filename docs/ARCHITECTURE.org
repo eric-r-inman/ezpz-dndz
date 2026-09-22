@@ -252,8 +252,10 @@ one modal open at a time" invariant is now type-enforced rather than convention.
 In addition, the model carries small non-modal pieces of UI state that are
 scoped to the workspace shell rather than to a single feature:
 
-- ~savedAs : Maybe String~ — the name the encounter was most recently saved
-  under.  Set by Save / Load success, and pre-fills the Save modal's name.
+- ~savedSnapshot : Maybe Encounter~ + ~savedAs : Maybe String~ — the encounter
+  as it stood at the most recent save or load, and the name it went under.  Set
+  by Save / Load success; the snapshot backs the unsaved-changes dot in the app
+  bar and the name pre-fills the Save modal.
 - ~panelCreaturePin : Maybe { id, name }~ — the drawer's pinned creature.
   Carries both the compendium id (canonical UUID lookup) and the encounter
   creature's display name (so a name fallback covers older saved encounters

@@ -3,6 +3,9 @@
 
 * Upcoming
 ** Added
+1. A dot beside Encounter in the top bar, and beside Save in its menu, marks an
+   encounter that has changed since it was last saved or loaded.  No action
+   needed.
 ** Fixes
 ** Breaking
 ** Maintenance

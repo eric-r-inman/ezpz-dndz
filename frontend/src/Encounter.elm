@@ -15,7 +15,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt
+    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, unsavedChanges
     )
 
 {-| Domain layer for the encounter manager.
@@ -648,6 +648,27 @@ hasConditionNamed creatureName conditionName enc =
         |> List.filter (\c -> c.name == creatureName)
         |> List.concatMap .conditions
         |> List.any (\cond -> String.toLower cond.name == String.toLower conditionName)
+
+
+{-| Whether the encounter differs from the one most recently
+saved or loaded.
+
+The whole encounter counts, not just who is in it: a creature's
+hit points and conditions are as much of the fight as its
+presence, and a mark that stayed dark through a session of damage
+would be telling the GM their save was current when it was not.
+An encounter never saved at all counts as changed once there is
+anything in it worth saving.
+
+-}
+unsavedChanges : Encounter -> Maybe Encounter -> Bool
+unsavedChanges current snapshot =
+    case snapshot of
+        Just saved ->
+            current /= saved
+
+        Nothing ->
+            not (List.isEmpty current.creatures)
 
 
 
