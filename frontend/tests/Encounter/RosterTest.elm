@@ -32,6 +32,7 @@ suite : Test
 suite =
     describe "Encounter.Roster"
         [ moveCreatureSuite
+        , landingIndexSuite
         , sortByInitiativeSuite
         , removeCreatureSuite
         , duplicateCreatureSuite
@@ -164,6 +165,45 @@ moveCreatureSuite =
                 Roster.moveCreature 1 0 threeCreatures
                     |> .activeName
                     |> Expect.equal "A"
+        ]
+
+
+
+-- ── landingIndex ─────────────────────────────────────────────────────────
+
+
+{-| The queue after the creature at `from` is dropped into `gap`,
+numbering the gaps from 0 above the first creature.
+-}
+dropInto : Int -> Int -> List String
+dropInto from gap =
+    Roster.moveCreature from (Roster.landingIndex from gap) threeCreatures
+        |> names
+
+
+landingIndexSuite : Test
+landingIndexSuite =
+    describe "landingIndex"
+        [ test "a drop into a gap further down lands in that gap" <|
+            \_ ->
+                dropInto 0 2
+                    |> Expect.equal [ "B", "A", "C" ]
+        , test "a drop into a gap further up lands in that gap" <|
+            \_ ->
+                dropInto 2 1
+                    |> Expect.equal [ "A", "C", "B" ]
+        , test "the gap above the first creature lands at the top" <|
+            \_ ->
+                dropInto 2 0
+                    |> Expect.equal [ "C", "A", "B" ]
+        , test "the gap below the last creature lands at the bottom" <|
+            \_ ->
+                dropInto 0 3
+                    |> Expect.equal [ "B", "C", "A" ]
+        , test "either gap beside the creature leaves it in place" <|
+            \_ ->
+                List.map (dropInto 1) [ 1, 2 ]
+                    |> Expect.equal [ [ "A", "B", "C" ], [ "A", "B", "C" ] ]
         ]
 
 

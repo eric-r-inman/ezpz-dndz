@@ -11,9 +11,8 @@ Three rows plus two side rails:
     pools when the creature has any.
 
 The card itself is the queue's reorder handle: the whole article
-is a drag source and a drop target, so a GM moves a creature by
-dragging its card. A card with an open inline field is a target
-but not a source — see `dragAttrs`.
+is a drag source, so a GM moves a creature by dragging its card,
+except while it holds an open inline field — see `dragAttrs`.
 
 A strip rides the card's top border, carrying the lifecycle
 badge and, at 0 HP, the death-save controls.
@@ -51,26 +50,18 @@ anywhere and drops it where it belongs — except while one of its
 inline fields is open. A `draggable` ancestor puts the browser
 into drag mode on mousedown, and no handler can hand the gesture
 back afterwards, so a card holding a text field the GM might be
-selecting inside stops being a drag _source_. It stays a drop
-target either way: a card the GM cannot pick up is still
-somewhere they can put another one.
+selecting inside stops being a drag _source_.
 -}
 dragAttrs : Bool -> Int -> List (Html.Attribute Msg)
 dragAttrs editing index =
-    (if editing then
+    if editing then
         []
 
-     else
+    else
         [ Attr.draggable "true"
         , on "dragstart" (Decode.succeed (QueueDragStart index))
         , on "dragend" (Decode.succeed QueueDragEnd)
         ]
-    )
-        ++ [ preventDefaultOn "dragover"
-                (Decode.succeed ( QueueDragOver index, True ))
-           , preventDefaultOn "drop"
-                (Decode.succeed ( QueueDrop index, True ))
-           ]
 
 
 {-| Whether this card is currently showing a text field — an
@@ -137,17 +128,6 @@ emptySpotClick name =
             )
 
 
-{-| The card the dragged one would land on wears the cue.
--}
-dropCueClasses : Int -> Maybe Model.DragState -> List String
-dropCueClasses index drag =
-    if Maybe.map .over drag == Just (Just index) then
-        [ "creature-card--drop" ]
-
-    else
-        []
-
-
 {-| The model fragments a card render needs beyond its own
 `Creature`. `surface` powers the card-owned inline surfaces:
 when the open surface targets this card's creature, the card
@@ -161,7 +141,6 @@ type alias Context =
     , surface : Maybe Surface
     , timerPresets : Dict String TimerPreset
     , compendium : CompendiumDb
-    , drag : Maybe Model.DragState
     , targetName : Maybe String
     , flashConditions : List ( String, Int )
     , openStatBlocks : Set String
@@ -189,8 +168,7 @@ view ctx index creature =
         cardClass =
             String.join " "
                 ("creature-card"
-                    :: dropCueClasses index ctx.drag
-                    ++ (if isTarget then
+                    :: (if isTarget then
                             [ "creature-card--target" ]
 
                         else

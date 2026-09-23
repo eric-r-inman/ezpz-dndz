@@ -24,6 +24,7 @@ import View.EncounterBar
 import View.Inline.QueueReference
 import View.Inline.SpellList
 import View.PanelDrawer
+import View.QueueEntry
 import View.Tooltips as Tooltips
 
 
@@ -58,7 +59,6 @@ panelMain model =
             , surface = model.surface
             , timerPresets = model.timerPresets
             , compendium = model.compendium.db
-            , drag = model.queueDrag
             , targetName = model.targetName
             , flashConditions = model.flashConditions
             , openStatBlocks = model.openStatBlocks
@@ -81,7 +81,7 @@ panelMain model =
             , id Effects.encounterPanelBodyId
             ]
             [ div [ class "creature-grid" ]
-                (List.concat (List.indexedMap (cardWithStatBlock cardContext model) enc.creatures))
+                (List.indexedMap (queueEntry cardContext model) enc.creatures)
             , quickAddRow
             ]
         ]
@@ -89,15 +89,17 @@ panelMain model =
 
 {-| A card, and under it the stat block the GM unfolded there.
 -}
-cardWithStatBlock : View.Card.Context -> Model -> Int -> Creature -> List (Html Msg)
-cardWithStatBlock ctx model index creature =
-    View.Card.view ctx index creature
-        :: (if Set.member creature.name model.openStatBlocks then
-                [ View.Card.StatBlock.view (creature.name == model.encounter.activeName) model.compendium.db creature ]
+queueEntry : View.Card.Context -> Model -> Int -> Creature -> Html Msg
+queueEntry ctx model index creature =
+    View.QueueEntry.view model.queueDrag
+        index
+        (View.Card.view ctx index creature)
+        (if Set.member creature.name model.openStatBlocks then
+            [ View.Card.StatBlock.view (creature.name == model.encounter.activeName) model.compendium.db creature ]
 
-            else
-                []
-           )
+         else
+            []
+        )
 
 
 {-| Sticky orange strip sandwiched between the encounter title

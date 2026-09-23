@@ -3,6 +3,9 @@
 
 * Upcoming
 ** Added
+1. Dragging a creature card marks where it will land with a yellow line between
+   the two cards it will drop into, in place of the ring around the card under
+   it.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance
