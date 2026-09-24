@@ -6,6 +6,12 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump rust-template-foundation from 0.132.0 to 0.134.0
+2. Bump rust-template-foundation-derive from 0.132.0 to 0.134.0
+3. Bump thiserror from 2.0.20 to 2.0.21
+4. Bump thiserror-impl from 2.0.20 to 2.0.21
+5. Bump zerocopy from 0.8.57 to 0.8.58
+6. Bump zerocopy-derive from 0.8.57 to 0.8.58
 ** Security
 * v0.28.0
 ** Maintenance
