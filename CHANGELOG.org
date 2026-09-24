@@ -6,9 +6,11 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.28.0
+** Maintenance
 1. Bump rust-template-foundation from `62490b1` to `02c1633`
    (https://github.com/eric-r-inman/ezpz-dndz/pull/154)
-** Security
 * v0.27.0
 ** Added
 1. A dot beside Encounter in the top bar, and beside Save in its menu, marks an
