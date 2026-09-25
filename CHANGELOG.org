@@ -6,6 +6,7 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. The project is synced to the current rust-template.  No action needed.
 ** Security
 * v0.29.0
 ** Maintenance

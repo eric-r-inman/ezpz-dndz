@@ -136,21 +136,23 @@ dependabot-combine *args:
 dependency-bump *args:
     dependency-bump {{args}}
 
-# Review the current change set against this project's conventions.
+# Review the current change set against the project's conventions.
 #
-# Run it when a piece of work is done, which is the point the branch is ready
-# to become a pull request.  It judges only what it has not judged already, so
-# addressing one file does not re-review the rest, and it reads the same
-# convention documents a contributor does.
+# Sends the change set to a nested reviewer that judges it against the
+# project's convention documents, and reports what stands.  Verdicts are
+# recorded per file in review.json so addressing one file does not re-review
+# the rest; pass --priors clear to judge those files afresh.  The reviewer is
+# your own `claude` install, which must be on PATH.
 #
 # Exit code 1 means the review ran and found something; 2 means it could not
-# run at all.  `just` calls either a failed recipe, so read the code: a 1 with
-# findings printed above it is the tool working.
+# judge the tree in full.  `just` reports either as a failed recipe, so read
+# the code: a 1 with findings printed above it is the tool working, not
+# breaking.
 #
 # The nested reviewer is pinned to Opus, as the Stop hook's is, so the two
 # judge alike, whatever model the session itself is on.
 review *args:
-    rust-template-review-cli --reviewer-model opus {{args}}
+    review --reviewer-model opus {{args}}
 
 # Reclaim disk from stale build artifacts.
 #
