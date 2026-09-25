@@ -15,6 +15,8 @@
    another creature's turns, such as the caster's, instead of the bearer's own.
    No action needed.
 ** Fixes
+1. The Quick Add editor's Placeholder row stays solid under the pointer instead
+   of letting the rows scrolled beneath it show through.  No action needed.
 ** Breaking
 1. The quick-list page at /quick-list is gone, along with the ↗ link that opened
    it in a new tab.  Open the Quick view beside the queue instead.
