@@ -69,6 +69,7 @@ import Ui.Memo exposing (MemoEditUi)
 import Ui.ModalChrome exposing (ModalChrome)
 import Ui.Note exposing (NoteEditUi)
 import Ui.PlaceholderRename exposing (PlaceholderRenameState)
+import Ui.QueueDrag exposing (QueueDrag)
 import Ui.QueuePanels exposing (QueuePanels)
 import Ui.QuickAdd exposing (QuickAddUi)
 import Ui.RandomEncounter exposing (RandomEncounterUi)
@@ -149,13 +150,11 @@ type Surface
     | SurfaceNotice String
 
 
-{-| Something being dragged to a new position in a list: where it
-started, and the slot it would land in — which, in the drawer,
-the pinned boundary can pull off the slot the pointer is actually
-over. Shared by the editor column and the creature queue, the two
-places the GM reorders by hand. Lives on the model rather than in
-either list, because a drag is about order, not about what any
-one item holds.
+{-| A drawer panel being dragged to a new position in the column:
+where it started, and the slot it would land in — which the pinned
+boundary can pull off the slot the pointer is actually over. Lives
+on the model rather than in the stack, because a drag is about
+order, not about what any one panel holds.
 -}
 type alias DragState =
     { from : Int
@@ -1531,7 +1530,7 @@ type alias Model =
     , drawerDrag : Maybe DragState
 
     -- The creature card being dragged to a new queue position.
-    , queueDrag : Maybe DragState
+    , queueDrag : Maybe QueueDrag
 
     -- The creature editor's work in progress, mirrored on every
     -- edit so closing the editor by any route — selecting

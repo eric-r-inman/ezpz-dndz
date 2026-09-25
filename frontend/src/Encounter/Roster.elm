@@ -1,5 +1,5 @@
 module Encounter.Roster exposing
-    ( moveCreature
+    ( moveCreature, landingIndex
     , sortByInitiative
     , removeCreature, duplicateCreature, insertCopyAfter
     , appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
@@ -18,7 +18,7 @@ the lifecycle hooks, so an `update` branch can pipe queue
 mutations through these and lifecycle ticks through
 `Encounter.Lifecycle` interchangeably.
 
-@docs moveCreature
+@docs moveCreature, landingIndex
 @docs sortByInitiative
 @docs removeCreature, duplicateCreature, insertCopyAfter
 @docs appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
@@ -66,6 +66,20 @@ moveCreature from to enc =
 
         Nothing ->
             enc
+
+
+{-| The position to hand `moveCreature` to put the creature at
+`from` into the gap above the creature at `gap`, where a `gap`
+equal to the queue's length means the gap below the last one.
+Both gaps beside the creature itself leave it where it is.
+-}
+landingIndex : Int -> Int -> Int
+landingIndex from gap =
+    if gap > from then
+        gap - 1
+
+    else
+        gap
 
 
 {-| Re-order the encounter queue by descending initiative.

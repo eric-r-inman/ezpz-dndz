@@ -711,12 +711,15 @@ type Msg
     | ToggleSelected String
     | ShiftToggleSelected String
       -- Manual queue reordering: dragging a creature card to a
-      -- new position.  Same shape as the drawer's reorder —
-      -- payloads are queue positions, Over fires per card the
-      -- pointer crosses, End covers a drag the browser cancelled.
+      -- new position.  Start carries the card's queue position;
+      -- Over the queue entry under the pointer and the gap it
+      -- means, gaps counting from 0 above the first card; Leave
+      -- the entry the pointer left.  End covers a drag the
+      -- browser cancelled.
     | QueueDragStart Int
-    | QueueDragOver Int
-    | QueueDrop Int
+    | QueueDragOver Int Int
+    | QueueDragLeave Int
+    | QueueDrop
     | QueueDragEnd
       -- Roster mutation (the right rail's × button)
     | RemoveCreature String

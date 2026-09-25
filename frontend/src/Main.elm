@@ -1313,11 +1313,14 @@ updateInner msg model =
         QueueDragStart index ->
             Update.Encounter.queueDragStart index model
 
-        QueueDragOver index ->
-            Update.Encounter.queueDragOver index model
+        QueueDragOver entry gap ->
+            Update.Encounter.queueDragOver entry gap model
 
-        QueueDrop index ->
-            Update.Encounter.queueDrop index model
+        QueueDragLeave entry ->
+            Update.Encounter.queueDragLeave entry model
+
+        QueueDrop ->
+            Update.Encounter.queueDrop model
 
         QueueDragEnd ->
             Update.Encounter.queueDragEnd model

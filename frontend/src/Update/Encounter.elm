@@ -8,6 +8,7 @@ module Update.Encounter exposing
     , nextTurn
     , openStatusAndConditionFor
     , queueDragEnd
+    , queueDragLeave
     , queueDragOver
     , queueDragStart
     , queueDrop
@@ -56,6 +57,7 @@ import Model exposing (Model, PendingControl(..))
 import Msg exposing (Msg(..))
 import Set
 import Ui.Compendium exposing (CompendiumDb(..))
+import Ui.QueueDrag
 import Update.Condition
 import Update.Status
 
@@ -470,39 +472,49 @@ openStatusAndConditionFor name model =
 -}
 queueDragStart : Int -> Model -> ( Model, Cmd Msg )
 queueDragStart index model =
-    ( { model | queueDrag = Just { from = index, over = Nothing } }
+    ( { model | queueDrag = Just (Ui.QueueDrag.start index) }
     , Cmd.none
     )
 
 
-{-| The pointer crossed a card; that card wears the drop cue.
+{-| The pointer, over a queue entry, means a gap; the card would
+land there, and the line moves to show it.
 -}
-queueDragOver : Int -> Model -> ( Model, Cmd Msg )
-queueDragOver index model =
-    ( { model
-        | queueDrag =
-            Maybe.map (\d -> { d | over = Just index }) model.queueDrag
-      }
+queueDragOver : Int -> Int -> Model -> ( Model, Cmd Msg )
+queueDragOver entry gap model =
+    ( { model | queueDrag = Maybe.map (Ui.QueueDrag.aim entry gap) model.queueDrag }
     , Cmd.none
     )
 
 
-{-| Dropped on a card: commit the reorder and clear the drag.
+{-| The pointer left a queue entry, and the line goes with it
+unless the pointer has moved on to another.
 -}
-queueDrop : Int -> Model -> ( Model, Cmd Msg )
-queueDrop index model =
+queueDragLeave : Int -> Model -> ( Model, Cmd Msg )
+queueDragLeave entry model =
+    ( { model | queueDrag = Maybe.map (Ui.QueueDrag.leave entry) model.queueDrag }
+    , Cmd.none
+    )
+
+
+{-| Let go over the queue: the card lands where the line showed,
+and nowhere when there was no line.
+-}
+queueDrop : Model -> ( Model, Cmd Msg )
+queueDrop model =
+    let
+        cleared =
+            { model | queueDrag = Nothing }
+    in
     ( model.queueDrag
-        |> Maybe.map
-            (\d ->
-                withEncounter (Encounter.Roster.moveCreature d.from index)
-                    { model | queueDrag = Nothing }
-            )
-        |> Maybe.withDefault model
+        |> Maybe.andThen (\d -> Maybe.map (Encounter.Roster.moveCreature d.from) d.over)
+        |> Maybe.map (\move -> withEncounter move cleared)
+        |> Maybe.withDefault cleared
     , Cmd.none
     )
 
 
-{-| The drag ended anywhere but a card: clear the cue without
+{-| The drag ended anywhere but the queue: clear the line without
 reordering.
 -}
 queueDragEnd : Model -> ( Model, Cmd Msg )
