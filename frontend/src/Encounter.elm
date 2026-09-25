@@ -15,7 +15,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, unsavedChanges
+    , AreaTracker, DamageTrigger(..), RechargeAbility, Standing(..), conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, standing, unsavedChanges
     )
 
 {-| Domain layer for the encounter manager.
@@ -636,6 +636,39 @@ the table.
 isEnemy : Creature -> Bool
 isEnemy creature =
     creature.creatureKind == "enemy"
+
+
+{-| How far out of the fight a creature is.
+
+  - `Down` — at 0 hit points, or dead.
+  - `Held` — standing, but held by a condition that keeps it from
+    acting.
+  - `Fighting` — neither.
+
+-}
+type Standing
+    = Fighting
+    | Held
+    | Down
+
+
+standing : Creature -> Standing
+standing creature =
+    if creature.currentHp == 0 || isDeathSaveDead creature.deathSaves then
+        Down
+
+    else if List.any (\cond -> List.member (String.toLower cond.name) holdingConditions) creature.conditions then
+        Held
+
+    else
+        Fighting
+
+
+{-| Matched without case, as condition names are matched elsewhere.
+-}
+holdingConditions : List String
+holdingConditions =
+    [ "unconscious", "incapacitated", "paralyzed", "petrified" ]
 
 
 {-| Whether the named creature already carries a condition of

@@ -123,7 +123,10 @@ module View.Tooltips exposing
     , quickAddSortToAlpha
     , quickAddSortToCr
     , quickD20
-    , quickListOpen
+    , quickViewAllCreatures
+    , quickViewEnemiesOnly
+    , quickViewHide
+    , quickViewShow
     , reactionReady
     , reactionSpent
     , readyAction
@@ -662,9 +665,24 @@ quickD20 =
     "Roll a d20 — straight, with advantage, and with disadvantage"
 
 
-quickListOpen : String
-quickListOpen =
-    "Open a read-only quick-list of the combat queue in a new tab"
+quickViewShow : String
+quickViewShow =
+    "Show quick-view"
+
+
+quickViewHide : String
+quickViewHide =
+    "Hide quick-view"
+
+
+quickViewEnemiesOnly : String
+quickViewEnemiesOnly =
+    "Enemies only"
+
+
+quickViewAllCreatures : String
+quickViewAllCreatures =
+    "All creatures"
 
 
 

@@ -9,8 +9,12 @@
 2. The queue's Legendary actions, Special reactions, and Spells strips open
    their lists from the label itself, in place of the icon beside it.  No action
    needed.
+3. The encounter bar's ◫ button opens a Quick view column beside the queue,
+   listing each creature's name and hit points.  No action needed.
 ** Fixes
 ** Breaking
+1. The quick-list page at /quick-list is gone, along with the ↗ link that opened
+   it in a new tab.  Open the Quick view beside the queue instead.
 ** Maintenance
 ** Security
 * v0.30.0

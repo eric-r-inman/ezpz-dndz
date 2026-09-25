@@ -173,6 +173,67 @@ exhaustionSuite =
 
 
 
+-- ── STANDING ─────────────────────────────────────────────────────────────────
+
+
+{-| How a seed creature stands at the given hit points while
+carrying the named conditions and no others.
+-}
+standingAt : Int -> List String -> Maybe Encounter.Standing
+standingAt hp conditionNames =
+    let
+        condition id name =
+            { id = id
+            , name = name
+            , note = ""
+            , duration = Encounter.DurationManual
+            , saveToEnd = Nothing
+            , linkedTo = Nothing
+            , area = Nothing
+            , level = Nothing
+            }
+    in
+    List.head Seed.initialEncounter.creatures
+        |> Maybe.map
+            (\base ->
+                Encounter.standing
+                    { base
+                        | currentHp = hp
+                        , deathSaves = DeathSaves.empty
+                        , conditions = List.indexedMap condition conditionNames
+                    }
+            )
+
+
+standingSuite : Test
+standingSuite =
+    describe "Encounter.standing"
+        [ test "a creature with hit points and no holding condition is fighting" <|
+            \_ ->
+                standingAt 10 [ "Prone", "Frightened" ]
+                    |> Expect.equal (Just Encounter.Fighting)
+        , test "each holding condition holds it, whatever its case" <|
+            \_ ->
+                [ "Unconscious", "incapacitated", "PARALYZED", "Petrified" ]
+                    |> List.map (\name -> standingAt 10 [ name ])
+                    |> Expect.equal (List.repeat 4 (Just Encounter.Held))
+        , test "0 hit points is down, holding condition or not" <|
+            \_ ->
+                ( standingAt 0 [], standingAt 0 [ "Paralyzed" ] )
+                    |> Expect.equal ( Just Encounter.Down, Just Encounter.Down )
+        , test "three failed death saves is down" <|
+            \_ ->
+                List.head Seed.initialEncounter.creatures
+                    |> Maybe.map
+                        (\c ->
+                            Encounter.standing
+                                { c | currentHp = 5, deathSaves = DeathSaves.addFailures 3 DeathSaves.empty }
+                        )
+                    |> Expect.equal (Just Encounter.Down)
+        ]
+
+
+
 -- ── ENTRY ────────────────────────────────────────────────────────────────────
 
 
@@ -182,4 +243,5 @@ suite =
         [ deathSavesSuite
         , turnLifecycleSuite
         , exhaustionSuite
+        , standingSuite
         ]

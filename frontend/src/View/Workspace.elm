@@ -25,18 +25,30 @@ import View.Inline.QueueReference
 import View.Inline.SpellList
 import View.PanelDrawer
 import View.QueueEntry
+import View.QuickView
 import View.Tooltips as Tooltips
 
 
 view : Model -> Html Msg
 view model =
     main_
-        [ class "workspace workspace--drawer"
+        [ class
+            (if model.quickView.open then
+                "workspace workspace--drawer workspace--quick-view"
+
+             else
+                "workspace workspace--drawer"
+            )
         , id "main"
         , attribute "tabindex" "-1"
         ]
         [ View.PanelDrawer.view model
         , panelMain model
+        , if model.quickView.open then
+            View.QuickView.view model.quickView model.encounter
+
+          else
+            text ""
         ]
 
 
@@ -66,7 +78,7 @@ panelMain model =
     in
     section [ class "panel panel--main" ]
         [ div [ class "panel__header panel__header--encounter" ]
-            [ View.EncounterBar.view View.EncounterBar.FullBar enc model.savedAs ]
+            [ View.EncounterBar.view model.quickView.open enc model.savedAs ]
         , legendaryActionStrip enc model.queuePanels.legendaryActions
         , specialReactionsStrip enc model.queuePanels.specialReactions
         , spellcasterStrip enc model.compendium.db model.queuePanels.spells

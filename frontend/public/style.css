@@ -165,6 +165,9 @@
      inset for every piece of a drawer panel's chrome. */
   --drawer-width: 296px;
   --drawer-pad-x: 4px;
+  /* Room for a creature's name beside its hit points and no more,
+     since the queue beside the quick view keeps the rest. */
+  --quick-view-width: 220px;
 
   /* A two-character numeric field (a DC, a modifier) in any
      editor — shared so every such field reads the same width. */
@@ -1666,6 +1669,10 @@ body {
 
 .workspace--drawer {
   grid-template-columns: var(--drawer-width) 1fr;
+}
+
+.workspace--quick-view {
+  grid-template-columns: var(--drawer-width) 1fr var(--quick-view-width);
 }
 
 /* ── Account page (`/me`) ──────────────────────────────────────────── */
@@ -4129,6 +4136,11 @@ body {
 
 .panel--main {
   grid-column: 2;
+  grid-row: 1;
+}
+
+.panel--quick-view {
+  grid-column: 3;
   grid-row: 1;
 }
 
@@ -7078,6 +7090,25 @@ button.creature-card__lifecycle--dead:focus-visible {
   position: relative;
 }
 
+.encounter-bar__quick-view {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-0) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.encounter-bar__quick-view:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
 .encounter-bar__info {
   cursor: help;
   color: var(--color-text-muted);
@@ -7363,7 +7394,8 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 @media (max-width: 820px) {
   .workspace,
-  .workspace--drawer {
+  .workspace--drawer,
+  .workspace--quick-view {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
   }
@@ -7373,7 +7405,8 @@ button.creature-card__lifecycle--dead:focus-visible {
     grid-column: 1;
     grid-row: auto;
   }
-  .panel--main {
+  .panel--main,
+  .panel--quick-view {
     grid-column: 1;
     grid-row: auto;
   }
@@ -8290,9 +8323,8 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-text);
 }
 
-/* Standalone /compendium page wrapper — borrowed from the
-   QuickList workspace styling so the full-page layout stretches
-   to fill the viewport without the encounter grid's columns. */
+/* Standalone /compendium page wrapper, stretched to fill the
+   viewport without the encounter grid's columns. */
 .workspace--compendium-page {
   display: flex;
   flex: 1 1 auto;
@@ -11773,268 +11805,77 @@ button.creature-card__lifecycle--dead:focus-visible {
   }
 }
 
-/* ── QUICK-LIST PAGE ──────────────────────────────────────────
-   Standalone read-only view at /quick-list.  Lists every
-   creature in initiative order with a 2-line card.  The page
-   reuses .encounter-bar (sans right cluster) so the title row
-   reads identically to the main view.
-*/
-
-.workspace--quick-list {
-  /* Left-justified, full-width: each creature row needs room to
-     fit on a single line, so don't clamp the wrapper.  The cards
-     themselves still wrap when the viewport gets too narrow. */
-  width: 100%;
-  margin: 0;
-  padding: 12px 16px;
-  box-sizing: border-box;
-}
-
-.panel--quick-list {
-  background: var(--color-surface-1, var(--color-surface-2));
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  overflow: hidden;
-}
-
-.quick-list__body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px;
-}
-
-.quick-list__empty {
-  padding: 32px;
-  text-align: center;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.quick-list-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 8px 12px;
+/* ── Quick view ──────────────────────────────────────────────────
+   The column beside the queue: each creature's name and hit
+   points, and nothing else. */
+.quick-view__filter {
+  appearance: none;
+  padding: 0 var(--space-1);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-}
-
-.quick-list-card--active {
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft, var(--color-surface-2));
-  box-shadow: 0 0 0 2px var(--color-accent) inset;
-}
-
-.quick-list-card--inactive {
-  opacity: 0.55;
-}
-
-.quick-list-card--down {
-  border-color: var(--color-danger, #ef4444);
-}
-
-/* Cards that carry a creatureId render as native <button>s so
-   clicking them broadcasts a panel-show to the main tab.  Reset
-   the button chrome (button-native background + border + text-
-   align) so the clickable variant looks identical to a plain
-   div-rendered row, and layer a subtle hover cue + pointer
-   cursor so the GM knows the row is interactive. */
-button.quick-list-card {
-  appearance: none;
+  background: transparent;
   font: inherit;
-  color: inherit;
-  text-align: left;
-  width: 100%;
+  line-height: 1.4;
   cursor: pointer;
 }
 
-.quick-list-card--clickable:hover,
-.quick-list-card--clickable:focus-visible {
+.quick-view__filter:hover {
   border-color: var(--color-accent);
-  outline: none;
 }
 
-.quick-list-card__line {
+.quick-view__body {
+  padding: var(--space-2) var(--space-3);
+}
+
+.quick-view__row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  border-bottom: 1px dashed var(--color-border);
 }
 
-.quick-list-card__line--primary {
-  font-weight: 500;
-}
-
-.quick-list-card__line--secondary {
-  font-size: 0.85rem;
-  /* Full body-text color (not muted) so the status chips read
-     clearly under both Modern and Dark.  The `--text-muted`
-     fall-back rendered the row washed-out next to line 1. */
-  color: var(--color-text);
-  padding-top: 4px;
-  border-top: 1px dashed var(--color-border);
-}
-
-/* Initiative badge to the left of the creature name.  Small
-   neutral pill so the eye groups [init][name] together as the
-   row's identity before AC / HP / conditions trail right. */
-.quick-list-card__init {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 28px;
-  padding: 1px 6px;
+.quick-view__name {
+  appearance: none;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  border: none;
   border-radius: var(--radius-sm);
-  background: var(--color-surface-3, var(--color-surface-1));
-  border: 1px solid var(--color-border);
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  font-size: 0.9rem;
+  background: transparent;
   color: var(--color-text);
-}
-
-.quick-list-card--active .quick-list-card__init {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: var(--color-on-accent, white);
-}
-
-.quick-list-card__name {
+  font: inherit;
   font-weight: 600;
-  font-size: 1rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
 }
 
-.quick-list-card__note {
-  font-style: italic;
+.quick-view__name:hover {
+  background: var(--color-surface-2);
+}
+
+/* Down at 0 hit points, or dead. */
+.quick-view__name--down {
+  color: var(--color-danger);
+  text-decoration: line-through;
+}
+
+/* Standing, but held by a condition that keeps it from acting. */
+.quick-view__name--held {
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  text-decoration: line-through;
 }
 
-.quick-list-card__stat-label {
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  margin-right: 2px;
-}
-
-.quick-list-card__ac {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Override `.hp-display`'s default margin-right so the temp-HP
-   chip doesn't sit awkwardly far from the rest of the row when
-   the bloodied / condition chips trail right after. */
-.quick-list-card .hp-display {
+.quick-view__hp {
+  flex: 0 0 auto;
   margin-right: 0;
-  font-size: inherit;
-}
-
-/* Re-assert the green-current / muted-max HP colors at the
-   quick-list scope.  The shared `.hp-display__current` rule
-   already paints green via `--color-success`, but pinning it
-   here guards against per-theme overrides that target the
-   main card grid and would otherwise leak into the quick-list. */
-.quick-list-card .hp-display__current {
-  color: var(--color-success);
-}
-
-.quick-list-card .hp-display__sep,
-.quick-list-card .hp-display__max {
-  color: var(--color-text-muted);
-}
-
-/* Vertical pipe between Name | AC | HP.  Uses the body text
-   color (not muted) so the separator is clearly readable; the
-   eye still reads it as punctuation thanks to its narrow glyph
-   shape.  No opacity dimming — `opacity: 0.5` on top of an
-   already-muted color rendered the pipe essentially invisible
-   on the lighter Modern card surface. */
-.quick-list-card__pipe {
-  color: var(--color-text);
-  font-weight: 400;
-  user-select: none;
-  margin: 0 4px;
-}
-
-.quick-list-card__conditions {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.quick-list-card__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--color-surface-3, var(--color-surface-1));
-  border: 1px solid var(--color-border);
-  font-size: 0.8rem;
   white-space: nowrap;
 }
 
-.quick-list-card__chip--bloodied {
-  background: rgba(239, 68, 68, 0.12);
-  border-color: rgba(239, 68, 68, 0.5);
-  color: var(--color-danger, #b91c1c);
-}
-
-.quick-list-card__chip--condition {
-  background: var(--color-accent-soft, var(--color-surface-3));
-  border-color: var(--color-accent, var(--color-border));
-}
-
-/* Read-only recharge chips on the quick-list card.  Tinted
-   green when the ability is ready; muted + strikethrough when
-   spent, matching the interactive recharge chip's visual
-   language on the main encounter card. */
-.quick-list-card__chip--recharge-ready {
-  color: var(--color-success, #15803d);
-  background: var(--color-success-soft, rgba(34, 197, 94, 0.12));
-  border-color: var(--color-success-soft, rgba(34, 197, 94, 0.4));
-  font-weight: 600;
-}
-
-.quick-list-card__chip--recharge-spent {
+.quick-view__empty {
   color: var(--color-text-muted);
-  background: transparent;
-  border-color: var(--color-border);
-  text-decoration: line-through;
-  text-decoration-thickness: 1.5px;
-  text-decoration-color: var(--color-text-muted);
-  opacity: 0.85;
-}
-
-.quick-list-card__chip--memo {
-  font-style: italic;
-}
-
-.quick-list-card__chip--timer {
-  font-variant-numeric: tabular-nums;
-}
-
-/* ↗ Quick-List link in the encounter title bar — same shape
-   as the .statblock__open anchor for visual continuity. */
-.encounter-bar__quick-list {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-  background: transparent;
-  margin-left: 4px;
-}
-
-.encounter-bar__quick-list:hover {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-  background: var(--color-accent-soft, transparent);
+  font-size: var(--font-size-label);
 }
 
 /* ── Save Chain modal ─────────────────────────────────────────────

@@ -1219,9 +1219,8 @@ shouldPersistAfter msg =
 
 
 {-| Whether to fire `broadcastEncounter` after this Msg has been
-processed. Excludes the inbound side of the BroadcastChannel
-(re-broadcasting receives would loop) and the QuickList tab's
-own reception (it's read-only).
+processed. Excludes the inbound side of the BroadcastChannel,
+since re-broadcasting what arrived would loop between the tabs.
 -}
 shouldBroadcastAfter : Msg -> Bool
 shouldBroadcastAfter msg =
