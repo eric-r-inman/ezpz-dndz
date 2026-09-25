@@ -345,35 +345,63 @@ See [[file:docs/systemd.org][docs/systemd.org]] for the full pattern and how to 
 * Code review
 
 Every change set is judged against this document and ~llms.org~ before it lands.
-A Claude Code session meets that on its own: the Stop hook at
-=.claude/hooks/review-stop.sh= runs the gate the foundation ships, and the gate
-blocks the turn from ending while the tree holds anything the review has not
-cleared.  Where the change touches Rust it runs the clippy gate CI enforces
-first, so a lint failure never reaches the reviewer.
 
-Anyone can ask for the same review directly:
+The project ships an on-demand code review: =just review= sends the current
+change set to a nested reviewer that judges it against the project's convention
+documents and your own =~/.claude/CLAUDE.md=, and reports what stands.  Claude
+Code users are expected to run it before opening a pull request, and to address
+what it reports:
 
 #+begin_src sh :results none :exports code
-just review
+just review --diff branch
 #+end_src
 
-Both judge only what has moved since they last looked, so a second pass after
-addressing a finding costs a fraction of the first.  Both drive a nested
-assistant session, so both want that assistant's CLI on ~PATH~ beside the
-binaries the dev shell supplies.
+=--diff branch= judges everything the branch would land against the default
+branch, committed or not; =--diff head= narrows that to the uncommitted work in
+progress.  The dev shell provides the tool, but the reviewer it drives is your
+own =claude= install, which must be on =PATH=.
 
-Those nested sessions, and every subagent a Claude Code session launches here,
-run on Opus, whatever model the session itself is on.  The reviewers name it on
-their command lines and the project's Claude Code settings name it for
-subagents.  Left to the default they would follow the session's model, and a
-review's judgment should not drift with a choice made for other reasons.
+A run that found something and a run that broke must not look alike, so the exit
+code tells them apart: 0 means the changes conform, 1 means the review ran and
+something stands against them, and 2 means it could not judge the tree in full.
+=just= reports both 1 and 2 as a failed recipe, so read the code: a 1 with
+findings printed above it is the tool working, not breaking.
+
+Verdicts are recorded per file in =review.json= (ignored by git), so a re-run
+judges only the files that changed since; pass =--priors clear= to judge the
+recorded files afresh.  =--help= covers the rest.
+
+Nothing in CI runs the review on your behalf.
+
+** The Stop hook
+
+A Claude Code session also meets the review on its own.  The Stop hook at
+=.claude/hooks/review-stop.sh= runs the same review over the uncommitted work
+whenever a turn is about to end, and blocks the turn from ending until that
+review finds nothing; a review that cannot run blocks it too.  A plan-mode turn
+cannot edit the tree, so the hook lets it end unreviewed.  Where the change
+touches Rust, the hook runs the clippy gate CI enforces first, so a lint failure
+never reaches the reviewer.
+
+Claude Code lets a turn end unreviewed when a hook outlives its timeout, and its
+ten-minute default is shorter than a review running to its own deadline after
+clippy, so the project's Claude Code settings give the hook thirty minutes.
+
+Left to the default, the reviewer that =just review= and the hook start, and
+every subagent a Claude Code session launches here, would follow the session's
+model, and a review's judgment should not drift with a choice made for other
+reasons.  So they run on Opus, whatever model the session itself is on: the
+recipe and the hook name it on their command lines, and the project's Claude
+Code settings name it for subagents.
 
 The template retires the Stop hook, on the grounds that a review at the end of
 every turn judges work that is still being written.  This project keeps it.  A
 review that runs unasked is the one that catches a contradiction while the
 change is still in hand, and reviewing every turn is what keeps each pass small
-enough to be cheap.  ~rust-template.json~ declares the deviation so the
-compliance checker reports it as chosen rather than missed.
+enough to be cheap.  The template ships no gate for the hook to run, so the hook
+is the project's own script, built on the review tool the template does ship.
+~rust-template.json~ declares the deviation so the compliance checker reports it
+as chosen rather than missed.
 
 * Logging levels
 

@@ -34,6 +34,21 @@ most payloads as opaque JSON so the frontend owned those schemas outright;
 normalization means future Elm wire changes to persisted shapes need a matching
 server migration.
 
+* DONE Finish the compliance sync against rust-template v0.135.0
+
+The structural checker and the diff from v0.127.0 bounded the work.  Both
+lockfiles now pin the current template revision, ~llms.org~ carries the
+template's rule that a comment justifying a surprise opens with the problem, and
+the contributing guide asks for ~just review --diff branch~ before a pull
+request.
+
+The judgment half was the review gate again.  The template no longer ships the
+binary the Stop hook ran, so keeping the hook, as decided in [[*Finish the compliance sync against rust-template v0.122.0][the v0.122.0 sync]],
+meant rebuilding it.  At the operator's direction the hook stays, now a script
+over the review tool the template ships, carrying over the old gate's clippy
+step and its plan-mode and nested-reviewer exemptions.  ~rust-template.json~
+still declares that one deviation.
+
 * DONE Finish the compliance sync against rust-template v0.122.0
 
 The structural checker and the diff from the previously recorded revision

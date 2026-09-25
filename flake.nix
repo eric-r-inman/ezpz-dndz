@@ -357,12 +357,14 @@
             # locally as `just dependency-bump` to bump and compose
             # changelog entries in the working tree for review.
             foundation.packages.${system}.dependency-bump
-            # Reviews a finished change set against this project's
-            # conventions, which is what `just review` runs.
-            foundation.packages.${system}.review-cli
-            # The same review as a Claude Code Stop hook, which is what
-            # .claude/hooks/review-stop.sh execs.
-            foundation.packages.${system}.review-stop
+            # On-demand code review that judges a change set against the
+            # project's conventions; provided by the foundation flake
+            # rather than copied in, so it stays current with the
+            # template.  Run as `just review`, and by the Claude Code
+            # Stop hook at the end of every turn.  The reviewer it drives
+            # is your own `claude` install, which this shell does not
+            # provide.
+            foundation.packages.${system}.review
             # ABI baseline check; provided so `cargo semver-checks` can
             # run locally.  `doCheck = false` skips upstream's
             # target_feature_* snapshot tests, which assert against
