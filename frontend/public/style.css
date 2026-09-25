@@ -4512,21 +4512,31 @@ body {
   font-weight: 500;
 }
 
-/* A strip's drop-down toggle, sitting between its label and its
-   creature names.  Chrome reset so it reads as part of the
-   sentence, not a control bolted onto it. */
-.legendary-banner__panel-btn {
+/* A flex gap would open between a strip's label and its colon, since
+   the strip lays its children out in a row.  This holds the two
+   together, so the gap falls after the colon. */
+.legendary-banner__lead {
+  flex: 0 0 auto;
+}
+
+/* A strip's label opens the reference list behind the strip.
+   Chrome reset so it still reads as the label; the dotted underline
+   marks it as clickable, apart from the solid underline of the
+   names, which jump to a card. */
+.legendary-banner__label {
   appearance: none;
   background: transparent;
   border: none;
-  padding: 0 2px;
+  padding: 0;
   font: inherit;
-  line-height: 1;
+  color: inherit;
   cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
 }
 
-.legendary-banner__panel-btn:hover {
-  filter: brightness(1.15);
+.legendary-banner__label:hover {
+  text-decoration-style: solid;
 }
 
 .legendary-banner__name {
