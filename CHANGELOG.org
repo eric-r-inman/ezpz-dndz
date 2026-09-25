@@ -3,14 +3,17 @@
 
 * Upcoming
 ** Added
-1. Dragging a creature card marks where it will land with a yellow line between
-   the two cards it will drop into, in place of the ring around the card under
-   it.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance
-1. The project is synced to the current rust-template.  No action needed.
 ** Security
+* v0.30.0
+** Added
+1. Dragging a creature card marks where it will land with a yellow line between
+   the two cards it will drop into, in place of the ring around the card under
+   it.  No action needed.
+** Maintenance
+1. The project is synced to the current rust-template.  No action needed.
 * v0.29.0
 ** Maintenance
 1. Bump rust-template-foundation from 0.132.0 to 0.134.0
