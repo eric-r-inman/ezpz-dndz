@@ -2,7 +2,9 @@ module View.PanelDrawer exposing (view)
 
 {-| The editor column: the encounter's own controls above a
 stack holding every panel, oldest-first, so a newly opened one
-appears below the ones already up.
+appears below the ones already up. The panels the GM pinned hold
+the top in a region of their own, and the rest scroll beneath
+them.
 
 Each drawer variant renders through `panelFor`; adding a panel
 means a lens in `Model`, an arm here, and — if the drawer boots
@@ -40,9 +42,24 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
+    let
+        -- Indexed before the profile filters, so a panel keeps its
+        -- stack index — the messages its heading fires name a
+        -- position in the whole stack, not in what the profile
+        -- lets through or in the region it sits in.
+        ( pinned, loose ) =
+            model.drawer
+                |> List.indexedMap Tuple.pair
+                |> List.filter
+                    (\( _, panel ) ->
+                        Model.profileShows model.preferences.profile panel
+                    )
+                |> List.partition (\( _, panel ) -> panel.pinned)
+    in
     div [ class "drawer-column" ]
         [ encounterControls model
-        , stack model
+        , region "drawer-stack drawer-stack--pinned" Effects.drawerPinnedId model pinned
+        , region "drawer-stack" Effects.drawerStackId model loose
         ]
 
 
@@ -131,33 +148,28 @@ controlButton cls msg tip glyph =
         [ text glyph ]
 
 
-stack : Model -> Html Msg
-stack model =
-    case model.drawer of
-        [] ->
-            text ""
+{-| One of the stack's two scroll regions, holding the indexed
+panels it is given, or nothing when it is given none.
+-}
+region : String -> String -> Model -> List ( Int, Model.DrawerPanel ) -> Html Msg
+region cls regionId model panels =
+    if List.isEmpty panels then
+        text ""
 
-        panels ->
-            -- Keyed by surface so a reorder moves DOM nodes
-            -- instead of rewriting every panel in place, which
-            -- would drop focus and replay the mount animation.
-            -- Keyed and indexed before the profile filters, so a
-            -- panel keeps its identity and its stack index — the
-            -- messages its heading fires name a position in the
-            -- whole stack, not in what the profile lets through.
-            Html.Keyed.node "div"
-                [ class "drawer-stack", Attr.id Effects.drawerStackId ]
-                (panels
-                    |> List.indexedMap Tuple.pair
-                    |> List.filter
-                        (\( _, panel ) ->
-                            Model.profileShows model.preferences.profile panel
-                        )
-                    |> List.map
-                        (\( index, panel ) ->
-                            ( Model.surfaceKey panel.surface, panelFor model index panel )
-                        )
+    else
+        -- Keyed by surface so a reorder moves DOM nodes instead
+        -- of rewriting every panel in place, which would drop
+        -- focus and replay the mount animation.  A pin moves a
+        -- panel between the regions, which no key can carry, so
+        -- that one move mounts the panel afresh.
+        Html.Keyed.node "div"
+            [ class cls, Attr.id regionId ]
+            (List.map
+                (\( index, panel ) ->
+                    ( Model.surfaceKey panel.surface, panelFor model index panel )
                 )
+                panels
+            )
 
 
 {-| The slot the dragged panel would land in wears the drop cue.

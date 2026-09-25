@@ -40,7 +40,7 @@ open model =
             Model.openDrawer Model.quickAddLens QuickAddUi.fresh model
     in
     ( next
-    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.quickAddLens next)
+    , Effects.scrollDrawerTo Model.quickAddLens next
     )
 
 

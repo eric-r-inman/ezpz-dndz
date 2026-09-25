@@ -1272,10 +1272,10 @@ hpDisplay creature =
 
 
 {-| Gear icon after the HP readout and its toggles: opens Status
-and Condition/Effect together, aimed at this creature, and scrolls so
-the topmost of the two lands at the top of the column. Both
-editors already open individually from their own card controls;
-this is the one-click "both at once" shortcut.
+and Condition/Effect together, aimed at this creature, and scrolls
+the pair into view. Both editors already open individually from
+their own card controls; this is the one-click "both at once"
+shortcut.
 -}
 statusAndConditionOpener : Creature -> Html Msg
 statusAndConditionOpener creature =

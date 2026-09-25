@@ -72,7 +72,7 @@ openFor target model =
                     Model.openDrawer Model.initiativeLens (InitiativeUi.fresh target) model
     in
     ( nextModel
-    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.initiativeLens nextModel)
+    , Effects.scrollDrawerTo Model.initiativeLens nextModel
     )
 
 

@@ -52,7 +52,7 @@ open model =
             Model.openDrawer Model.treasureLens Ui.Treasure.fresh model
     in
     ( next
-    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.treasureLens next)
+    , Effects.scrollDrawerTo Model.treasureLens next
     )
 
 

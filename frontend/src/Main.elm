@@ -896,7 +896,7 @@ update msg model =
         -- the behaviour for free.
         drawerScrollCmd =
             if List.length next.drawer > List.length model.drawer then
-                Effects.scrollDrawerPanelIntoView (List.length next.drawer - 1)
+                Effects.scrollDrawerPanelIntoView next (List.length next.drawer - 1)
 
             else
                 Cmd.none

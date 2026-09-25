@@ -46,7 +46,7 @@ openFor target model =
                     Model.openDrawer Model.statusLens (StatusUi.fresh target) model
     in
     ( nextModel
-    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.statusLens nextModel)
+    , Effects.scrollDrawerTo Model.statusLens nextModel
     )
 
 

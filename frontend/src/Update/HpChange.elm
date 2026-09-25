@@ -291,7 +291,7 @@ openFor target model =
                 )
     in
     ( nextModel
-    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.hpChangeLens nextModel)
+    , Effects.scrollDrawerTo Model.hpChangeLens nextModel
     )
 
 

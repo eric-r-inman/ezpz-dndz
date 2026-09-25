@@ -118,7 +118,7 @@ openEdit name id model =
                     openEditFresh name id model
     in
     ( nextModel
-    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.conditionLens nextModel)
+    , Effects.scrollDrawerTo Model.conditionLens nextModel
     )
 
 
@@ -154,7 +154,7 @@ openFor target model =
                     Model.openDrawer Model.conditionLens (ConditionUi.fresh target) model
     in
     ( nextModel
-    , Effects.scrollDrawerIndex (Model.drawerIndexOf Model.conditionLens nextModel)
+    , Effects.scrollDrawerTo Model.conditionLens nextModel
     )
 
 
