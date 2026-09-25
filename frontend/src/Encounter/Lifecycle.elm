@@ -109,8 +109,8 @@ applyBeginOfTurnHook enc =
     applyBeginOfTurn enc.activeName enc
 
 
-{-| End-of-turn hook for the named creature: tick down their own
-`DurationCountdown AtEnd` conditions, expire any
+{-| End-of-turn hook for the named creature: tick down every
+`DurationCountdown AtEnd` that counts their turns, expire any
 `DurationUntilTurn AtEnd <name>` across the whole encounter, and
 decrement save notices.
 -}
@@ -229,20 +229,32 @@ markSpentRechargesPendingFor name enc =
         enc
 
 
+{-| A countdown can count the turns of a creature other than its
+bearer, so every creature's conditions are walked, not only the
+named creature's own.
+-}
 tickCountdownFor : String -> TurnPhase -> Encounter -> Encounter
 tickCountdownFor name phase enc =
-    Encounter.mapCreature name (\c -> { c | conditions = List.filterMap (tickCondition phase) c.conditions }) enc
+    { enc
+        | creatures =
+            List.map
+                (\c -> { c | conditions = List.filterMap (tickCondition phase name c.name) c.conditions })
+                enc.creatures
+    }
 
 
-tickCondition : TurnPhase -> Condition -> Maybe Condition
-tickCondition phase cond =
+{-| Tick a condition whose countdown counts the turns of `turnOf`,
+whose turn has reached `phase`; `bearer` carries it.
+-}
+tickCondition : TurnPhase -> String -> String -> Condition -> Maybe Condition
+tickCondition phase turnOf bearer cond =
     case cond.duration of
-        DurationCountdown condPhase remaining skipNextTick ->
-            if condPhase /= phase then
+        DurationCountdown condPhase remaining skipNextTick counter ->
+            if condPhase /= phase || Maybe.withDefault bearer counter /= turnOf then
                 Just cond
 
             else if skipNextTick then
-                Just { cond | duration = DurationCountdown condPhase remaining False }
+                Just { cond | duration = DurationCountdown condPhase remaining False counter }
 
             else
                 let
@@ -253,7 +265,7 @@ tickCondition phase cond =
                     Nothing
 
                 else
-                    Just { cond | duration = DurationCountdown condPhase next False }
+                    Just { cond | duration = DurationCountdown condPhase next False counter }
 
         _ ->
             Just cond

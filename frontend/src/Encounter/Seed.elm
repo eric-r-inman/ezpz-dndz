@@ -96,7 +96,7 @@ seedCreatures =
             [ { id = 1
               , name = "Frightened"
               , note = "of Lyra"
-              , duration = DurationCountdown AtEnd 3 False
+              , duration = DurationCountdown AtEnd 3 False Nothing
               , saveToEnd =
                     Just
                         { ability = "WIS"

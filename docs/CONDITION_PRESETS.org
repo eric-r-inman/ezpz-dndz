@@ -80,10 +80,10 @@ a moderate change.
 
 ** Durations beyond the countdown — simple
 
-The countdown runs to 99 of the bearer's turns, just short of ten minutes, and
-no setting rolls a duration.  Presets for effects that last longer, or for a
-rolled number of minutes, last until removed, and the GM keeps the clock.
-Supporting it takes a longer countdown, and one that can roll its length.
+The countdown runs to 99 turns, just short of ten minutes, and no setting rolls
+a duration.  Presets for effects that last longer, or for a rolled number of
+minutes, last until removed, and the GM keeps the clock.  Supporting it takes a
+longer countdown, and one that can roll its length.
 
 - Shield of Faith, Spike Growth, Hex, Hunter's Mark, Pass Without Trace, Wild
   Shape

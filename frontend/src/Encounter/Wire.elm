@@ -1135,13 +1135,18 @@ encodeDuration d =
                 , ( "name", E.string name )
                 ]
 
-        DurationCountdown phase remaining skipNext ->
+        DurationCountdown phase remaining skipNext counter ->
             E.object
-                [ ( "kind", E.string "countdown" )
-                , ( "phase", encodeTurnPhase phase )
-                , ( "remaining", E.int remaining )
-                , ( "skipNextTick", E.bool skipNext )
-                ]
+                ([ ( "kind", E.string "countdown" )
+                 , ( "phase", encodeTurnPhase phase )
+                 , ( "remaining", E.int remaining )
+                 , ( "skipNextTick", E.bool skipNext )
+                 ]
+                    ++ (counter
+                            |> Maybe.map (\name -> [ ( "name", E.string name ) ])
+                            |> Maybe.withDefault []
+                       )
+                )
 
 
 encodeTurnPhase : TurnPhase -> E.Value
@@ -1550,10 +1555,11 @@ decodeDuration =
                             (D.field "name" D.string)
 
                     "countdown" ->
-                        D.map3 DurationCountdown
+                        D.map4 DurationCountdown
                             (D.field "phase" decodeTurnPhase)
                             (D.field "remaining" D.int)
                             (D.field "skipNextTick" D.bool)
+                            (D.maybe (D.field "name" D.string))
 
                     other ->
                         D.fail ("Unknown duration kind: " ++ other)

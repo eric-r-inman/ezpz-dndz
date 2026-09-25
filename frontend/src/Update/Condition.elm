@@ -1439,10 +1439,11 @@ saveTiming mode =
 
 {-| Build the domain `Duration` from the UI's three sub-states.
 
-For `DurKindCountdown` with `AtEnd` placed on the currently-active
-creature, set `skipNextTick = True` so the bearer's imminent
-end-of-turn (which is right around the corner) doesn't get counted
-as a full turn.
+A condition can land on a whole selection, where each bearer counts
+its own turns. So a countdown names no creature when the choice is
+the target, and the chosen creature otherwise. With `AtEnd` and the
+counted creature currently active, `skipNextTick = True` keeps its
+imminent end-of-turn from counting as a full turn.
 
 -}
 buildDuration : ConditionUi -> Model -> Encounter.Duration
@@ -1462,10 +1463,14 @@ buildDuration ui model =
 
         DurKindCountdown ->
             let
-                isCurrentlyActive =
-                    ui.target == model.encounter.activeName
+                counter =
+                    if ui.untilCreature == ui.target then
+                        Nothing
+
+                    else
+                        Just ui.untilCreature
 
                 skipNextTick =
-                    ui.countdownPhase == Encounter.AtEnd && isCurrentlyActive
+                    ui.countdownPhase == Encounter.AtEnd && ui.untilCreature == model.encounter.activeName
             in
-            Encounter.DurationCountdown ui.countdownPhase ui.countdownTurns skipNextTick
+            Encounter.DurationCountdown ui.countdownPhase ui.countdownTurns skipNextTick counter

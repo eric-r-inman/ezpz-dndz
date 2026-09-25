@@ -484,10 +484,10 @@ resolveDuration activeName bearer duration =
             Encounter.DurationUntilTurn Encounter.AtEnd Encounter.OnCurrentTurn bearer
 
         LastsForTurns phase turns ->
-            Encounter.DurationCountdown phase turns (skipsFirstTick activeName bearer phase)
+            Encounter.DurationCountdown phase turns (skipsFirstTick activeName bearer phase) Nothing
 
         LastsOneMinute ->
-            Encounter.DurationCountdown Encounter.AtEnd 10 (skipsFirstTick activeName bearer Encounter.AtEnd)
+            Encounter.DurationCountdown Encounter.AtEnd 10 (skipsFirstTick activeName bearer Encounter.AtEnd) Nothing
 
 
 skipsFirstTick : String -> String -> Encounter.TurnPhase -> Bool

@@ -60,6 +60,8 @@ type alias ConditionUi =
     , customName : String
     , note : String
     , durationKind : DurationKind
+
+    -- Whose turns time the duration.
     , untilCreature : String
     , untilPhase : Encounter.TurnPhase
     , countdownTurnsText : String
@@ -210,9 +212,9 @@ fromCondition target cond =
                     , countdownPhase = Encounter.AtEnd
                     }
 
-                Encounter.DurationCountdown phase n _ ->
+                Encounter.DurationCountdown phase n _ counter ->
                     { kind = DurKindCountdown
-                    , untilCreature = target
+                    , untilCreature = Maybe.withDefault target counter
                     , untilPhase = Encounter.AtEnd
                     , countdownTurns = n
                     , countdownPhase = phase

@@ -235,19 +235,21 @@ type alias AreaTracker =
     (skip the first match, expire on the second). Maps to 5e
     spell durations like "until the end of your current turn" vs
     "until the end of your next turn".
-  - `DurationCountdown phase remaining skipNextTick` — runs for
-    `remaining` of the bearer's own turns, ticking at begin/end.
-    `skipNextTick` is set when the countdown was created with
-    `phase = AtEnd` during the bearer's currently-active turn:
-    the bearer's NEXT end-of-turn isn't really a full turn
-    elapsed, so we skip that one tick. See the discussion in
+  - `DurationCountdown phase remaining skipNextTick counter` — runs
+    for `remaining` of the counted creature's turns, ticking at
+    begin/end. `counter` names that creature, or is `Nothing` for the
+    bearer's own turns: a spell's minute runs on its caster's turns,
+    not its target's. `skipNextTick` is set when the countdown was
+    created with `phase = AtEnd` during the counted creature's
+    currently-active turn: its NEXT end-of-turn isn't really a full
+    turn elapsed, so we skip that one tick. See the discussion in
     [`nextTurn`](#nextTurn).
 
 -}
 type Duration
     = DurationManual
     | DurationUntilTurn TurnPhase TurnTarget String
-    | DurationCountdown TurnPhase Int Bool
+    | DurationCountdown TurnPhase Int Bool (Maybe String)
 
 
 {-| Which slice of a creature's turn a hook fires on.
@@ -1109,7 +1111,8 @@ conditionsWhere pick name enc =
 
 
 {-| Render a one-line human-readable description of a duration
-("Until end of Lyra's turn", "3 turns (begin)", "Manual"). Used by
+("Until end of Lyra's next turn", "3 turns (start)", "10 of Lyra's
+turns (end)", "Manual"). Used by
 condition chips on cards and by the modal's preview.
 -}
 describeDuration : Duration -> String
@@ -1136,11 +1139,22 @@ describeDuration duration =
             in
             "Until " ++ phaseWord ++ " of " ++ name ++ "'s next turn"
 
-        DurationCountdown AtBegin n _ ->
-            String.fromInt n ++ " " ++ pluralizeTurns n ++ " (start)"
+        DurationCountdown phase n _ counter ->
+            let
+                whose =
+                    counter
+                        |> Maybe.map (\name -> "of " ++ name ++ "'s ")
+                        |> Maybe.withDefault ""
 
-        DurationCountdown AtEnd n _ ->
-            String.fromInt n ++ " " ++ pluralizeTurns n ++ " (end)"
+                phaseWord =
+                    case phase of
+                        AtBegin ->
+                            "start"
+
+                        AtEnd ->
+                            "end"
+            in
+            String.fromInt n ++ " " ++ whose ++ pluralizeTurns n ++ " (" ++ phaseWord ++ ")"
 
 
 pluralizeTurns : Int -> String

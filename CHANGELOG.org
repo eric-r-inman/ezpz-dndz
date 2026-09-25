@@ -11,10 +11,16 @@
    needed.
 3. The encounter bar's ◫ button opens a Quick view column beside the queue,
    listing each creature's name and hit points.  No action needed.
+4. The Condition/Effect editor's 1 Minute and Countdown durations can count
+   another creature's turns, such as the caster's, instead of the bearer's own.
+   No action needed.
 ** Fixes
 ** Breaking
 1. The quick-list page at /quick-list is gone, along with the ↗ link that opened
    it in a new tab.  Open the Quick view beside the queue instead.
+2. The Condition/Effect editor no longer offers a This turn duration, though the
+   bundled presets that use it still end with the current turn.  Choose Next
+   turn instead.
 ** Maintenance
 ** Security
 * v0.30.0

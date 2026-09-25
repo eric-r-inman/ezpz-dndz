@@ -140,6 +140,8 @@ pub enum Duration {
     phase: String,
     remaining: i64,
     skip_next_tick: bool,
+    /// The creature whose turns it counts; `None` counts its bearer's.
+    name: Option<String>,
   },
 }
 
@@ -690,6 +692,7 @@ fn decode_duration(value: &Value) -> Result<Duration, String> {
       phase: req_token(map, "phase", PHASES, "duration")?,
       remaining: req_int(map, "remaining", "duration")?,
       skip_next_tick: req_bool(map, "skipNextTick", "duration")?,
+      name: map.get("name").and_then(Value::as_str).map(str::to_string),
     }),
     other => Err(format!("duration: unknown kind {other:?}")),
   }
@@ -1089,12 +1092,19 @@ fn encode_duration(duration: &Duration) -> Value {
       phase,
       remaining,
       skip_next_tick,
-    } => json!({
-      "kind": "countdown",
-      "phase": phase,
-      "remaining": remaining,
-      "skipNextTick": skip_next_tick,
-    }),
+      name,
+    } => Value::Object(
+      [
+        ("kind", json!("countdown")),
+        ("phase", json!(phase)),
+        ("remaining", json!(remaining)),
+        ("skipNextTick", json!(skip_next_tick)),
+      ]
+      .into_iter()
+      .chain(name.iter().map(|name| ("name", json!(name))))
+      .map(|(key, value)| (key.to_string(), value))
+      .collect(),
+    ),
   }
 }
 
@@ -1320,6 +1330,16 @@ mod tests {
             "saveToEnd": null,
             "linkedTo": null,
             "area": { "chain": "Cloudkill", "ability": "CON", "dc": 15, "bonus": 2, "phase": "atEnd" },
+            "level": null
+          },
+          {
+            "id": 5,
+            "name": "Paralyzed",
+            "note": "",
+            "duration": { "kind": "countdown", "phase": "atEnd", "remaining": 10, "skipNextTick": false, "name": "Cleric" },
+            "saveToEnd": null,
+            "linkedTo": null,
+            "area": null,
             "level": null
           }
         ],

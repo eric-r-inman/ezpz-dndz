@@ -56,15 +56,15 @@ durationSuite =
         , test "a countdown on the active bearer skips the end of turn moments away" <|
             \_ ->
                 SaveChain.resolveDuration "Goblin" "Goblin" (LastsForTurns AtEnd 3)
-                    |> Expect.equal (DurationCountdown AtEnd 3 True)
+                    |> Expect.equal (DurationCountdown AtEnd 3 True Nothing)
         , test "a countdown on an inactive bearer counts its first end of turn" <|
             \_ ->
                 SaveChain.resolveDuration "Ogre" "Goblin" (LastsForTurns AtEnd 3)
-                    |> Expect.equal (DurationCountdown AtEnd 3 False)
+                    |> Expect.equal (DurationCountdown AtEnd 3 False Nothing)
         , test "one minute is ten of the bearer's turns" <|
             \_ ->
                 SaveChain.resolveDuration "Ogre" "Goblin" LastsOneMinute
-                    |> Expect.equal (DurationCountdown AtEnd 10 False)
+                    |> Expect.equal (DurationCountdown AtEnd 10 False Nothing)
         ]
 
 
