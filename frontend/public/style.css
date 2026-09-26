@@ -11637,9 +11637,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-text-muted);
 }
 
+/* Rows scrolled beneath this one show through a translucent hover
+   tint.  The tint is laid over the row's own opaque surface
+   instead of replacing it. */
 .quick-add__row--placeholder:hover,
 .quick-add__row--placeholder:focus-visible {
-  background: var(--color-accent-soft);
+  background:
+    linear-gradient(var(--color-accent-soft), var(--color-accent-soft)),
+    var(--color-surface);
 }
 
 .duplicate__row--disabled:hover {
