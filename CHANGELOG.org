@@ -3,7 +3,12 @@
 
 * Upcoming
 ** Added
+1. Unfolding an editor from its heading scrolls it into view, starting from its
+   heading when it is taller than the space it has.  No action needed.
 ** Fixes
+1. An open pinned editor scrolls along with the rest of the editor column,
+   instead of being cut off or crowding the other editors into the bottom of the
+   window.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

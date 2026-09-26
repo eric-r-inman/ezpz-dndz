@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, unfoldHpChangeOnly, unfoldPinnedOnly, xpLens
+    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, pinnedHeld, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, unfoldHpChangeOnly, unfoldPinnedOnly, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -982,6 +982,20 @@ newestShowing model =
         |> List.filter (\( _, panel ) -> not panel.collapsed)
         |> List.reverse
         |> List.head
+
+
+{-| Whether the pinned panels hold the top of the stack, with the
+rest scrolling beneath them. They do while every one is folded: an
+open editor held in place would crowd the rest into whatever the
+column has left below it.
+-}
+pinnedHeld : Model -> Bool
+pinnedHeld model =
+    let
+        pinned =
+            List.filter .pinned model.drawer
+    in
+    not (List.isEmpty pinned) && List.all .collapsed pinned
 
 
 {-| Fold every panel in the stack at once.

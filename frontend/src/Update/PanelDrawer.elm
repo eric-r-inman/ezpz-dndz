@@ -18,10 +18,10 @@ import Msg exposing (Msg)
 import Update.Dice
 
 
-{-| Fold one panel's body away, or open it back up. The panel
-stays in the stack either way, so a folded editor keeps what the
-GM typed — unless expanding re-aims it, which
-`Model.reaimStale` explains.
+{-| Fold one panel's body away, or open it back up, scrolling an
+opened one into view. The panel stays in the stack either way, so
+a folded editor keeps what the GM typed — unless expanding re-aims
+it, which `Model.reaimStale` explains.
 -}
 toggleCollapse : Int -> Model -> ( Model, Cmd Msg )
 toggleCollapse index model =
@@ -32,10 +32,12 @@ toggleCollapse index model =
                 |> Maybe.withDefault False
     in
     if expanding then
-        ( Model.toggleCollapsedAt index model
-            |> (Model.reaimStale >> markRead index >> ackHpLog index)
-        , Cmd.none
-        )
+        let
+            next =
+                Model.toggleCollapsedAt index model
+                    |> (Model.reaimStale >> markRead index >> ackHpLog index)
+        in
+        ( next, Effects.scrollDrawerPanelIntoView next index )
 
     else
         ( Model.toggleCollapsedAt index model, Cmd.none )
@@ -56,13 +58,13 @@ foldAll model =
 
 
 {-| The editors the GM keeps closest, and nothing else: the pinned
-panels unfold, every other panel folds, and the pinned region goes
-back to its top.
+panels unfold, every other panel folds, and the stack goes back to
+its top, where the pinned panels lead it.
 -}
 showPinned : Model -> ( Model, Cmd Msg )
 showPinned model =
     ( refold (Model.unfoldPinnedOnly model.preferences.profile) model
-    , Effects.scrollDrawerPinnedToTop
+    , Effects.scrollDrawerStackToTop
     )
 
 
