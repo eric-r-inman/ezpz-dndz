@@ -1115,16 +1115,6 @@ type Msg
       -- reminder strips that name a creature the GM is about to
       -- act on.
     | QueueScrollTo String
-      -- QuickList (`/quick-list`) row click: fires from the
-      -- standalone quick-view tab.  Broadcasts a show request
-      -- across the BroadcastChannel so the main tab unfolds the
-      -- stat block under the card and scrolls to it, and brings
-      -- itself to front via `window.opener.focus()`.
-    | QuickListRowClick String
-      -- Payload from the main tab's `incomingPanelShow`
-      -- subscription — a QuickList tab asked us to show a
-      -- creature's stat block.
-    | IncomingPanelShow String
       -- Spend one legendary action or resistance, or refill the
       -- pool when the readout is already at zero.  The card's
       -- special-reaction badges toggle the same way.
@@ -1384,6 +1374,11 @@ type Msg
       -- The label of one of the queue's reminder strips, folding
       -- its read-only drop-down open or shut.
     | QueuePanelToggle QueuePanel
+      -- The encounter bar's ◫ opening or closing the quick view
+      -- beside the queue, and the quick view's 👁️ switching it
+      -- between every creature and the enemies alone.
+    | QuickViewToggle
+    | QuickViewEnemiesOnlyToggle
       -- Dragging a drawer panel by its heading row to a new slot.
       -- Payloads are stack positions; Over fires per slot the
       -- pointer crosses, End covers cancelled drags.

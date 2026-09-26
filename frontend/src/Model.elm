@@ -72,6 +72,7 @@ import Ui.PlaceholderRename exposing (PlaceholderRenameState)
 import Ui.QueueDrag exposing (QueueDrag)
 import Ui.QueuePanels exposing (QueuePanels)
 import Ui.QuickAdd exposing (QuickAddUi)
+import Ui.QuickView exposing (QuickViewUi)
 import Ui.RandomEncounter exposing (RandomEncounterUi)
 import Ui.Replace exposing (ReplaceUi)
 import Ui.RoundSet exposing (RoundSetUi)
@@ -1542,6 +1543,11 @@ type alias Model =
     -- Read-only drop-downs under the queue's reminder strips.
     -- Independent of `surface`: several can be open at once.
     , queuePanels : QueuePanels
+
+    -- The column beside the queue listing names and hit points.
+    -- Independent of `surface`: no surface opening or closing
+    -- touches it.
+    , quickView : QuickViewUi
     , toasts : List Toast
     , nextToastId : Int
     , rollPopups : List RollPopup

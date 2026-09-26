@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, broadcastPanelShow, clearLocalCompendium, clearLocalEncounter, incomingDiceRoll, incomingEncounter, incomingPanelShow, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
+    , broadcastDiceRoll, broadcastEncounter, clearLocalCompendium, clearLocalEncounter, incomingDiceRoll, incomingEncounter, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -179,7 +179,7 @@ port logRowOverflow : (D.Value -> msg) -> Sub msg
 
 
 {-| Broadcast the current encounter to every other tab so a
-quick-list window can stay in sync with the main combat tab.
+second workspace tab stays in sync with the one in use.
 Wire shape is whatever `Encounter.Wire.encodeEncounter`
 produces. Fires from the main update loop's persist wrapper
 whenever `model.encounter` mutates AND the source Msg should
@@ -207,20 +207,3 @@ selection can't be reached from here. Fired by the editor
 column's Compendium control and the 📖 in a stat block's bar.
 -}
 port openCompendiumTab : Maybe String -> Cmd msg
-
-
-{-| Cross-tab request from the QuickList (`/quick-list`) tab to
-the main encounter tab: "the GM clicked creature X, please
-unfold its stat block under its card and scroll to it." The JS
-host posts the payload on the `ezpz-dndz-panel-show`
-BroadcastChannel and calls `window.opener.focus()` so the main
-tab surfaces to the front. Payload shape: `{ name: String }`.
--}
-port broadcastPanelShow : E.Value -> Cmd msg
-
-
-{-| Subscription the main tab uses to receive panel-show
-requests posted by a QuickList tab. Payload is the same JSON
-`broadcastPanelShow` sends.
--}
-port incomingPanelShow : (D.Value -> msg) -> Sub msg

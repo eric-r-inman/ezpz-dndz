@@ -8,8 +8,7 @@ duplicate / delete.
 
 The tab opens with nothing selected — a highlight is the GM's
 choice, not a default. The AppBar is suppressed on this route,
-matching `QuickList`, since the tab is meant to be parked on a
-second monitor.
+since the tab is meant to be parked on a second monitor.
 
 **Cross-tab caveat.** Each tab runs its own Elm app with its
 own `model.compendium`. Edits made here show up in this tab

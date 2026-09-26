@@ -77,6 +77,7 @@ import Ui.Initiative as InitiativeUi exposing (InitiativeUi)
 import Ui.Login as LoginUi
 import Ui.ModalChrome
 import Ui.QueuePanels
+import Ui.QuickView
 import Ui.SaveLoad
 import Ui.Timer.Wire
 import Ui.Toast
@@ -112,6 +113,7 @@ import Update.PlaceholderRename
 import Update.Preferences
 import Update.QueuePanels
 import Update.QuickAdd
+import Update.QuickView
 import Update.RandomEncounter
 import Update.Replace
 import Update.RoundSet
@@ -152,7 +154,6 @@ import View.Page.CompendiumStandalone
 import View.Page.Donate
 import View.Page.Loading
 import View.Page.NotFound
-import View.Page.QuickList
 import View.RollPopup
 import View.Toast
 import View.Workspace
@@ -340,7 +341,6 @@ subscriptions model =
         (primary
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
-            :: Ports.incomingPanelShow Update.Tabs.panelShowFromOtherTab
             :: Ports.logRowOverflow LogRowOverflowReported
             :: settingsSubs
             ++ encounterMenuSubs
@@ -624,6 +624,7 @@ init flags url key =
         , xpExcluded = Set.empty
         , xpCalculationsOpen = False
         , queuePanels = Ui.QueuePanels.fresh
+        , quickView = Ui.QuickView.fresh
         , drawer = Model.defaultDrawer
         , drawerDrag = Nothing
         , queueDrag = Nothing
@@ -746,11 +747,9 @@ update msg model =
 
         -- Cross-tab broadcast: every encounter mutation that
         -- isn't itself a received broadcast gets posted to the
-        -- BroadcastChannel so a quick-list tab (or a second
-        -- main tab) picks the change up live.  Same diff guard
-        -- as `encounterCmd` — broadcast only when the encounter
-        -- actually changed.  The QuickList tab is read-only so
-        -- it never triggers this branch anyway.
+        -- BroadcastChannel so a second workspace tab picks the
+        -- change up live.  Same diff guard as `encounterCmd` —
+        -- broadcast only when the encounter actually changed.
         encounterBroadcastCmd =
             if Effects.shouldBroadcastAfter msg && next.encounter /= model.encounter then
                 Ports.broadcastEncounter (Encounter.Wire.encodeEncounter next.encounter)
@@ -1934,6 +1933,12 @@ updateInner msg model =
         QueuePanelToggle panel ->
             Update.QueuePanels.toggle panel model
 
+        QuickViewToggle ->
+            Update.QuickView.toggle model
+
+        QuickViewEnemiesOnlyToggle ->
+            Update.QuickView.toggleEnemiesOnly model
+
         DrawerDragStart index ->
             Update.PanelDrawer.dragStart index model
 
@@ -2426,12 +2431,6 @@ updateInner msg model =
         QueueScrollTo creatureName ->
             Update.Encounter.scrollToCard creatureName model
 
-        QuickListRowClick creatureName ->
-            Update.Tabs.broadcastShow creatureName model
-
-        IncomingPanelShow creatureName ->
-            Update.Tabs.incomingPanelShow creatureName model
-
         ToggleSpecialReaction name reaction ->
             Update.Legendary.toggleSpecialReaction name reaction model
 
@@ -2849,11 +2848,6 @@ documentTitle model =
         Compendium ->
             "Compendium"
 
-        QuickList ->
-            -- Standalone quick-view tab, opened via ↗ from the
-            -- encounter title bar.
-            "eZpZ Quick View"
-
         _ ->
             default
 
@@ -2889,11 +2883,11 @@ way — anonymous users get the full app, they just persist to
 -}
 appShell : Maybe Auth.User -> Model -> List (Html Msg)
 appShell maybeUser model =
-    [ -- AppBar is suppressed on the standalone Quick-List
-      -- and Compendium pages — those tabs are meant to be
-      -- parked on a second monitor, where the nav row would
-      -- only compete for vertical space with the page body.
-      if model.route == QuickList || model.route == Compendium then
+    [ -- AppBar is suppressed on the standalone Compendium page —
+      -- that tab is meant to be parked on a second monitor, where
+      -- the nav row would only compete for vertical space with the
+      -- page body.
+      if model.route == Compendium then
         text ""
 
       else
@@ -2944,9 +2938,6 @@ viewPage model =
 
         CompendiumCreaturePage id ->
             View.Page.CompendiumStandalone.view model.compendium.db id
-
-        QuickList ->
-            View.Page.QuickList.view model.encounter model.savedAs
 
         Compendium ->
             View.Page.Compendium.view model.auth

@@ -28,14 +28,7 @@ import Url.Parser.Query as Query
   - `Compendium` — the full-page compendium browser, opened
     from the editor column's Compendium trigger and laid
     out as a full page so the GM can park it on a second
-    monitor. The AppBar is suppressed on this route, matching
-    `QuickList`.
-  - `QuickList` — standalone read-only condensed view of the
-    combat queue, opened via the ↗ button in the encounter
-    title bar. Cross-tab synced through the
-    `broadcastEncounter` / `incomingEncounter` port pair so
-    the page auto-updates as the GM mutates state in the
-    main tab.
+    monitor. The AppBar is suppressed on this route.
   - `NotFound` — fallback that the server falls back to
     `index.html` for, so deep-link reloads still work.
 
@@ -48,7 +41,6 @@ type Route
     | About
     | CompendiumCreaturePage String
     | Compendium
-    | QuickList
     | NotFound
 
 
@@ -60,7 +52,6 @@ parser =
         , Url.Parser.map Me (Url.Parser.s "me")
         , Url.Parser.map Donate (Url.Parser.s "donate")
         , Url.Parser.map About (Url.Parser.s "about")
-        , Url.Parser.map QuickList (Url.Parser.s "quick-list")
         , Url.Parser.map CompendiumCreaturePage
             (Url.Parser.s "compendium" </> Url.Parser.s "creatures" </> Url.Parser.string)
         , Url.Parser.map Compendium (Url.Parser.s "compendium")

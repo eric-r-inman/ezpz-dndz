@@ -1,4 +1,4 @@
-module View.EncounterBar exposing (Mode(..), view)
+module View.EncounterBar exposing (view)
 
 {-| Encounter title bar — the single line above the creature grid.
 
@@ -7,31 +7,23 @@ name + active HP readout + active AC readout + active state
 icons (cover, concentrating, hiding, flying) + active conditions
 text.
 
-Right cluster: the ↗ link to the standalone Quick-List page.
+Right cluster: the ◫ toggle for the quick view beside the queue.
 
-`Mode` toggles the right cluster: `FullBar` is the main
-encounter page; `QuickListBar` omits it entirely, since the
-link would point at the page the reader is already on.
-
-@docs Mode, view
+@docs view
 
 -}
 
 import Encounter exposing (Cover(..), Creature, Encounter)
-import Html exposing (Html, a, button, div, span, text)
-import Html.Attributes exposing (attribute, class, href, tabindex, target, type_)
+import Html exposing (Html, button, div, span, text)
+import Html.Attributes exposing (attribute, class, tabindex, type_)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
+import View.Card
 import View.Tooltips as Tooltips
 
 
-type Mode
-    = FullBar
-    | QuickListBar
-
-
-view : Mode -> Encounter -> Maybe String -> Html Msg
-view mode enc savedAs =
+view : Bool -> Encounter -> Maybe String -> Html Msg
+view quickViewOpen enc savedAs =
     let
         active =
             Encounter.activeCreature enc
@@ -47,15 +39,6 @@ view mode enc savedAs =
 
                 Nothing ->
                     Tooltips.sourceUnsaved
-
-        rightCluster =
-            case mode of
-                FullBar ->
-                    div [ class "encounter-bar__group encounter-bar__right" ]
-                        [ quickListLink ]
-
-                QuickListBar ->
-                    text ""
     in
     div [ class "encounter-bar" ]
         [ div [ class "encounter-bar__group" ]
@@ -87,29 +70,39 @@ view mode enc savedAs =
             , sectionSepBefore (hasConditions active)
             , conditionsText active
             ]
-        , rightCluster
+        , div [ class "encounter-bar__group encounter-bar__right" ]
+            [ quickViewToggle quickViewOpen ]
         ]
 
 
-{-| ↗ link to the standalone Quick-List page. Same shape and
-target as the compendium's "open stat block in new tab" link
-so the affordance is recognisable across surfaces.
+{-| Opens and closes the quick view, wearing the open-editor ring
+while the column shows.
 -}
-quickListLink : Html Msg
-quickListLink =
-    a
-        [ class "encounter-bar__quick-list"
-        , href "/quick-list"
-        , target "_blank"
+quickViewToggle : Bool -> Html Msg
+quickViewToggle open =
+    let
+        tip =
+            if open then
+                Tooltips.quickViewHide
 
-        -- No `rel="noopener"` here on purpose: the QuickList
-        -- tab needs `window.opener` intact so it can call
-        -- `window.opener.focus()` to bring the main tab back
-        -- to front when the GM clicks a creature row.
-        , Tooltips.attr Tooltips.quickListOpen
-        , attribute "aria-label" "Open quick-list in new tab"
+            else
+                Tooltips.quickViewShow
+    in
+    button
+        [ class (View.Card.editorTriggerClass "encounter-bar__quick-view" open)
+        , type_ "button"
+        , onClick QuickViewToggle
+        , Tooltips.attr tip
+        , attribute "aria-label" tip
+        , attribute "aria-pressed"
+            (if open then
+                "true"
+
+             else
+                "false"
+            )
         ]
-        [ text "↗" ]
+        [ text "◫" ]
 
 
 {-| HP readout for the encounter title bar. Reuses the same

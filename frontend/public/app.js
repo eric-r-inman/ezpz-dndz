@@ -381,18 +381,18 @@ if (
 }
 
 // Cross-tab encounter sync.  Mirrors the dice channel above:
-// the main tab posts the encounter on every change, and a
-// quick-list tab opened in the same browser profile picks
-// the changes up live.  Same BroadcastChannel discipline —
-// no self-echo, so loops are impossible.
+// a workspace tab posts the encounter on every change, and a
+// second one opened in the same browser profile picks the
+// changes up live.  Same BroadcastChannel discipline — no
+// self-echo, so loops are impossible.
 var encounterChannel = null;
 try {
   if (typeof BroadcastChannel === "function") {
     encounterChannel = new BroadcastChannel("ezpz-dndz-encounter");
   }
 } catch (_) {
-  // Older browser / privacy mode — quick-list tab won't
-  // auto-update, but the main app still works.
+  // Older browser / privacy mode — a second tab won't
+  // auto-update, but the app still works.
 }
 if (
   encounterChannel &&
@@ -412,48 +412,6 @@ if (
   };
 } else if (app.ports && app.ports.broadcastEncounter) {
   app.ports.broadcastEncounter.subscribe(function () {});
-}
-
-// Cross-tab "show creature" request: the QuickList tab fires
-// this when the GM clicks a row so the main tab unfolds the
-// stat block under the card, scrolls the card into view, and
-// (best-effort) surfaces itself via window.opener.focus().
-// Same BroadcastChannel discipline as the encounter channel
-// above — no self-echo, no loops.
-var panelShowChannel = null;
-try {
-  if (typeof BroadcastChannel === "function") {
-    panelShowChannel = new BroadcastChannel("ezpz-dndz-panel-show");
-  }
-} catch (_) {}
-if (
-  app.ports &&
-  app.ports.broadcastPanelShow &&
-  app.ports.incomingPanelShow
-) {
-  app.ports.broadcastPanelShow.subscribe(function (value) {
-    try {
-      if (panelShowChannel) panelShowChannel.postMessage(value);
-    } catch (_) {}
-    // Bring the main tab to front.  Requires that the
-    // QuickList link is opened WITHOUT rel="noopener"; if
-    // the opener is missing (main tab was reloaded since
-    // this QuickList tab opened) the focus is a no-op and
-    // the show + scroll still lands on the main tab as
-    // soon as the GM navigates there.
-    try {
-      if (window.opener && !window.opener.closed) {
-        window.opener.focus();
-      }
-    } catch (_) {}
-  });
-  if (panelShowChannel) {
-    panelShowChannel.onmessage = function (event) {
-      try {
-        app.ports.incomingPanelShow.send(event.data);
-      } catch (_) {}
-    };
-  }
 }
 
 // Standalone Compendium tab.  Each Elm app instance keeps a
