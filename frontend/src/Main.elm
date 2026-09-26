@@ -28,6 +28,7 @@ import Encounter.Wire
 import Encounter.Xp exposing (XpScope(..))
 import File exposing (File)
 import File.Select
+import Hotkeys
 import HpChange
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -342,6 +343,7 @@ subscriptions model =
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
             :: Ports.logRowOverflow LogRowOverflowReported
+            :: Hotkeys.subscription model.route
             :: settingsSubs
             ++ encounterMenuSubs
             ++ clearMenuSubs
@@ -1960,6 +1962,12 @@ updateInner msg model =
         DrawerFoldAll ->
             Update.PanelDrawer.foldAll model
 
+        DrawerShowPinned ->
+            Update.PanelDrawer.showPinned model
+
+        DrawerShowHpChange ->
+            Update.PanelDrawer.showHpChange model
+
         LogRowToggle key ->
             Update.LogRow.toggle key model
 
@@ -2857,9 +2865,10 @@ view model =
     { title = documentTitle model
     , body =
         [ div
-            [ class "app-shell"
-            , attribute "data-theme" (themeAttr model.preferences.theme)
-            ]
+            (class "app-shell"
+                :: attribute "data-theme" (themeAttr model.preferences.theme)
+                :: Hotkeys.listener model.route
+            )
             (case model.auth of
                 Auth.AuthLoading ->
                     [ View.Page.Loading.view ]

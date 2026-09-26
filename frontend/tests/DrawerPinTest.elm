@@ -9,12 +9,18 @@ when the drawer's contents change.
 
 import Expect
 import Model exposing (DrawerPanel, Surface(..))
+import Msg exposing (Profile(..))
 import Test exposing (Test, describe, test)
 
 
 panel : Bool -> DrawerPanel
 panel pinned =
     { surface = SurfaceDice, collapsed = True, pinned = pinned }
+
+
+unfolded : Bool -> DrawerPanel
+unfolded pinned =
+    { surface = SurfaceDice, collapsed = False, pinned = pinned }
 
 
 {-| Two pinned panels above three loose ones.
@@ -66,5 +72,25 @@ suite =
                 \_ ->
                     Model.drawerDropIndex 9 0 stack
                         |> Expect.equal 0
+            ]
+        , describe "opening only the pinned panels"
+            [ test "unfolds every pinned panel and folds every other" <|
+                \_ ->
+                    [ panel True, unfolded True, unfolded False, panel False ]
+                        |> Model.unfoldPinnedOnly Beta
+                        |> List.map .collapsed
+                        |> Expect.equal [ False, False, True, True ]
+            , test "with nothing pinned, folds every panel" <|
+                \_ ->
+                    List.repeat 3 (unfolded False)
+                        |> Model.unfoldPinnedOnly Beta
+                        |> List.map .collapsed
+                        |> Expect.equal [ True, True, True ]
+            , test "moves no panel" <|
+                \_ ->
+                    stack
+                        |> Model.unfoldPinnedOnly Beta
+                        |> List.map .pinned
+                        |> Expect.equal (List.map .pinned stack)
             ]
         ]

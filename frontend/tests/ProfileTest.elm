@@ -33,6 +33,11 @@ initiative collapsed =
     panel (SurfaceInitiative (Ui.Initiative.fresh "")) collapsed
 
 
+pinned : DrawerPanel -> DrawerPanel
+pinned p =
+    { p | pinned = True }
+
+
 suite : Test
 suite =
     describe "column profiles"
@@ -88,5 +93,26 @@ suite =
                         |> Model.foldProfileHidden Builder
                         |> List.map .collapsed
                         |> Expect.equal [ False, True ]
+            ]
+        , describe "the keyboard shortcuts"
+            [ test "opening the pinned panels leaves folded one the profile hides" <|
+                \_ ->
+                    [ pinned (hp True), pinned (initiative True) ]
+                        |> Model.unfoldPinnedOnly Builder
+                        |> List.map .collapsed
+                        |> Expect.equal [ True, False ]
+            , test "opening Manage HP unfolds it, even where the profile hides it" <|
+                \_ ->
+                    [ panel SurfaceDice False, hp True ]
+                        |> Model.unfoldHpChangeOnly
+                        |> List.filter (Model.profileShows Builder)
+                        |> List.map (.surface >> Model.surfaceKey)
+                        |> Expect.equal [ "hp-change" ]
+            , test "opening Manage HP folds every other panel" <|
+                \_ ->
+                    [ initiative False, hp True, quickAdd False ]
+                        |> Model.unfoldHpChangeOnly
+                        |> List.map .collapsed
+                        |> Expect.equal [ True, False, True ]
             ]
         ]

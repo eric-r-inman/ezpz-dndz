@@ -1,16 +1,18 @@
 module Update.PanelDrawer exposing
     ( foldNewest, toggleCollapse, togglePin
     , dragStart, dragOver, drop, dragEnd
-    , foldAll
+    , foldAll, showPinned, showHpChange
     )
 
 {-| Drawer-wide handlers that belong to no single panel.
 
 @docs foldNewest, toggleCollapse, togglePin
 @docs dragStart, dragOver, drop, dragEnd
+@docs foldAll, showPinned, showHpChange
 
 -}
 
+import Effects
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
 import Update.Dice
@@ -51,6 +53,52 @@ togglePin index model =
 foldAll : Model -> ( Model, Cmd Msg )
 foldAll model =
     ( Model.foldAllDrawer model, Cmd.none )
+
+
+{-| The editors the GM keeps closest, and nothing else: the pinned
+panels unfold, every other panel folds, and the pinned region goes
+back to its top.
+-}
+showPinned : Model -> ( Model, Cmd Msg )
+showPinned model =
+    ( refold (Model.unfoldPinnedOnly model.preferences.profile) model
+    , Effects.scrollDrawerPinnedToTop
+    )
+
+
+{-| Manage HP and nothing else: it unfolds, whatever the profile
+hides, every other panel folds, and the column scrolls to it.
+-}
+showHpChange : Model -> ( Model, Cmd Msg )
+showHpChange model =
+    let
+        next =
+            refold Model.unfoldHpChangeOnly model
+    in
+    ( next, Effects.scrollDrawerTo Model.hpChangeLens next )
+
+
+{-| Fold and unfold the stack's panels the way `arrange` sets them.
+A panel this unfolds gets what unfolding it by hand gives it, as
+`toggleCollapse` does.
+-}
+refold : (List Model.DrawerPanel -> List Model.DrawerPanel) -> Model -> Model
+refold arrange model =
+    let
+        arranged =
+            arrange model.drawer
+
+        unfolded =
+            List.map2 (\before after -> before.collapsed && not after.collapsed)
+                model.drawer
+                arranged
+                |> List.indexedMap Tuple.pair
+                |> List.filter Tuple.second
+                |> List.map Tuple.first
+    in
+    List.foldl (\index -> markRead index >> ackHpLog index)
+        (Model.reaimStale { model | drawer = arranged })
+        unfolded
 
 
 {-| Esc means "dismiss what I am looking at", which

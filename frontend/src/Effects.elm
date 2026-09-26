@@ -1,6 +1,6 @@
 module Effects exposing
     ( cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
-    , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop
+    , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerPinnedToTop
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
@@ -27,7 +27,7 @@ import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
 @docs cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
-@docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop
+@docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerPinnedToTop
 @docs autoRollCmdsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs fetchMe, cmdForRoute
@@ -281,6 +281,15 @@ scrollDrawerIndexToTop model index =
         (Browser.Dom.getElement (drawerPanelId index))
         (Browser.Dom.getViewportOf region)
         |> Task.andThen identity
+        |> Task.attempt (always NoOp)
+
+
+{-| Scroll the pinned region back to its top. Failure means nothing
+is pinned, so there is no region to scroll, which is benign.
+-}
+scrollDrawerPinnedToTop : Cmd Msg
+scrollDrawerPinnedToTop =
+    Browser.Dom.setViewportOf drawerPinnedId 0 0
         |> Task.attempt (always NoOp)
 
 
