@@ -1926,6 +1926,16 @@ const MAXIMAL_ENCOUNTER: &str = r#"{
         "linkedTo": null,
         "area": null,
         "level": 2
+      },
+      {
+        "id": 4,
+        "name": "Paralyzed",
+        "note": "",
+        "duration": { "kind": "countdown", "phase": "atEnd", "remaining": 10, "skipNextTick": false, "name": "Cleric" },
+        "saveToEnd": null,
+        "linkedTo": null,
+        "area": null,
+        "level": null
       }
     ],
     "saveNotices": [

@@ -166,7 +166,7 @@ fullyPopulatedCreature =
         [ { id = 1
           , name = "Frightened"
           , note = "of Lyra"
-          , duration = DurationCountdown AtBegin 2 True
+          , duration = DurationCountdown AtBegin 2 True (Just "Lyra")
           , saveToEnd =
                 Just
                     { ability = "WIS"

@@ -322,13 +322,11 @@ durationSection ui creatureNames =
             [ Html.label [ class "cond-label" ] [ text "Duration:" ]
             , durationKindRadio ui DurKindManual "Manual"
             , durationKindRadio ui DurKindUntilTurn "Next turn"
-            , durationKindRadio ui DurKindThisTurn "This turn"
             , durationKindRadio ui DurKindCountdown "Countdown"
             , oneMinutePresetRadio ui
             ]
         , if ui.useOneMinutePreset then
-            div [ class "cond-section__caption" ]
-                [ text "Expires at the end of the bearer's 10th turn." ]
+            durationOneMinuteSubsection ui creatureNames
 
           else
             case ui.durationKind of
@@ -338,12 +336,14 @@ durationSection ui creatureNames =
                 DurKindUntilTurn ->
                     durationUntilSubsection ui creatureNames
 
+                -- Only presets produce This turn, so the editor has no
+                -- radio for it; this branch names what the preset does.
                 DurKindThisTurn ->
                     div [ class "cond-section__caption" ]
                         [ text "Expires at the end of the target's current turn." ]
 
                 DurKindCountdown ->
-                    durationCountdownSubsection ui
+                    durationCountdownSubsection ui creatureNames
         ]
 
 
@@ -408,27 +408,48 @@ durationUntilSubsection ui creatureNames =
             [ Html.label [ class "cond-label" ] [ text "At" ]
             , View.PhaseToggle.view "until-phase" ui.untilPhase ConditionUntilPhaseSet
             , Html.label [ class "cond-label" ] [ text "of" ]
-            , Html.select
-                [ class "cond-select"
-                , onInput ConditionUntilCreatureChanged
-                ]
-                (List.map
-                    (\name ->
-                        Html.option
-                            [ value name
-                            , Attr.selected (name == ui.untilCreature)
-                            ]
-                            [ text name ]
-                    )
-                    creatureNames
-                )
+            , turnsOfSelect ui creatureNames
             , Html.label [ class "cond-label" ] [ text "'s next turn" ]
             ]
         ]
 
 
-durationCountdownSubsection : ConditionUi -> Html Msg
-durationCountdownSubsection ui =
+{-| The 1 Minute row: "Expires at the end of [Creature]'s 10th
+turn".
+-}
+durationOneMinuteSubsection : ConditionUi -> List String -> Html Msg
+durationOneMinuteSubsection ui creatureNames =
+    div [ class "cond-subsection" ]
+        [ div [ class "cond-row" ]
+            [ Html.label [ class "cond-label" ] [ text "Expires at the end of" ]
+            , turnsOfSelect ui creatureNames
+            , Html.label [ class "cond-label" ] [ text "'s 10th turn" ]
+            ]
+        ]
+
+
+{-| Picks whose turns time the duration, defaulting to the target.
+-}
+turnsOfSelect : ConditionUi -> List String -> Html Msg
+turnsOfSelect ui creatureNames =
+    Html.select
+        [ class "cond-select"
+        , onInput ConditionUntilCreatureChanged
+        ]
+        (List.map
+            (\name ->
+                Html.option
+                    [ value name
+                    , Attr.selected (name == ui.untilCreature)
+                    ]
+                    [ text name ]
+            )
+            creatureNames
+        )
+
+
+durationCountdownSubsection : ConditionUi -> List String -> Html Msg
+durationCountdownSubsection ui creatureNames =
     div [ class "cond-subsection" ]
         [ div [ class "cond-row" ]
             [ Html.label [ for "cond-countdown-turns", class "cond-label" ]
@@ -445,7 +466,9 @@ durationCountdownSubsection ui =
                 []
             , Html.label [ class "cond-label" ] [ text "turns, ticking at" ]
             , View.PhaseToggle.view "countdown-phase" ui.countdownPhase ConditionCountdownPhaseSet
-            , Html.label [ class "cond-label" ] [ text "of the bearer's turn" ]
+            , Html.label [ class "cond-label" ] [ text "of" ]
+            , turnsOfSelect ui creatureNames
+            , Html.label [ class "cond-label" ] [ text "'s turn" ]
             ]
         , div [ class "cond-section__caption" ]
             [ Html.em [] [ text "Countdown timer begins when active creature's turn ends." ] ]

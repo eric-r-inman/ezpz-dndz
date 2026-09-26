@@ -193,22 +193,27 @@ type RollMode
 -- ── CONDITION AUX ────────────────────────────────────────────────────────────
 
 
-{-| Three duration shapes the condition modal exposes:
+{-| The duration shapes an applied effect can take:
 
   - `DurKindManual` — sticks until the GM removes it.
   - `DurKindUntilTurn` — expires at begin/end of a referenced
     creature's current or next turn.
-  - `DurKindCountdown` — N of the bearer's own turns.
+  - `DurKindThisTurn` — expires at the end of the bearer's current
+    turn: an area effect rolled at the start of a turn that
+    poisons for that turn. The Condition editor reaches it only
+    through a preset; the Save Chain's duration picker offers it
+    as a chip.
+  - `DurKindCountdown` — N of the bearer's own turns, or of those
+    of a creature the Condition editor names.
 
-This is the modal-radio enum that the user picks from; it gets
-projected into the domain `Encounter.Duration` ADT on submit.
+This is the enum the user picks from. The Condition editor
+projects it into `Encounter.Duration`, the Save Chain's picker into
+`Encounter.SaveChain.EffectDuration`.
 
 -}
 type DurationKind
     = DurKindManual
     | DurKindUntilTurn
-      -- Until the end of the bearer's current turn: an area effect
-      -- rolled at the start of a turn that poisons for that turn.
     | DurKindThisTurn
     | DurKindCountdown
 

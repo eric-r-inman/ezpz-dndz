@@ -274,11 +274,12 @@ async fn insert_condition(
         phase,
         remaining,
         skip_next_tick,
+        name,
       } => (
         "countdown",
         Some(phase.clone()),
         None,
-        None,
+        name.clone(),
         Some(*remaining),
         Some(i64::from(*skip_next_tick)),
       ),
@@ -849,6 +850,7 @@ fn condition_from_row(row: &AnyRow) -> Result<Condition, EncounterStoreError> {
         .map_err(read_error)?
         .unwrap_or_default()
         != 0,
+      name: opt_text("duration_name")?,
     },
     other => {
       return Err(decode_error(format!("unknown duration kind {other:?}")))

@@ -90,7 +90,7 @@ countdownCondition =
     { id = 1
     , name = "Frightened"
     , note = ""
-    , duration = DurationCountdown AtEnd 2 False
+    , duration = DurationCountdown AtEnd 2 False Nothing
     , saveToEnd = Nothing
     , linkedTo = Nothing
     , area = Nothing
@@ -245,7 +245,7 @@ countdownTickSuite =
                     |> List.head
                     |> Maybe.andThen (\c -> List.head c.conditions)
                     |> Maybe.map .duration
-                    |> Expect.equal (Just (DurationCountdown AtEnd 1 False))
+                    |> Expect.equal (Just (DurationCountdown AtEnd 1 False Nothing))
         , test "removes the condition when the countdown hits zero" <|
             \_ ->
                 let
@@ -254,7 +254,7 @@ countdownTickSuite =
                             c =
                                 mkCreature "A" 20
                         in
-                        { c | conditions = [ { countdownCondition | duration = DurationCountdown AtEnd 1 False } ] }
+                        { c | conditions = [ { countdownCondition | duration = DurationCountdown AtEnd 1 False Nothing } ] }
 
                     enc =
                         { threeCreatures | creatures = [ bearer, mkCreature "B" 15 ] }
@@ -272,7 +272,7 @@ countdownTickSuite =
                             c =
                                 mkCreature "A" 20
                         in
-                        { c | conditions = [ { countdownCondition | duration = DurationCountdown AtEnd 3 True } ] }
+                        { c | conditions = [ { countdownCondition | duration = DurationCountdown AtEnd 3 True Nothing } ] }
 
                     enc =
                         { threeCreatures | creatures = [ bearer, mkCreature "B" 15 ] }
@@ -282,12 +282,12 @@ countdownTickSuite =
                     |> List.head
                     |> Maybe.andThen (\c -> List.head c.conditions)
                     |> Maybe.map .duration
-                    |> Expect.equal (Just (DurationCountdown AtEnd 3 False))
+                    |> Expect.equal (Just (DurationCountdown AtEnd 3 False Nothing))
         , test "AtBegin countdown does NOT tick on end-of-turn" <|
             \_ ->
                 let
                     cond =
-                        { countdownCondition | duration = DurationCountdown AtBegin 3 False }
+                        { countdownCondition | duration = DurationCountdown AtBegin 3 False Nothing }
 
                     bearer =
                         let
@@ -304,7 +304,54 @@ countdownTickSuite =
                     |> List.head
                     |> Maybe.andThen (\c -> List.head c.conditions)
                     |> Maybe.map .duration
-                    |> Expect.equal (Just (DurationCountdown AtBegin 3 False))
+                    |> Expect.equal (Just (DurationCountdown AtBegin 3 False Nothing))
+        , test "a countdown counting another creature's turns ticks when that creature's turn ends" <|
+            \_ ->
+                let
+                    counted =
+                        DurationCountdown AtEnd 2 False (Just "B")
+
+                    bearer =
+                        let
+                            c =
+                                mkCreature "A" 20
+                        in
+                        { c | conditions = [ { countdownCondition | duration = counted } ] }
+
+                    enc =
+                        { threeCreatures | creatures = [ bearer, mkCreature "B" 15 ] }
+
+                    bearerDuration e =
+                        e.creatures
+                            |> List.head
+                            |> Maybe.andThen (\c -> List.head c.conditions)
+                            |> Maybe.map .duration
+                in
+                ( bearerDuration (Lifecycle.applyEndOfTurn "A" enc)
+                , bearerDuration (Lifecycle.applyEndOfTurn "B" enc)
+                )
+                    |> Expect.equal
+                        ( Just counted
+                        , Just (DurationCountdown AtEnd 1 False (Just "B"))
+                        )
+        , test "and runs out on that creature's turn" <|
+            \_ ->
+                let
+                    bearer =
+                        let
+                            c =
+                                mkCreature "A" 20
+                        in
+                        { c | conditions = [ { countdownCondition | duration = DurationCountdown AtEnd 1 False (Just "B") } ] }
+
+                    enc =
+                        { threeCreatures | creatures = [ bearer, mkCreature "B" 15 ] }
+                in
+                Lifecycle.applyEndOfTurn "B" enc
+                    |> .creatures
+                    |> List.head
+                    |> Maybe.map .conditions
+                    |> Expect.equal (Just [])
         ]
 
 

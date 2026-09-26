@@ -330,9 +330,10 @@ lifecycle module owns:
    (queue length) covers all-dead TPK.
 2. *Condition lifecycle hooks* — bracketing the queue walk: ~applyEndOfTurn
    outgoing → skipUnplayable → applyBeginOfTurn incoming~.  The end-of-turn pass
-   ticks the outgoing creature's ~DurationCountdown AtEnd~ conditions and
-   expires every ~DurationUntilTurn AtEnd <name>~ across the encounter; the
-   begin-of-turn pass does the same for the ~AtBegin~ phase.
+   ticks every ~DurationCountdown AtEnd~ that counts the outgoing creature's
+   turns, whoever carries it, and expires every ~DurationUntilTurn AtEnd <name>~
+   across the encounter; the begin-of-turn pass does the same for the ~AtBegin~
+   phase.
 
 ** Creature record extensions
 
