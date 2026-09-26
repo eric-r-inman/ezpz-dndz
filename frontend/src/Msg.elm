@@ -517,7 +517,7 @@ type Msg
     | ToggleInactive String
       -- Dice roller.
       -- The rail's 🎲 icon: unfold the panel and scroll it to the
-      -- top of the column, wherever it currently sits.
+      -- top of its region of the column, wherever it currently sits.
     | DiceRollerOpen
     | DiceInputChanged String
     | DiceCountChanged String
@@ -777,8 +777,7 @@ type Msg
       -- An Exhaustion chip's level button: one step up the ladder.
     | ConditionExhaustionStep String Int
       -- The card's gear icon: aims Status and Condition/Effect at
-      -- the card's own creature and scrolls so the topmost of the
-      -- two sits at the top of the column.
+      -- the card's own creature and scrolls the pair into view.
     | OpenStatusAndConditionFor String
     | ConditionPickStandard String
     | ConditionCustomNameChanged String

@@ -69,12 +69,12 @@ markRead model =
         { model | flashedRollSeq = model.dice.history.pushed }
 
 
-{-| The rail's 🎲 icon: bring the Dice Roller to the top of the
-column, or fold it away again when it is already showing. The one
-icon both summons and dismisses, so a GM who opened it mid-turn
-puts it back where they found it rather than hunting for the
-panel's own fold. It has no per-creature target, so there is
-nothing to re-aim.
+{-| The rail's 🎲 icon: bring the Dice Roller to the top of its
+region of the column, or fold it away again when it is already
+showing. The one icon both summons and dismisses, so a GM who
+opened it mid-turn puts it back where they found it rather than
+hunting for the panel's own fold. It has no per-creature target,
+so there is nothing to re-aim.
 -}
 openPanel : Model -> ( Model, Cmd Msg )
 openPanel model =
@@ -87,9 +87,7 @@ openPanel model =
                 Model.unfoldDrawer Model.diceLens model
         in
         ( nextModel
-        , Model.drawerIndexOf Model.diceLens nextModel
-            |> Maybe.map Effects.scrollDrawerIndexToTop
-            |> Maybe.withDefault Cmd.none
+        , Effects.scrollDrawerToTop Model.diceLens nextModel
         )
 
 

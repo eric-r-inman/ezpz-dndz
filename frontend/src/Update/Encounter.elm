@@ -445,10 +445,8 @@ targetCreature name model =
 this creature in one click. Reuses each editor's own `openFor`
 for the aiming (so re-open, re-aim, and fresh-open all behave
 exactly as they do from their individual triggers) but replaces
-their individual scroll Cmds with one that puts whichever of the
-two sits higher in the column at the top — "fully visible" isn't
-enough when opening a pair, since it doesn't say which end the GM
-should land on.
+their individual scroll Cmds with one for the pair —
+`Effects.scrollDrawerPairToTop` says where it lands.
 -}
 openStatusAndConditionFor : String -> Model -> ( Model, Cmd Msg )
 openStatusAndConditionFor name model =
@@ -458,14 +456,10 @@ openStatusAndConditionFor name model =
 
         ( afterBoth, _ ) =
             Update.Condition.openFor name afterStatus
-
-        scrollToTopmost =
-            Maybe.map2 Effects.scrollDrawerIndicesToTop
-                (Model.drawerIndexOf Model.statusLens afterBoth)
-                (Model.drawerIndexOf Model.conditionLens afterBoth)
-                |> Maybe.withDefault Cmd.none
     in
-    ( afterBoth, scrollToTopmost )
+    ( afterBoth
+    , Effects.scrollDrawerPairToTop Model.statusLens Model.conditionLens afterBoth
+    )
 
 
 {-| A card picked up: remember the position it came from.

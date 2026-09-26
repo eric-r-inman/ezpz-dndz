@@ -1,6 +1,6 @@
 module Effects exposing
     ( cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
-    , drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex, scrollDrawerIndexToTop, scrollDrawerIndicesToTop
+    , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop
     , autoRollCmdsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
@@ -27,7 +27,7 @@ import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
 @docs cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
-@docs drawerStackId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerIndex, scrollDrawerIndexToTop, scrollDrawerIndicesToTop
+@docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop
 @docs autoRollCmdsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs fetchMe, cmdForRoute
@@ -140,13 +140,33 @@ compendiumRowId id =
     "compendium-row-" ++ id
 
 
-{-| DOM id of the editor column's scroll container. The stack
-scrolls independently of the page, so bringing a panel into view
-means moving this element's viewport rather than the window's.
+{-| DOM id of the scroll region the unpinned panels share. Each
+region of the editor column scrolls independently of the page and
+of the other, so bringing a panel into view means moving its own
+region's viewport rather than the window's.
 -}
 drawerStackId : String
 drawerStackId =
     "drawer-stack"
+
+
+{-| DOM id of the scroll region the pinned panels hold, above the
+rest.
+-}
+drawerPinnedId : String
+drawerPinnedId =
+    "drawer-pinned"
+
+
+{-| The scroll region holding the panel at `index`.
+-}
+drawerRegionId : Model -> Int -> String
+drawerRegionId model index =
+    if Maybe.map .pinned (Model.drawerPanelAt index model) == Just True then
+        drawerPinnedId
+
+    else
+        drawerStackId
 
 
 {-| Stable id for one drawer panel, keyed by its position in the
@@ -159,17 +179,21 @@ drawerPanelId index =
 
 
 {-| Scroll the drawer panel at `index` into view when it sits
-outside the stack's visible region, leaving one that already fits
+outside its region's visible part, leaving one that already fits
 alone. A newly opened panel lands at the bottom of a stack that
 may already be taller than the column, so without this the only
 feedback for opening one is a scrollbar that got shorter.
 
 Same geometry as `scrollActiveIntoView`. Failure means the panel
-or the stack isn't in the DOM yet, which is benign.
+or its region isn't in the DOM yet, which is benign.
 
 -}
-scrollDrawerPanelIntoView : Int -> Cmd Msg
-scrollDrawerPanelIntoView index =
+scrollDrawerPanelIntoView : Model -> Int -> Cmd Msg
+scrollDrawerPanelIntoView model index =
+    let
+        region =
+            drawerRegionId model index
+    in
     Task.map3
         (\containerElement panelElement containerVp ->
             let
@@ -188,32 +212,34 @@ scrollDrawerPanelIntoView index =
             in
             if overflowBelow > 0 then
                 Browser.Dom.setViewportOf
-                    drawerStackId
+                    region
                     containerVp.viewport.x
                     (containerVp.viewport.y + overflowBelow)
 
             else if overflowAbove > 0 then
                 Browser.Dom.setViewportOf
-                    drawerStackId
+                    region
                     containerVp.viewport.x
                     (containerVp.viewport.y - overflowAbove)
 
             else
                 Task.succeed ()
         )
-        (Browser.Dom.getElement drawerStackId)
+        (Browser.Dom.getElement region)
         (Browser.Dom.getElement (drawerPanelId index))
-        (Browser.Dom.getViewportOf drawerStackId)
+        (Browser.Dom.getViewportOf region)
         |> Task.andThen identity
         |> Task.attempt (always NoOp)
 
 
-{-| Scroll the panel at `index` into view, or do nothing when
-there is no panel to scroll to.
+{-| Scroll the panel matching `lens` into view, or do nothing when
+it is not in the stack.
 -}
-scrollDrawerIndex : Maybe Int -> Cmd Msg
-scrollDrawerIndex =
-    Maybe.map scrollDrawerPanelIntoView >> Maybe.withDefault Cmd.none
+scrollDrawerTo : Model.SurfaceLens a -> Model -> Cmd Msg
+scrollDrawerTo lens model =
+    Model.drawerIndexOf lens model
+        |> Maybe.map (scrollDrawerPanelIntoView model)
+        |> Maybe.withDefault Cmd.none
 
 
 {-| Put the caret in the field `elementId` names, once the view
@@ -226,14 +252,15 @@ focusField elementId =
         |> Task.attempt (always NoOp)
 
 
-{-| Scroll so the panel at `index` sits at the top of the column,
-rather than merely somewhere visible. For a gesture that opens
-more than one panel at once (the card's gear icon), "fully
-visible" doesn't say which end of the pair the GM should land on
-— pinning the topmost one to the top does.
+{-| Scroll so the panel at `index` sits at the top of its region,
+rather than merely somewhere visible.
 -}
-scrollDrawerIndexToTop : Int -> Cmd Msg
-scrollDrawerIndexToTop index =
+scrollDrawerIndexToTop : Model -> Int -> Cmd Msg
+scrollDrawerIndexToTop model index =
+    let
+        region =
+            drawerRegionId model index
+    in
     Task.map3
         (\containerElement panelElement containerVp ->
             let
@@ -246,23 +273,49 @@ scrollDrawerIndexToTop index =
                         - margin
             in
             Browser.Dom.setViewportOf
-                drawerStackId
+                region
                 containerVp.viewport.x
                 (Basics.max 0 target)
         )
-        (Browser.Dom.getElement drawerStackId)
+        (Browser.Dom.getElement region)
         (Browser.Dom.getElement (drawerPanelId index))
-        (Browser.Dom.getViewportOf drawerStackId)
+        (Browser.Dom.getViewportOf region)
         |> Task.andThen identity
         |> Task.attempt (always NoOp)
 
 
-{-| `scrollDrawerIndexToTop`, given the smaller of two indices —
-the topmost panel of a pair a single gesture just opened.
+{-| Scroll the panel matching `lens` to the top of its region, or
+do nothing when it is not in the stack.
 -}
-scrollDrawerIndicesToTop : Int -> Int -> Cmd Msg
-scrollDrawerIndicesToTop a b =
-    scrollDrawerIndexToTop (Basics.min a b)
+scrollDrawerToTop : Model.SurfaceLens a -> Model -> Cmd Msg
+scrollDrawerToTop lens model =
+    Model.drawerIndexOf lens model
+        |> Maybe.map (scrollDrawerIndexToTop model)
+        |> Maybe.withDefault Cmd.none
+
+
+{-| Scroll a pair of panels a single gesture just opened (the
+card's gear icon). "Fully visible" doesn't say which end of a pair
+the GM should land on, so the topmost of the two goes to the top
+of the region they share. A pair split across the two regions
+sends each panel to the top of its own.
+-}
+scrollDrawerPairToTop : Model.SurfaceLens a -> Model.SurfaceLens b -> Model -> Cmd Msg
+scrollDrawerPairToTop lensA lensB model =
+    Maybe.map2
+        (\a b ->
+            if drawerRegionId model a == drawerRegionId model b then
+                scrollDrawerIndexToTop model (Basics.min a b)
+
+            else
+                Cmd.batch
+                    [ scrollDrawerIndexToTop model a
+                    , scrollDrawerIndexToTop model b
+                    ]
+        )
+        (Model.drawerIndexOf lensA model)
+        (Model.drawerIndexOf lensB model)
+        |> Maybe.withDefault Cmd.none
 
 
 {-| Scroll a compendium list row to the top region of the list.

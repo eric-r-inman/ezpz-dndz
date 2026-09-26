@@ -14,6 +14,8 @@
 4. The Condition/Effect editor's 1 Minute and Countdown durations can count
    another creature's turns, such as the caster's, instead of the bearer's own.
    No action needed.
+5. Pinned editors hold the top of the editor column while the other editors
+   scroll beneath them, and each group scrolls on its own.  No action needed.
 ** Fixes
 1. The Quick Add editor's Placeholder row stays solid under the pointer instead
    of letting the rows scrolled beneath it show through.  No action needed.
