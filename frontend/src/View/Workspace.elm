@@ -156,11 +156,10 @@ specialReactionsStrip enc panelOpen =
 
 
 {-| Sticky orange strip under the special-reactions one, naming
-every queue member whose source can cast. The spell-list button
-sits inside the strip rather than in the title bar, so the
-reminder and the reference it opens read as one affordance.
-Counts stay out of it — the compendium pane has the detail once
-the GM clicks a name.
+every queue member whose source can cast. The strip's own label
+opens the spell list, so the reminder and the reference it opens
+read as one affordance. Counts stay out of it — the compendium
+pane has the detail once the GM clicks a name.
 -}
 spellcasterStrip : Encounter -> CompendiumDb -> Bool -> Html Msg
 spellcasterStrip enc db listOpen =
@@ -180,8 +179,7 @@ spellcasterStrip enc db listOpen =
                     [ class "legendary-banner legendary-banner--spells"
                     , attribute "role" "note"
                     ]
-                    (text "Spells: "
-                        :: stripButton SpellsPanel listOpen "📜" Tooltips.encounterBarSpellList
+                    (stripLabel SpellsPanel listOpen "Spells" Tooltips.encounterBarSpellList
                         :: (casters
                                 |> List.map nameNode
                                 |> List.intersperse (text ", ")
@@ -192,33 +190,36 @@ spellcasterStrip enc db listOpen =
             text ""
 
 
-{-| One strip's drop-down toggle, sitting between the strip's
-label and its creature names. Wears the shared open-editor ring
-so an open panel is as visible as an open editor.
+{-| A strip's label, which also opens and closes the reference
+list behind the strip. Wears the shared open-editor ring so an
+open list is as visible as an open editor.
 -}
-stripButton : QueuePanel -> Bool -> String -> String -> Html Msg
-stripButton panel open glyph openTip =
-    button
-        [ class (View.Card.editorTriggerClass "legendary-banner__panel-btn" open)
-        , type_ "button"
-        , onClick (QueuePanelToggle panel)
-        , Tooltips.attr
-            (if open then
-                Tooltips.inlineEditCancel
+stripLabel : QueuePanel -> Bool -> String -> String -> Html Msg
+stripLabel panel open label openTip =
+    span [ class "legendary-banner__lead" ]
+        [ button
+            [ class (View.Card.editorTriggerClass "legendary-banner__label" open)
+            , type_ "button"
+            , onClick (QueuePanelToggle panel)
+            , Tooltips.attr
+                (if open then
+                    Tooltips.inlineEditCancel
 
-             else
-                openTip
-            )
-        , attribute "aria-label" openTip
-        , attribute "aria-expanded"
-            (if open then
-                "true"
+                 else
+                    openTip
+                )
+            , attribute "aria-label" openTip
+            , attribute "aria-expanded"
+                (if open then
+                    "true"
 
-             else
-                "false"
-            )
+                 else
+                    "false"
+                )
+            ]
+            [ text label ]
+        , text ":"
         ]
-        [ text glyph ]
 
 
 {-| The reference drop-downs render below every strip, so the
@@ -252,8 +253,7 @@ specialReactionsBanner creatures panelOpen =
         [ class "legendary-banner legendary-banner--special-reactions"
         , attribute "role" "note"
         ]
-        (text "Special reactions: "
-            :: stripButton SpecialReactionsPanel panelOpen "⚡" Tooltips.specialReactionsPanel
+        (stripLabel SpecialReactionsPanel panelOpen "Special reactions" Tooltips.specialReactionsPanel
             :: (creatures
                     |> List.map nameNode
                     |> List.intersperse (text ", ")
@@ -302,8 +302,7 @@ legendaryActionBanner creatures panelOpen =
         [ class "legendary-banner"
         , attribute "role" "note"
         ]
-        (text "Legendary actions: "
-            :: stripButton LegendaryActionsPanel panelOpen "⚜" Tooltips.legendaryActionsPanel
+        (stripLabel LegendaryActionsPanel panelOpen "Legendary actions" Tooltips.legendaryActionsPanel
             :: nameNodes
         )
 

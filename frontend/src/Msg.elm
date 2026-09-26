@@ -1381,8 +1381,8 @@ type Msg
     | RandomEncounterRolled (List ( Compendium.Creature, Int )) (List String)
       -- Commit the current roll to the encounter queue.
     | RandomEncounterAddToEncounter
-      -- Icon on one of the queue's reminder strips, folding its
-      -- read-only drop-down open or shut.
+      -- The label of one of the queue's reminder strips, folding
+      -- its read-only drop-down open or shut.
     | QueuePanelToggle QueuePanel
       -- Dragging a drawer panel by its heading row to a new slot.
       -- Payloads are stack positions; Over fires per slot the
