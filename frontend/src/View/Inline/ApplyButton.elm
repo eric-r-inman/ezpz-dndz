@@ -84,8 +84,10 @@ spare.
 -}
 row : String -> List (Html Msg) -> Html Msg
 row lead buttons =
-    div [ class "note-edit__buttons note-edit__buttons--start" ]
-        (span [ class "apply-row__lead" ] [ text lead ] :: buttons)
+    div [ class "note-edit__buttons note-edit__buttons--start apply-row" ]
+        [ span [ class "apply-row__lead" ] [ text lead ]
+        , div [ class "apply-row__scopes" ] buttons
+        ]
 
 
 {-| Warns that a placeholder in the current target or selection

@@ -102,6 +102,7 @@
   /* The editor column's control row: square enough to read as a
      set, with a glyph sized to fill each face. */
   --action-btn-size: 30px;
+  --button-row-gap: 6px;
   /* A status dot: small enough to read as punctuation beside a
      label rather than as a control of its own. */
   --dot-size: 6px;
@@ -9155,7 +9156,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: var(--button-row-gap);
   margin-top: 8px;
 }
 
@@ -9163,12 +9164,28 @@ button.creature-card__lifecycle--dead:focus-visible {
   justify-content: flex-start;
 }
 
-/* Initiative editor's Quick Sort row sits closer to the
-   manual-value row above it than the shared 8px default: it is
-   a standalone shortcut, not another field in that group. */
+/* Initiative editor's Quick Sort is a standalone shortcut, not
+   another field in the manual-value group above it, so it sits
+   closer to that group than the shared 8px default and centres
+   itself under the editor as a whole. */
 .init-quicksort-row {
-  justify-content: flex-start;
+  justify-content: center;
   margin-top: 0;
+}
+
+/* A scope button that wraps would line up under the lead, reading
+   as a row of its own.  Only the scopes wrap, so the lead holds the
+   first line, and the baselines keep it level with that line. */
+.apply-row {
+  flex-wrap: nowrap;
+  align-items: baseline;
+}
+
+.apply-row__scopes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--button-row-gap);
 }
 
 /* Names the verb once for the scope buttons that follow it, so

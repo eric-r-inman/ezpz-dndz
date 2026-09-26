@@ -3,6 +3,9 @@
 
 * Upcoming
 ** Added
+1. An editor's scope buttons that wrap to a second line now line up under the
+   first scope instead of under the row's label, and the Initiative editor's
+   Quick Sort button sits centred.  No action needed.
 ** Fixes
 ** Breaking
 ** Maintenance
