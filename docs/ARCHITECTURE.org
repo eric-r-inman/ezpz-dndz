@@ -168,7 +168,7 @@ tree, and Cmd helper lives in its own module.
 
 | Region          | Modules                                                                                                                                 |
 |-----------------+-----------------------------------------------------------------------------------------------------------------------------------------|
-| Application     | =Main.elm= (boot + dispatch table), =Model.elm= (record + Modal ADT), =Msg.elm=                                                          |
+| Application     | =Main.elm= (boot + dispatch table), =Model.elm= (record + Modal ADT), =Msg.elm=, =Hotkeys.elm= (the keyboard shortcuts)                  |
 | Auth            | =Auth.elm= (~AuthState~ ADT + ~User~ + decoder)                                                                                          |
 | Domain          | =Encounter.elm= + =Encounter/{DeathSaves,Difficulty,Lifecycle,RandomEncounter,Roster,SaveChain,SaveNotice,Seed,Treasure,Wire,Xp}= (plus the =RandomEncounter/Lore=, =SaveChain/{Bundled,Wire}=, and =Treasure/*= sub-modules) |
 | Domain          | =Compendium.elm= + =Compendium/{Group,GroupWire,Parser,Reference,SpellcastingText,Wire}= |
@@ -1451,8 +1451,10 @@ always reverts the newest entry, whichever mount offers it.
 The heading row of every panel folds it on a click and, with shift held on an
 open panel, folds every panel: ~View.Panel.headerClick~ reads the modifier and
 picks between the panel's own toggle and ~DrawerFoldAll~, and the caret button
-shares the decoder.  The tag a panel wears while its feature is still beta is
-~View.Panel.betaTag~ on its ~titleTrail~; those panels also sit last in
+shares the decoder.  =Hotkeys.elm= binds the column's keyboard shortcuts,
+fold-all among them; its table also writes the About page's list of them, so a
+new shortcut documents itself.  The tag a panel wears while its feature is still
+beta is ~View.Panel.betaTag~ on its ~titleTrail~; those panels also sit last in
 ~Model.defaultDrawer~.  A stored layout carries the version of the arrangement
 rules it was saved under (=DrawerLayout=), and ~Model.applyDrawerLayout~ moves
 the beta panels to the bottom of a layout saved before version 2 — once, since

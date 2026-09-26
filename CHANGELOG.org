@@ -16,6 +16,9 @@
    No action needed.
 5. Pinned editors hold the top of the editor column while the other editors
    scroll beneath them, and each group scrolls on its own.  No action needed.
+6. Alt+Shift+C collapses every editor, Alt+Shift+P opens only the pinned ones,
+   and Alt+Shift+H opens only Manage HP (Option+Shift on a Mac).  No action
+   needed.
 ** Fixes
 1. The Quick Add editor's Placeholder row stays solid under the pointer instead
    of letting the rows scrolled beneath it show through.  No action needed.

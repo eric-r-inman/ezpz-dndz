@@ -13,7 +13,8 @@ usual heading-size bumps.
 
 -}
 
-import Html exposing (Html, a, div, h1, h2, h3, li, p, section, text, ul)
+import Hotkeys exposing (Hotkey)
+import Html exposing (Html, a, div, h1, h2, h3, kbd, li, p, section, text, ul)
 import Html.Attributes exposing (class, href, rel, target)
 
 
@@ -124,4 +125,13 @@ betaFeaturesSection =
         , h3 [] [ text "Difficulty Calculator" ]
         , p []
             [ text "Uses SRD guidelines to calculate the difficulty of the current encounter. Lives in the Difficulty panel of the editor column." ]
+        , h3 [] [ text "Keyboard shortcuts" ]
+        , p []
+            [ text "These work anywhere on the encounter page, even while you're typing in a field. On a Mac, Alt is the Option (⌥) key." ]
+        , ul [] (List.map shortcut Hotkeys.all)
         ]
+
+
+shortcut : Hotkey -> Html msg
+shortcut hotkey =
+    li [] [ kbd [ class "about-page__keys" ] [ text hotkey.keys ], text (" — " ++ hotkey.does) ]

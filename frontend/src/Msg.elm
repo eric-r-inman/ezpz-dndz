@@ -1396,9 +1396,13 @@ type Msg
     | DrawerCollapseToggle Int
       -- Pin one panel to the top of the column, or release it.
     | DrawerPinToggle Int
-      -- Shift-click on an open panel's heading row: fold every
-      -- panel at once.
+      -- Shift-click on an open panel's heading row, or its
+      -- keyboard shortcut: fold every panel at once.
     | DrawerFoldAll
+      -- Keyboard shortcuts that unfold one set of panels and fold
+      -- every other: the pinned panels, or Manage HP alone.
+    | DrawerShowPinned
+    | DrawerShowHpChange
       -- Esc, which dismisses what is showing rather than
       -- deleting a panel the GM cannot put back.
     | DrawerFoldNewest

@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, xpLens
+    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, unfoldHpChangeOnly, unfoldPinnedOnly, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -262,8 +262,36 @@ screen, and folding it is what puts it away again.
 -}
 profileShows : Profile -> DrawerPanel -> Bool
 profileShows profile panel =
-    not panel.collapsed
-        || not (List.member (surfaceKey panel.surface) (profileHiddenKeys profile))
+    not panel.collapsed || profileKeeps profile panel
+
+
+{-| Whether the profile keeps a panel's heading row in the column
+while the panel is folded.
+-}
+profileKeeps : Profile -> DrawerPanel -> Bool
+profileKeeps profile panel =
+    not (List.member (surfaceKey panel.surface) (profileHiddenKeys profile))
+
+
+{-| Unfold the pinned panels the profile keeps in the column, and
+fold every other panel.
+-}
+unfoldPinnedOnly : Profile -> List DrawerPanel -> List DrawerPanel
+unfoldPinnedOnly profile =
+    unfoldOnly (\panel -> panel.pinned && profileKeeps profile panel)
+
+
+{-| Unfold Manage HP, whether or not the profile keeps it, and fold
+every other panel.
+-}
+unfoldHpChangeOnly : List DrawerPanel -> List DrawerPanel
+unfoldHpChangeOnly =
+    unfoldOnly (\panel -> hpChangeLens.extract panel.surface /= Nothing)
+
+
+unfoldOnly : (DrawerPanel -> Bool) -> List DrawerPanel -> List DrawerPanel
+unfoldOnly unfolds =
+    List.map (\panel -> { panel | collapsed = not (unfolds panel) })
 
 
 {-| Fold the panels the profile hides, so picking one snaps the

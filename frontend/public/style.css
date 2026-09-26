@@ -11223,6 +11223,14 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: var(--color-link);
 }
 
+/* A browser drops text set in the bare monospace family to its
+   smaller default monospace size, so a shortcut's keys take the
+   stylesheet's own monospace stack at the prose's size. */
+.about-page__keys {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+}
+
 .compendium__detail--empty {
   display: grid;
   place-items: center;
