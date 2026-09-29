@@ -200,8 +200,7 @@ async fn duplicate_creature(
   copy.is_bundled = false;
   let now = std::time::SystemTime::now()
     .duration_since(std::time::UNIX_EPOCH)
-    .map(|d| d.as_millis() as i64)
-    .unwrap_or(0);
+    .map_or(0, |d| d.as_millis() as i64);
   copy.created_at = now;
   copy.updated_at = now;
 
