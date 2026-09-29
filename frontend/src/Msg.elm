@@ -517,7 +517,7 @@ type Msg
     | ToggleInactive String
       -- Dice roller.
       -- The rail's 🎲 icon: unfold the panel and scroll it to the
-      -- top of its region of the column, wherever it currently sits.
+      -- top of the column, wherever it currently sits.
     | DiceRollerOpen
     | DiceInputChanged String
     | DiceCountChanged String

@@ -4145,19 +4145,12 @@ body {
 }
 
 /* The editor column: encounter controls above the editors they
-   sit with, all inside the one grid track, with the pinned
-   editors and the rest in scroll regions of their own.
-
-   Flex items shrink in proportion to what they hold, so as flex
-   items one tall editor would crush a short pinned region to a
-   sliver.  These grid rows share the room out evenly instead when
-   the two regions overflow the column together, and a region that
-   needs less than its share leaves the rest to the other. */
+   sit with, both inside the one grid track. */
 .drawer-column {
   grid-column: 1;
   grid-row: 1;
-  display: grid;
-  grid-auto-rows: minmax(0, max-content);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2);
   min-height: 0;
 }
@@ -4267,6 +4260,26 @@ body {
   overflow-y: auto;
   min-height: 0;
   margin: 0 calc(var(--drawer-bleed) * -1);
+}
+
+/* The pinned panels leading the stack, spaced the way the stack
+   spaces its own. */
+.drawer-pinned {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: var(--space-2);
+}
+
+/* Held at the top while every pinned panel is folded, with the rest
+   scrolling beneath.  Those would show through the gaps between its
+   rows, so it takes the page's own background, and it stacks above
+   the Quick Add list's sticky Placeholder row. */
+.drawer-pinned--held {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--color-bg);
 }
 
 /* Carries the scroll-into-view id for one panel.  Must stay

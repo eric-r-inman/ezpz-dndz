@@ -1830,10 +1830,11 @@ dependency order:
    none has a trigger to put it back.  The stack is partitioned: panels the GM
    has pinned hold the top in their own order, and ~Model.drawerDropIndex~
    clamps every move to the side of that boundary it started on, so no reorder
-   can interleave the two groups.  Each group scrolls in a region of its own, so
-   the pinned panels stay put while the rest scroll beneath them, and an opener
-   brings its panel into view through ~Effects.scrollDrawerTo~, which finds the
-   region the panel sits in.  A per-creature editor takes a narrower shape: its
+   can interleave the two groups.  While every pinned panel is folded, the
+   pinned block holds the top of the stack and the rest scroll beneath it; once
+   one is open, the whole stack scrolls together (~Model.pinnedHeld~).  An
+   opener brings its panel into view through ~Effects.scrollDrawerTo~, which
+   clears the held block.  A per-creature editor takes a narrower shape: its
    body lives in =View/Inline/Foo.elm= and =View.PanelDrawer='s ~editor~ helper
    supplies the chrome, so every editor's target strip and heading row stay
    identical.  It also needs an arm in ~Model.reaimStale~ that actually re-aims

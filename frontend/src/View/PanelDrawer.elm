@@ -2,9 +2,9 @@ module View.PanelDrawer exposing (view)
 
 {-| The editor column: the encounter's own controls above a
 stack holding every panel, oldest-first, so a newly opened one
-appears below the ones already up. The panels the GM pinned hold
-the top in a region of their own, and the rest scroll beneath
-them.
+appears below the ones already up. The panels the GM pinned lead
+the stack, and while every one of them is folded they hold its
+top, with the rest scrolling beneath them.
 
 Each drawer variant renders through `panelFor`; adding a panel
 means a lens in `Model`, an arm here, and — if the drawer boots
@@ -46,7 +46,7 @@ view model =
         -- Indexed before the profile filters, so a panel keeps its
         -- stack index — the messages its heading fires name a
         -- position in the whole stack, not in what the profile
-        -- lets through or in the region it sits in.
+        -- lets through or in the block it sits in.
         ( pinned, loose ) =
             model.drawer
                 |> List.indexedMap Tuple.pair
@@ -58,8 +58,17 @@ view model =
     in
     div [ class "drawer-column" ]
         [ encounterControls model
-        , region "drawer-stack drawer-stack--pinned" Effects.drawerPinnedId model pinned
-        , region "drawer-stack" Effects.drawerStackId model loose
+
+        -- Keyed by surface so a reorder moves DOM nodes instead of
+        -- rewriting every panel in place, which would drop focus and
+        -- replay the mount animation.  A pin moves a panel into or
+        -- out of the pinned block, which no key can carry, so that
+        -- one move mounts the panel afresh.
+        , Html.Keyed.node "div"
+            [ class "drawer-stack", Attr.id Effects.drawerStackId ]
+            (pinnedBlock model pinned
+                ++ List.map (keyedPanel model) loose
+            )
         ]
 
 
@@ -148,28 +157,34 @@ controlButton cls msg tip glyph =
         [ text glyph ]
 
 
-{-| One of the stack's two scroll regions, holding the indexed
-panels it is given, or nothing when it is given none.
+{-| The pinned panels at the head of the stack, which hold its top
+while `Model.pinnedHeld` says so. Empty when nothing is pinned.
 -}
-region : String -> String -> Model -> List ( Int, Model.DrawerPanel ) -> Html Msg
-region cls regionId model panels =
+pinnedBlock : Model -> List ( Int, Model.DrawerPanel ) -> List ( String, Html Msg )
+pinnedBlock model panels =
     if List.isEmpty panels then
-        text ""
+        []
 
     else
-        -- Keyed by surface so a reorder moves DOM nodes instead
-        -- of rewriting every panel in place, which would drop
-        -- focus and replay the mount animation.  A pin moves a
-        -- panel between the regions, which no key can carry, so
-        -- that one move mounts the panel afresh.
-        Html.Keyed.node "div"
-            [ class cls, Attr.id regionId ]
-            (List.map
-                (\( index, panel ) ->
-                    ( Model.surfaceKey panel.surface, panelFor model index panel )
-                )
-                panels
-            )
+        [ ( "pinned"
+          , Html.Keyed.node "div"
+                [ class
+                    (if Model.pinnedHeld model then
+                        "drawer-pinned drawer-pinned--held"
+
+                     else
+                        "drawer-pinned"
+                    )
+                , Attr.id Effects.drawerPinnedId
+                ]
+                (List.map (keyedPanel model) panels)
+          )
+        ]
+
+
+keyedPanel : Model -> ( Int, Model.DrawerPanel ) -> ( String, Html Msg )
+keyedPanel model ( index, panel ) =
+    ( Model.surfaceKey panel.surface, panelFor model index panel )
 
 
 {-| The slot the dragged panel would land in wears the drop cue.
