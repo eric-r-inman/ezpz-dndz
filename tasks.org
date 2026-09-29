@@ -67,25 +67,21 @@ cheap.  ~rust-template.json~ declares that one deviation so the checker reports
 it as chosen.  The on-demand reviewer the foundation exposes is wired up beside
 it, reached through a ~just~ recipe, for anyone working without that gate.
 
-* TODO Take sqlx 0.9, and the toolchain bump it drags along
+* DONE Take sqlx 0.9, and the toolchain bump it drags along
 
-The database layer sits on sqlx 0.8.  Moving to 0.9 is not a bump but a
-migration, and it does not arrive alone.
+The database layer moved from sqlx 0.8 to 0.9, which was not a bump but a
+migration, and it did not arrive alone.
 
-sqlx 0.9 needs a newer rustc than the flake pins, and the toolchain input has
-run well ahead of what this workspace builds with, so taking it is a compiler
-upgrade for everything at once.  Against that toolchain the server crate does
-not compile: borrowed data escapes the functions that build queries, and 0.9
-refuses a dynamically built SQL string without an audit at the call site.  Both
-are real signals about the query-building code rather than mechanical breakage.
+sqlx 0.9 needs a newer rustc than the flake pinned, so taking it upgraded the
+compiler for the whole workspace at once.  Against that toolchain the server
+crate did not compile: borrowed data escaped the functions that build queries,
+and 0.9 refuses a dynamically built SQL string without an audit at the call
+site.  The query helpers now take only static SQL, and the three queries that
+interpolate a table name carry that audit.
 
-The workspace's own ~sha2~ is already on 0.11, but the tree still carries 0.10
-beside it: sqlx 0.8 holds it, and so do the template foundation's login
-libraries (~jsonwebtoken~, ~openidconnect~, ~oauth2~), so taking sqlx 0.9 does
-not bring the tree down to one copy by itself.
-
-Dependabot's open pull request stays open as the reminder.  This is a piece of
-work with its own branch, not something to fold into a dependency sweep.
+The workspace's own ~sha2~ is on 0.11, but the tree still carries 0.10 beside
+it: sqlx holds it even at 0.9, and so do the template foundation's login
+libraries (~jsonwebtoken~, ~openidconnect~, ~oauth2~).
 
 * TODO Migrate the frontend off modal dialogs
 

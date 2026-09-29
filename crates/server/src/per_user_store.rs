@@ -51,7 +51,7 @@ use axum::{
 };
 use ezpz_dndz_lib::{db::Db, users::UserId};
 use serde_json::Value;
-use sqlx::AnyConnection;
+use sqlx::{AnyConnection, AssertSqlSafe};
 use std::future::Future;
 use thiserror::Error;
 use tracing::warn;
@@ -193,17 +193,20 @@ pub async fn replace_payload<F: PerUserFeature>(
     }
   })?;
 
-  // PARENT_TABLE is a compile-time constant, so the format! is not
-  // an injection surface; sqlx's Any driver has no placeholder for
-  // identifiers.
-  sqlx::query(&format!("DELETE FROM {} WHERE user_id = $1", F::PARENT_TABLE))
-    .bind(user_id.as_str())
-    .execute(&mut *tx)
-    .await
-    .map_err(|source| PerUserStoreError::Replace {
-      label: F::LABEL,
-      source,
-    })?;
+  // sqlx's Any driver has no placeholder for identifiers, so the
+  // table name is interpolated; PARENT_TABLE is a compile-time
+  // constant, so the format! is not an injection surface.
+  sqlx::query(AssertSqlSafe(format!(
+    "DELETE FROM {} WHERE user_id = $1",
+    F::PARENT_TABLE
+  )))
+  .bind(user_id.as_str())
+  .execute(&mut *tx)
+  .await
+  .map_err(|source| PerUserStoreError::Replace {
+    label: F::LABEL,
+    source,
+  })?;
 
   F::insert(&mut tx, user_id, &data).await.map_err(|source| {
     PerUserStoreError::Replace {

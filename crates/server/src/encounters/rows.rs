@@ -716,7 +716,7 @@ async fn fetch_creatures(
 async fn stitch_children<F>(
   conn: &mut AnyConnection,
   user_id: &str,
-  sql: &str,
+  sql: &'static str,
   creatures: &mut [Creature],
   index: &HashMap<String, usize>,
   mut apply: F,

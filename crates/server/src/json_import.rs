@@ -63,7 +63,7 @@ use ezpz_dndz_lib::db::{Db, DbError};
 use ezpz_dndz_lib::users::{insert_user, User, UserId};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
-use sqlx::AnyConnection;
+use sqlx::{AnyConnection, AssertSqlSafe};
 use thiserror::Error;
 use tracing::{info, warn};
 
@@ -420,10 +420,13 @@ async fn import_preset_store<F: PerUserFeature>(
       continue;
     }
 
-    let existing: i64 = sqlx::query_scalar(&format!(
+    // sqlx's Any driver has no placeholder for identifiers, so the
+    // table name is interpolated; `F::PARENT_TABLE` is a compile-time
+    // constant, so the format! is not an injection surface.
+    let existing: i64 = sqlx::query_scalar(AssertSqlSafe(format!(
       "SELECT COUNT(*) FROM {} WHERE user_id = $1",
       F::PARENT_TABLE
-    ))
+    )))
     .bind(user_id.as_str())
     .fetch_one(&mut *tx)
     .await
@@ -637,13 +640,13 @@ async fn import_compendium_store<T: CompendiumImportRecord>(
       continue;
     }
 
-    // `T::TABLE` is a compile-time constant, so the format! is not
-    // an injection surface; sqlx's Any driver has no placeholder
-    // for identifiers.
-    let existing: i64 = sqlx::query_scalar(&format!(
+    // sqlx's Any driver has no placeholder for identifiers, so the
+    // table name is interpolated; `T::TABLE` is a compile-time
+    // constant, so the format! is not an injection surface.
+    let existing: i64 = sqlx::query_scalar(AssertSqlSafe(format!(
       "SELECT COUNT(*) FROM {} WHERE user_id = $1",
       T::TABLE
-    ))
+    )))
     .bind(user_id.as_str())
     .fetch_one(&mut *tx)
     .await

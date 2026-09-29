@@ -525,7 +525,7 @@ impl PerUserFeature for TreasureTable {
 #[allow(clippy::too_many_arguments)]
 async fn insert_coin_row(
   conn: &mut AnyConnection,
-  sql: &str,
+  sql: &'static str,
   user_id: &UserId,
   bracket: &str,
   position: i64,
