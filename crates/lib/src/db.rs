@@ -9,7 +9,7 @@
 //! which SQLite accepts natively).
 //!
 //! Migrations are plain `.sql` files under `crates/lib/migrations/`,
-//! embedded at compile time and applied on connect.  sqlx 0.8
+//! embedded at compile time and applied on connect.  sqlx 0.9
 //! implements `Migrate` for `AnyConnection`, so the embedded migrator
 //! runs directly over the pool for either backend.
 //!

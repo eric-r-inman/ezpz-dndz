@@ -409,7 +409,7 @@ pub struct CreatureRow {
 async fn stitch_children<F>(
   conn: &mut AnyConnection,
   user_id: &str,
-  sql: &str,
+  sql: &'static str,
   rows: &mut [CreatureRow],
   index: &HashMap<String, usize>,
   mut apply: F,
