@@ -6,6 +6,8 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump uuid from 1.26.1 to 1.27.0
+   (https://github.com/eric-r-inman/ezpz-dndz/pull/172)
 ** Security
 * v0.34.0
 ** Added
