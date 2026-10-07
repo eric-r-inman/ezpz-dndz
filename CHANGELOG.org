@@ -6,6 +6,8 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump tokio from 1.53.1 to 1.53.2
+   (https://github.com/eric-r-inman/ezpz-dndz/pull/173)
 ** Security
 * v0.34.0
 ** Added
