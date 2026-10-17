@@ -6,7 +6,57 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump cc from 1.5.1 to 1.8.0
+2. Bump combine from 4.6.8 to 4.6.9
+3. Bump defmt from 1.1.1 to 1.2.0
+4. Bump defmt-macros from 1.1.1 to 1.2.0
+5. Bump defmt-parser from 1.0.0 to 1.1.0
+6. Bump deranged from 0.5.8 to 0.5.9
+7. Bump either from 1.18.0 to 1.19.0
+8. Bump equivalent from 1.0.2 to 1.0.3
+9. Bump hyper from 1.11.1 to 1.12.0
+10. Bump jiff from 0.2.37 to 0.2.38
+11. Bump jiff-static from 0.2.37 to 0.2.38
+12. Bump jiff-tzdb from 0.1.8 to 0.1.9
+13. Bump lazy_static from 1.5.0 to 1.5.1
+14. Bump libc from 0.2.189 to 0.2.191
+15. Bump litrs from 1.0.0 to 1.0.1
+16. Bump mio from 1.2.3 to 1.2.4
+17. Bump powerfmt from 0.2.0 to 0.2.1
+18. Bump quinn-proto from 0.11.18 to 0.11.19
+19. Bump quinn-udp from 0.5.15 to 0.5.16
+20. Bump rust-embed from 8.12.0 to 8.13.0
+21. Bump rust-embed-impl from 8.12.0 to 8.13.0
+22. Bump rust-embed-utils from 8.12.0 to 8.13.0
+23. Bump rust-template-foundation from 0.136.0 to 0.141.0
+24. Bump rust-template-foundation-derive from 0.136.0 to 0.141.0
+25. Bump rustls-native-certs from 0.8.4 to 0.8.5
+26. Bump schannel from 0.1.29 to 0.1.30
+27. Bump schemars from 1.2.2 to 1.2.3
+28. Bump schemars_derive from 1.2.2 to 1.2.3
+29. Bump serde_json from 1.0.151 to 1.0.154
+30. Bump serde_spanned from 1.1.1 to 1.1.2
+31. Bump sha2 from 0.11.0 to 0.11.1
+32. Bump smallvec from 1.16.2 to 1.16.3
+33. Bump syn from 3.0.6 to 3.0.9
+34. Bump tokio from 1.53.1 to 1.53.3
+35. Bump tokio-util from 0.7.19 to 0.7.20
+36. Bump toml from 1.1.6+spec-1.1.0 to 1.1.8+spec-1.1.0
+37. Bump toml_datetime from 1.1.1+spec-1.1.0 to 1.1.2+spec-1.1.0
+38. Bump toml_parser from 1.1.3+spec-1.1.0 to 1.1.5+spec-1.1.0
+39. Bump toml_writer from 1.1.2+spec-1.1.0 to 1.1.3+spec-1.1.0
+40. Bump unicase from 2.9.0 to 2.10.0
+41. Bump unicode-ident from 1.0.26 to 1.0.27
+42. Bump unicode-normalization from 0.1.25 to 0.1.26
+43. Bump uuid from 1.26.1 to 1.28.0
+44. Bump want from 0.3.1 to 0.3.2
+45. Bump yoke-derive from 0.8.3 to 0.8.4
+46. Bump zerocopy from 0.8.59 to 0.8.63
+47. Bump zerocopy-derive from 0.8.59 to 0.8.63
+48. Bump zeroize from 1.9.0 to 1.9.1
 ** Security
+1. Bump rustls from 0.23.45 to 0.23.46 (RUSTSEC-2026-0349, RUSTSEC-2026-0346,
+   RUSTSEC-2026-0347, RUSTSEC-2026-0348, RUSTSEC-2026-0349, RUSTSEC-2026-0346)
 * v0.34.0
 ** Added
 1. Unfolding an editor from its heading scrolls it into view, starting from its
