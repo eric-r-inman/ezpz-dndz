@@ -6,7 +6,73 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump cc from 1.5.1 to 1.10.0
+2. Bump combine from 4.6.8 to 4.6.9
+3. Bump defmt from 1.1.1 to 1.2.0
+4. Bump defmt-macros from 1.1.1 to 1.2.0
+5. Bump defmt-parser from 1.0.0 to 1.1.0
+6. Bump deranged from 0.5.8 to 0.5.9
+7. Bump either from 1.18.0 to 1.19.0
+8. Bump equivalent from 1.0.2 to 1.0.3
+9. Bump find-msvc-tools from 0.1.14 to 0.1.15
+10. Bump hyper from 1.11.1 to 1.12.0
+11. Bump icu_collections from 2.3.0 to 2.4.0
+12. Bump icu_locale_core from 2.3.0 to 2.4.0
+13. Bump icu_normalizer from 2.3.0 to 2.4.0
+14. Bump icu_normalizer_data from 2.3.0 to 2.4.0
+15. Bump icu_properties from 2.3.0 to 2.4.0
+16. Bump icu_properties_data from 2.3.0 to 2.4.0
+17. Bump icu_provider from 2.3.1 to 2.4.0
+18. Bump jiff from 0.2.37 to 0.2.38
+19. Bump jiff-static from 0.2.37 to 0.2.38
+20. Bump jiff-tzdb from 0.1.8 to 0.1.9
+21. Bump lazy_static from 1.5.0 to 1.5.1
+22. Bump libc from 0.2.189 to 0.2.191
+23. Bump litrs from 1.0.0 to 1.0.1
+24. Bump mio from 1.2.3 to 1.2.4
+25. Bump powerfmt from 0.2.0 to 0.2.1
+26. Bump quinn-proto from 0.11.18 to 0.11.19
+27. Bump quinn-udp from 0.5.15 to 0.5.16
+28. Bump redox_syscall from 0.9.4 to 0.9.5
+29. Bump rust-embed from 8.12.0 to 8.13.0
+30. Bump rust-embed-impl from 8.12.0 to 8.13.0
+31. Bump rust-embed-utils from 8.12.0 to 8.13.0
+32. Bump rust-template-foundation from 0.136.0 to 0.142.0
+33. Bump rust-template-foundation-derive from 0.136.0 to 0.142.0
+34. Bump rustls-native-certs from 0.8.4 to 0.8.5
+35. Bump schannel from 0.1.29 to 0.1.30
+36. Bump schemars from 1.2.2 to 1.2.3
+37. Bump schemars_derive from 1.2.2 to 1.2.3
+38. Bump serde_json from 1.0.151 to 1.0.154
+39. Bump serde_spanned from 1.1.1 to 1.1.2
+40. Bump sha2 from 0.11.0 to 0.11.1
+41. Bump smallvec from 1.16.2 to 1.16.4
+42. Bump syn from 3.0.6 to 3.0.9
+43. Bump tinystr from 0.8.4 to 0.8.5
+44. Bump tokio from 1.53.1 to 1.54.1
+45. Bump tokio-util from 0.7.19 to 0.7.20
+46. Bump toml from 1.1.6+spec-1.1.0 to 1.1.8+spec-1.1.0
+47. Bump toml_datetime from 1.1.1+spec-1.1.0 to 1.1.2+spec-1.1.0
+48. Bump toml_parser from 1.1.3+spec-1.1.0 to 1.1.5+spec-1.1.0
+49. Bump toml_writer from 1.1.2+spec-1.1.0 to 1.1.3+spec-1.1.0
+50. Bump unicase from 2.9.0 to 2.10.0
+51. Bump unicode-ident from 1.0.26 to 1.0.27
+52. Bump unicode-normalization from 0.1.25 to 0.1.26
+53. Bump uuid from 1.26.1 to 1.29.0
+54. Bump want from 0.3.1 to 0.3.2
+55. Bump yoke from 0.8.3 to 0.8.4
+56. Bump yoke-derive from 0.8.3 to 0.8.4
+57. Bump zerocopy from 0.8.59 to 0.8.63
+58. Bump zerocopy-derive from 0.8.59 to 0.8.63
+59. Bump zeroize from 1.9.0 to 1.9.1
+60. Bump zerovec from 0.11.8 to 0.11.9
+61. Bump zerovec-derive from 0.11.6 to 0.11.7
 ** Security
+1. Bump rustls from 0.23.45 to 0.23.46 (RUSTSEC-2026-0349, RUSTSEC-2026-0346,
+   RUSTSEC-2026-0347, RUSTSEC-2026-0348, RUSTSEC-2026-0349, RUSTSEC-2026-0346)
+2. Bump rustls-webpki from 0.103.15 to 0.103.16 (RUSTSEC-2026-0098,
+   RUSTSEC-2026-0382, RUSTSEC-2026-0104, RUSTSEC-2026-0099, RUSTSEC-2026-0382)
+3. Bump webpki-root-certs from 1.0.9 to 1.0.11 (RUSTSEC-2026-0383)
 * v0.34.0
 ** Added
 1. Unfolding an editor from its heading scrolls it into view, starting from its
