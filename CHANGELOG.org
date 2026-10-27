@@ -4,6 +4,8 @@
 * Upcoming
 ** Added
 ** Fixes
+1. A server built with Nix now creates and updates its database tables.  Before,
+   it stopped at startup on a fresh data dir.  No action needed.
 ** Breaking
 1. A server configured for OIDC sign-in now needs =--base-url=.  It no longer
    defaults to =http://localhost:3000=.  Set it to the address the identity

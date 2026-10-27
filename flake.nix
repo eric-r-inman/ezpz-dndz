@@ -86,11 +86,15 @@
         # the SRD creature bundle at compile time, so extend the filter
         # to keep that one data file; without it every crate build fails
         # inside the sandbox with "couldn't read …bundled-creatures.json".
+        # The lib crate's sqlx::migrate! embeds the .sql migrations at
+        # compile time.  Without them the build still succeeds and the
+        # binary creates no tables.
         src = nixpkgs.lib.cleanSourceWith {
           src = self;
           filter = path: type:
             (craneLib.filterCargoSources path type)
-            || nixpkgs.lib.hasSuffix "bundled-creatures.json" path;
+            || nixpkgs.lib.hasSuffix "bundled-creatures.json" path
+            || nixpkgs.lib.hasSuffix ".sql" path;
           name = "source";
         };
         # Run only unit tests (--lib --bins); integration tests under
