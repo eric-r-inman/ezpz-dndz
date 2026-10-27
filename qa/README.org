@@ -1,0 +1,64 @@
+#+title:     DM-session suite
+#+language:  en
+
+* What it is
+
+This suite plays the app the way a DM uses it.  It preps encounters, runs
+fights, signs in and out, and drives the CLI.  Every scenario runs in a real
+browser against its own scratch server, so a run never touches the repository's
+data files.
+
+The unit suites prove the rules.  This suite proves the app a DM sees.  It
+catches a control that no longer answers, a page that throws, or a fight that
+loses its state on reload.
+
+* Running it
+
+Run it from the dev shell:
+
+#+begin_src sh :results none :exports code
+just qa
+#+end_src
+
+The recipe builds the Elm bundle, the server and the CLI.  It then enters the
+~qa~ dev shell, which carries Python, Playwright, its browsers and axe-core.
+That shell is apart from the default one because the browsers are large.
+
+Arguments go to pytest.  ~just qa -k initiative~ runs the initiative scenarios.
+~just qa --numprocesses auto~ runs scenarios side by side.
+
+Each scenario runs in Chromium.  A scenario marked ~cross_browser~ also runs in
+Firefox.  Mark the ones where the browsers could differ, such as keyboard
+handling, focus and layout.
+
+* What a run leaves behind
+
+Everything lands under ~target/qa/~, which git ignores.  A failing scenario
+leaves a screenshot and a Playwright trace in ~target/qa/artifacts/~.  Open the
+trace with ~playwright show-trace~ in the ~qa~ shell.
+
+A scenario can also save named screenshots of the states it reaches.  They land
+in ~target/qa/shots/~.  They are for a person reviewing the run, since an
+assertion cannot judge whether a screen looks right.
+
+* Writing a scenario
+
+Write each scenario as a DM's task in a DM's words.  The test name says what the
+DM did and what should follow.
+
+Find controls by their accessible names, as the shared page objects do.  A
+control that a screen reader cannot name is then also one a scenario cannot
+find, which is a finding in itself.
+
+Assert with Playwright's ~expect~ where the view may still be drawing.  The page
+objects wait for Elm's next frame after each action they perform.  A raw click
+in a scenario does not wait, so assert on what follows with ~expect~.
+
+A scenario never weakens itself to pass.  When the app is wrong, the scenario
+keeps asserting the right behavior and carries a strict ~xfail~.  The reason
+names the finding's entry in ~docs/QA_REPORT.org~.  A fix makes that scenario
+pass, and the strict mark then fails the run until someone removes it.
+
+A scenario fails when the page throws an uncaught error.  It also fails when the
+server logs an error, unless the scenario provoked that error on purpose and
+listed it in ~server.expected_errors~.

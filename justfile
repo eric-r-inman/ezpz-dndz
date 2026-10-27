@@ -29,6 +29,12 @@ test-elm:
 test-rust:
     cargo test --workspace
 
+# Play a DM's prep and session in real browsers.  Each scenario gets its own
+# scratch server.  Arguments go to pytest, as in `just qa -k initiative`.
+qa *args: build-elm
+    cargo build --package ezpz-dndz-server --package ezpz-dndz-cli
+    nix develop .#qa --command pytest qa {{args}}
+
 # Build Elm then run via cargo, forwarding all arguments.
 run *args: build-elm
     cargo run {{args}}
