@@ -4,6 +4,11 @@
 * Upcoming
 ** Added
 ** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.35.0
+** Fixes
 1. A server built with Nix now creates and updates its database tables.  Before,
    it stopped at startup on a fresh data dir.  No action needed.
 ** Breaking
@@ -15,7 +20,6 @@
 2. The compendium's content hashes are computed with sha2 0.11 and keep the same
    form as before.  No action needed.
 3. The server's database layer runs on sqlx 0.9.  No action needed.
-** Security
 * v0.34.0
 ** Added
 1. Unfolding an editor from its heading scrolls it into view, starting from its
