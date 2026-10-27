@@ -376,6 +376,5 @@ pub fn validate_save_name(raw: &str) -> Result<String, EncounterStoreError> {
 fn epoch_millis() -> i64 {
   SystemTime::now()
     .duration_since(UNIX_EPOCH)
-    .map(|d| d.as_millis() as i64)
-    .unwrap_or(0)
+    .map_or(0, |d| d.as_millis() as i64)
 }

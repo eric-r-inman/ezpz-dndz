@@ -120,7 +120,7 @@ Under =crates/=:
   - ~db.rs~ — the ~Db~ handle (a cloneable sqlx ~AnyPool~): installs the runtime
     drivers, normalizes SQLite URLs (parent-dir creation, create-if-missing,
     single-connection pool so one writer sidesteps ~SQLITE_BUSY~), and runs the
-    embedded migrations from =crates/lib/migrations/= on connect — sqlx 0.8
+    embedded migrations from =crates/lib/migrations/= on connect — sqlx 0.9
     implements ~Migrate~ for ~AnyConnection~, so one migration set serves both
     backends.
   - ~compendium/~ — ~Creature~ schema, parser, Open5e import, bundled-creatures

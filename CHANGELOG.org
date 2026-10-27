@@ -14,6 +14,7 @@
 1. The project is synced to the current rust-template.  No action needed.
 2. The compendium's content hashes are computed with sha2 0.11 and keep the same
    form as before.  No action needed.
+3. The server's database layer runs on sqlx 0.9.  No action needed.
 ** Security
 * v0.34.0
 ** Added

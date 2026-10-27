@@ -115,7 +115,7 @@ tower-sessions = { version = "0.15", features = ["memory-store"] }
 #
 # The TLS feature names the crypto provider and root store explicitly
 # rather than going through the `tls-rustls` alias.  That alias points
-# at ring today (`tls-rustls = ["tls-rustls-ring"]` in 0.8.6), but an
+# at ring today (`tls-rustls = ["tls-rustls-ring"]` in 0.9.0), but an
 # alias is free to move, and the daily dependency-bump flow will
 # advance this crate unattended: landing on aws-lc-rs would drag in
 # aws-lc-sys, whose C build panics under zig cross-compilation to
@@ -123,7 +123,7 @@ tower-sessions = { version = "0.15", features = ["memory-store"] }
 # stack.  `-native-roots` (over the alias's webpki default) also puts
 # Postgres TLS on the OS trust store, matching foundation's reqwest,
 # so a self-hosted CA is trusted by both halves of the process.
-sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-native-roots", "sqlite", "postgres", "any", "migrate", "derive", "macros"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-native-roots", "sqlite", "postgres", "any", "migrate", "derive", "macros"] }
 
 # Shared library
 ezpz-dndz-lib = { path = "crates/lib" }
