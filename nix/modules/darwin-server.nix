@@ -27,11 +27,11 @@
 #     port   = 8080;
 #   };
 #
-# To enable health checking (requires a reachable health endpoint):
+# The health check is on by default and probes /healthz over the service's
+# listener.  To point it elsewhere:
 #
 #   services.ezpz-dndz-server = {
 #     enable = true;
-#     healthCheck.enable = true;
 #     healthCheck.url = "http://127.0.0.1:3000/healthz";
 #   };
 {

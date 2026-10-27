@@ -1,10 +1,7 @@
-//! Integration tests for the ezpz-dndz application routes.
+//! Integration tests for the ezpz-dndz application routes and for the
+//! server's config validation.
 //!
-//! Foundation-owned routes (healthz, metrics, /me, /api-docs, /scalar,
-//! SPA fallback, OIDC handlers) are covered by the foundation crate's
-//! own integration tests; this file keeps only the app-route coverage:
-//! encounter PUT/GET round-trips, compendium-save persistence, and
-//! dice-history concurrency.
+//! The foundation crate's own tests cover the routes the foundation owns.
 
 // File-scoped overrides: `allow-expect-in-tests` covers items inside
 // `#[test]` / `#[cfg(test)]`, but the helpers below sit at crate
@@ -51,7 +48,6 @@ async fn stub_app_state_at(data_dir: &std::path::Path) -> AppState {
     listen_address: "127.0.0.1:0"
       .parse::<ListenerAddress>()
       .expect("listen address"),
-    base_url: "http://localhost:0".to_string(),
     oidc: None,
   };
 
@@ -78,7 +74,6 @@ fn build_test_router(state: AppState) -> Router {
     listen_address: "127.0.0.1:0"
       .parse::<ListenerAddress>()
       .expect("listen address"),
-    base_url: "http://localhost:0".to_string(),
     oidc: None,
   };
 
@@ -2346,4 +2341,35 @@ async fn test_encounter_legacy_json_import() {
   assert_eq!(live2, live);
   assert!(temp.path().join("encounter.json").exists());
   assert!(temp.path().join("encounter-saves.json").exists());
+}
+
+#[test]
+fn config_refuses_oidc_without_a_base_url() {
+  use ezpz_dndz_server::config::{CliRaw, Config, ExtraCliFields};
+
+  let temp = TempDir::new().expect("tempdir");
+  let secret = temp.path().join("oidc-client-secret");
+  std::fs::write(&secret, "secret").expect("secret file");
+
+  let cli = CliRaw {
+    log_level: None,
+    log_format: None,
+    config: None,
+    listen: None,
+    data_dir: None,
+    extra: ExtraCliFields {
+      oidc_issuer: Some("https://sso.example.com".to_string()),
+      oidc_client_id: Some("my-client".to_string()),
+      oidc_client_secret_file: Some(secret),
+      base_url: None,
+      compendium_claim_user: None,
+      database_url: None,
+    },
+  };
+
+  let msg = Config::from_cli_and_file(cli).unwrap_err().to_string();
+  assert!(
+    msg.contains("base_url is required with OIDC"),
+    "error should name base_url, got: {msg}"
+  );
 }
