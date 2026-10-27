@@ -77,6 +77,8 @@ drives); otherwise comment each input.
 
 Add the comment as you introduce the dependency, not as a later cleanup pass.
 
+# The section below keeps rust-template's text exactly.
+# See "Template-synced sections" in llms.org.
 ** Control flow: prefer expressions over early returns
 
 Rust is expression-oriented — ~if~/~else~, ~match~, and blocks all yield values.
@@ -120,10 +122,11 @@ if output.status.success() {
 #+end_src
 
 This is the /least-powerful-construct/ rule applied to control flow; see
-~llms.org~ "Rule of least power" for the principle and the combinator clippy
-lints that enforce its mechanical part.  Those lints catch manual combinator
-reimplementations, not early returns — whether a guard clause should collapse
-into an expression is a judgment the author makes, not something a lint decides.
+~llms.org~ "Rule of least power" for the principle and
+~[workspace.lints.clippy]~ in ~Cargo.toml~ for the combinator lints that enforce
+its mechanical part.  Those lints catch manual combinator reimplementations, not
+early returns — whether a guard clause should collapse into an expression is a
+judgment the author makes, not something a lint decides.
 
 * Error handling
 

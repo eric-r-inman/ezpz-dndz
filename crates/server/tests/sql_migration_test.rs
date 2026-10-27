@@ -46,7 +46,6 @@ async fn app_state_for_dir(dir: &TempDir) -> AppState {
     listen_address: "127.0.0.1:0"
       .parse::<ListenerAddress>()
       .expect("listen address"),
-    base_url: "http://localhost:0".to_string(),
     oidc: None,
   };
   let base = BaseServerState::init(&run_config)
@@ -66,7 +65,6 @@ fn build_test_router(state: AppState) -> Router {
     listen_address: "127.0.0.1:0"
       .parse::<ListenerAddress>()
       .expect("listen address"),
-    base_url: "http://localhost:0".to_string(),
     oidc: None,
   };
 

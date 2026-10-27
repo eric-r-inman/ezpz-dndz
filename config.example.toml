@@ -23,10 +23,9 @@ log_format = "text"  # Options: text, json
 # database_url = "sqlite:///var/lib/ezpz-dndz/ezpz-dndz.db"
 # database_url = "postgres://ezpz:secret@localhost/ezpz_dndz"
 
-# OIDC (single-sign-on). Leave commented to run unauthenticated.
-# Production deployments behind Authelia / Keycloak / similar set
-# all three fields. See docs/ARCHITECTURE.org for the deployment
-# notes.
+# OIDC single sign-on.  Leave these commented to run without it.
+# Deployments behind Authelia, Keycloak, or similar set all four
+# fields.  See docs/ARCHITECTURE.org for the deployment notes.
 # base_url = "https://dndz.example.com"
 # oidc_issuer = "https://sso.example.com/application/o/ezpz-dndz"
 # oidc_client_id = "ezpz-dndz"

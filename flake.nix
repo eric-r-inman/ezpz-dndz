@@ -285,6 +285,12 @@
         nixpkgs.lib.filterAttrs
         (name: _: nixpkgs.lib.hasSuffix "-x86_64-windows" name)
         windowsCrossPackages;
+      releasePackages =
+        nixpkgs.lib.filterAttrs
+        (name: _:
+          nixpkgs.lib.any (suffix: nixpkgs.lib.hasSuffix suffix name)
+          ["-gnu" "-musl" "-darwin" "-windows" "-windows-msvc"])
+        packages;
     in {
       inherit packages;
       inherit (rustPackages) apps;
@@ -313,6 +319,25 @@
           windowsSmoke = foundation.lib.mkWindowsSmokeCheck {
             inherit pkgs;
             windowsPackages = windowsX86Packages;
+          };
+          # Every release package ships one native executable under bin/.  A
+          # wrapper script fails the check.  Only x86_64-linux builds every
+          # release output.
+          releaseOutputs = foundation.lib.mkReleaseOutputsCheck {
+            inherit pkgs releasePackages;
+          };
+        }
+        // {
+          darwinServiceEvaluates = foundation.lib.mkDarwinServiceEvalCheck {
+            inherit pkgs;
+            nix-darwin = foundation.inputs.nix-darwin;
+            name = "ezpz-dndz-server";
+            module = self.darwinModules.server;
+          };
+          nixosServiceEvaluates = foundation.lib.mkNixosServiceEvalCheck {
+            inherit pkgs nixpkgs;
+            name = "ezpz-dndz-server";
+            module = self.nixosModules.server;
           };
         };
       devShells = {
@@ -365,6 +390,9 @@
             # is your own `claude` install, which this shell does not
             # provide.
             foundation.packages.${system}.review
+            # The pre-commit hook runs this formatter.  It formats only the
+            # staged content and leaves unstaged content alone.
+            foundation.packages.${system}.format-staged
             # ABI baseline check; provided so `cargo semver-checks` can
             # run locally.  `doCheck = false` skips upstream's
             # target_feature_* snapshot tests, which assert against

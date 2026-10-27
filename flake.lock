@@ -73,6 +73,7 @@
           "changelog-roller"
         ],
         "crane": "crane_3",
+        "nix-darwin": "nix-darwin",
         "nixpkgs": [
           "nixpkgs"
         ],
@@ -80,16 +81,38 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1790336354,
-        "narHash": "sha256-PRfFHEQH0ebvhQKrUFujSgfMuxoio6yt4jsDjo5pnXM=",
+        "lastModified": 1792287606,
+        "narHash": "sha256-lODRF6PnhR4oisvvg4mbxk+FXoFM4IoRJpPZchNgUFo=",
         "owner": "LoganBarnett",
         "repo": "rust-template",
-        "rev": "a5591c2b99284c2ea6322999768ea894ddcc3bd7",
+        "rev": "8e1251cb46461e4df3907631368f7a1bbbf3d68a",
         "type": "github"
       },
       "original": {
         "owner": "LoganBarnett",
         "repo": "rust-template",
+        "type": "github"
+      }
+    },
+    "nix-darwin": {
+      "inputs": {
+        "nixpkgs": [
+          "foundation",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1772129556,
+        "narHash": "sha256-Utk0zd8STPsUJPyjabhzPc5BpPodLTXrwkpXBHYnpeg=",
+        "owner": "nix-darwin",
+        "repo": "nix-darwin",
+        "rev": "ebec37af18215214173c98cf6356d0aca24a2585",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-darwin",
+        "ref": "nix-darwin-25.11",
+        "repo": "nix-darwin",
         "type": "github"
       }
     },

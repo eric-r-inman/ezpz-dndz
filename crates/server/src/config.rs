@@ -12,7 +12,7 @@
 //!   [`RuntimePaths`].
 //! - `database_url`: explicit CLI / file value, defaulting to a
 //!   SQLite file inside `data_dir` (the same directory rule).
-//! - `oidc`: assembled from three CLI / file fields plus the systemd
+//! - `oidc`: assembled from the OIDC CLI / file fields plus the systemd
 //!   `LoadCredential` directory; partial configurations error out.
 //!
 //! `extra_cli` and `extra_file` flatten the OIDC + migration fields
@@ -45,6 +45,11 @@ pub struct ExtraCliFields {
   #[arg(long, env = "ezpz_dndz_oidc_client_secret_file")]
   pub oidc_client_secret_file: Option<PathBuf>,
 
+  /// Public base URL of the service.  The OIDC redirect URI is built from it.
+  /// Required with the other OIDC fields.
+  #[arg(long, env = "ezpz_dndz_base_url")]
+  pub base_url: Option<String>,
+
   /// Email address of the user who should receive the legacy
   /// shared-compendium creatures during the one-time per-user
   /// split migration.  Only consulted on first boot of the post-
@@ -68,6 +73,7 @@ pub struct ExtraFileFields {
   pub oidc_issuer: Option<String>,
   pub oidc_client_id: Option<String>,
   pub oidc_client_secret_file: Option<PathBuf>,
+  pub base_url: Option<String>,
   pub compendium_claim_user: Option<String>,
   pub database_url: Option<String>,
 }
@@ -149,11 +155,6 @@ pub struct Config {
   /// have to bind-mount a single directory.
   #[merge_config(default = "std::path::PathBuf::from(\".\")")]
   pub data_dir: PathBuf,
-
-  /// Base URL of the service (e.g. https://example.com), used to
-  /// construct the OIDC redirect URI.
-  #[merge_config(default = "\"http://localhost:3000\".to_string()")]
-  pub base_url: String,
 
   /// Resolved on-disk locations of the legacy JSON files — inputs
   /// to the one-shot boot import, not live stores.
@@ -255,6 +256,11 @@ impl Config {
       .oidc_client_secret_file
       .clone()
       .or_else(|| file.extra.oidc_client_secret_file.clone());
+    let base_url = cli
+      .extra
+      .base_url
+      .clone()
+      .or_else(|| file.extra.base_url.clone());
 
     match (&oidc_issuer, &oidc_client_id) {
       (None, None) if oidc_secret_file.is_none() => Ok(None),
@@ -280,7 +286,18 @@ impl Config {
             ))
           })?;
 
+        // The provider redirects the browser to `<base_url>/auth/callback`.
+        // Only the deployment knows that address.
+        let base_url = base_url.ok_or_else(|| {
+          ConfigError::Validation(
+            "base_url is required with OIDC: it is where the provider \
+             sends the browser back to"
+              .to_string(),
+          )
+        })?;
+
         Ok(Some(OidcConfig {
+          base_url,
           issuer: issuer.clone(),
           client_id: client_id.clone(),
           client_secret,
@@ -320,7 +337,6 @@ impl ServerApp for Config {
       app_name: <Self as rust_template_foundation::CliApp>::app_name()
         .to_string(),
       listen_address: self.listen_address.clone(),
-      base_url: self.base_url.clone(),
       oidc: self.oidc.clone(),
     }]
   }
