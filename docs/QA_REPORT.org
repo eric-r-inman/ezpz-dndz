@@ -37,6 +37,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 3. Round ability modifiers down.  See QA-COMP-01.  Done.
 4. Give each batched roll its own dice.  See QA-FIGHT-01.  Done.
 5. Let the Condition/Effect editor add a second condition.  See QA-FIGHT-10.
+   Done.
 6. Accept an empty set of Save Chain presets.  See QA-UI-11.
 7. Keep the account's live fight when local work moves in.  See QA-ACCT-02.
 8. Move the account page off ~/me~.  See QA-ACCT-04.
@@ -992,6 +993,7 @@ The suite did not cover these:
 
 *** QA-FIGHT-10: A second condition replaces the first
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Apply Poisoned to an Ogre.  Click its gear again and pick Prone.
 - Expected :: A way to add Prone beside Poisoned.
@@ -1001,7 +1003,9 @@ The suite did not cover these:
   out is to aim at another creature and back.
 - Evidence ::
   ~test_a_second_condition_on_the_same_creature_is_added_beside_the_first~
-- Action :: Add a "New condition" control.  Have the gear reset to add mode.
+- Action :: Fixed.  The gear opens the editor ready to add.  An editor already
+  aimed at the creature keeps its form.  Edit mode has a New condition button
+  that starts a fresh one.
 
 *** QA-FIGHT-11: An unsaved area Save Chain never resolves
 

@@ -3,6 +3,8 @@
 
 * Upcoming
 ** Added
+1. The Condition/Effect editor has a New condition button while it edits one.
+   No action needed.
 ** Fixes
 1. Signing in keeps the account's own custom creatures and groups.  No action
    needed.
@@ -13,6 +15,8 @@
 4. Ability modifiers for odd scores below 10 now match the rules.  No action
    needed.
 5. Rolls fired together give each creature its own dice.  No action needed.
+6. A second condition on one creature goes on beside the first.  No action
+   needed.
 ** Breaking
 ** Maintenance
 ** Security

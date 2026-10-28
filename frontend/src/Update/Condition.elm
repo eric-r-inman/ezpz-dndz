@@ -14,6 +14,7 @@ module Update.Condition exposing
     , failDamageLanded
     , logToggle
     , maxConditionNoteLength
+    , new
     , noteChanged
     , openEdit
     , openFor
@@ -132,11 +133,11 @@ openEditFresh name id model =
             model
 
 
-{-| Open the editor fresh for `target`, ready to add a new
-condition — the gear icon's entry point, distinct from `openEdit`
-which edits one the creature already carries. One already aimed
-here unfolds and scrolls into view rather than being reset, the
-same as every other editor's `openFor`.
+{-| Open the editor for `target`, ready to add a new condition. This
+is the gear icon's entry point. `openEdit` edits a condition the
+creature already carries instead. An editor already aimed here
+unfolds and keeps its form. It stops editing the condition it last
+applied, so the next apply adds rather than replaces.
 -}
 openFor : String -> Model -> ( Model, Cmd Msg )
 openFor target model =
@@ -146,6 +147,7 @@ openFor target model =
                 Just (SurfaceCondition ui) ->
                     if ui.target == target then
                         Model.unfoldDrawer Model.conditionLens model
+                            |> withConditionUi (\u -> { u | editingId = Nothing })
 
                     else
                         Model.openDrawer Model.conditionLens (ConditionUi.fresh target) model
@@ -492,6 +494,14 @@ saveAutoRollSet mode model =
 
 
 -- ── PRESETS ──────────────────────────────────────────────────────────────
+
+
+{-| Leave the condition being edited as it is and start a new one on
+the same target.
+-}
+new : Model -> ( Model, Cmd Msg )
+new model =
+    ( withConditionUi (\u -> ConditionUi.fresh u.target) model, Cmd.none )
 
 
 {-| Empty every setting, keeping the target and the condition being

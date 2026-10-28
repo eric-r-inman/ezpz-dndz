@@ -51,6 +51,7 @@ module View.Tooltips exposing
     , compendiumReset
     , compendiumRowSelect
     , concentrating
+    , conditionNew
     , conditionPresetCancel
     , conditionPresetCategory
     , conditionPresetNameFirst
@@ -1351,3 +1352,8 @@ quickAddCreatureRow creatureName =
 diceFaceRoll : Int -> String
 diceFaceRoll faces =
     "Roll d" ++ String.fromInt faces
+
+
+conditionNew : String
+conditionNew =
+    "Leave this condition as it is and start a new one"

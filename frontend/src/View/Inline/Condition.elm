@@ -720,7 +720,15 @@ applyControls ui canSubmit selectedCount applyLabel =
                 }
     in
     if ui.editingId /= Nothing then
-        div [ class "note-edit__buttons note-edit__buttons--start" ] [ commit ]
+        div [ class "note-edit__buttons note-edit__buttons--start" ]
+            [ commit
+            , button
+                [ class "action-btn"
+                , onClick ConditionNew
+                , Tooltips.attr Tooltips.conditionNew
+                ]
+                [ text "New condition" ]
+            ]
 
     else
         ApplyButton.row "Apply to:"

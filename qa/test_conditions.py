@@ -78,10 +78,6 @@ def test_a_creature_cannot_take_the_same_condition_twice(app):
     assert chip_names(app.card("Goblin Warrior")) == ["Prone"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-10: after an apply the editor only edits that condition, so a second one replaces the first",
-)
 def test_a_second_condition_on_the_same_creature_is_added_beside_the_first(app):
     app.add("Ogre")
     cond = ConditionEditor(app).open_for("Ogre")
@@ -90,6 +86,18 @@ def test_a_second_condition_on_the_same_creature_is_added_beside_the_first(app):
     cond = ConditionEditor(app).open_for("Ogre")
     cond.pick("Prone")
     expect(cond.root.get_by_role("button", name="Target", exact=True)).to_be_visible(timeout=2000)
+    cond.apply()
+    assert chip_names(app.card("Ogre")) == ["Poisoned", "Prone"]
+
+
+def test_new_condition_leaves_the_edited_one_and_adds_another(app):
+    app.add("Ogre")
+    cond = ConditionEditor(app).open_for("Ogre")
+    cond.pick("Poisoned").apply()
+    expect(cond.root.get_by_role("button", name="Apply Changes")).to_be_visible()
+
+    cond.root.get_by_role("button", name="New condition").click()
+    cond.pick("Prone")
     cond.apply()
     assert chip_names(app.card("Ogre")) == ["Poisoned", "Prone"]
 

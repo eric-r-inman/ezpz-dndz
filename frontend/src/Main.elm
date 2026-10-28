@@ -1491,6 +1491,9 @@ updateInner msg model =
         ConditionClear ->
             Update.Condition.clear model
 
+        ConditionNew ->
+            Update.Condition.new model
+
         ConditionPresetSaveStart ->
             Update.Condition.presetSaveStart model
 

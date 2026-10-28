@@ -337,9 +337,10 @@ Each event's rolls now go out as one ~Effects.rollBatch~ and land through
 ~Update.BatchRoll~.  See QA-FIGHT-01.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Let the Condition/Effect editor add a second condition
+* DONE Let the Condition/Effect editor add a second condition
 
-After one apply the editor only edits that condition.  See QA-FIGHT-10.  Part of
+After one apply the editor only edited that condition.  The gear now opens it
+ready to add.  Edit mode has a New condition button.  See QA-FIGHT-10.  Part of
 [[*Work through the findings in the QA report]].
 
 * TODO Accept an empty set of Save Chain presets
