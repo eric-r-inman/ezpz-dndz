@@ -315,12 +315,13 @@ the snapshot's creatures and groups under fresh ids and keeps the account's own.
 An empty snapshot is skipped.  See QA-ACCT-01.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Aim Manage HP before combat and when it begins
+* DONE Aim Manage HP before combat and when it begins
 
-Manage HP has no target until the first Next turn.  Damage does nothing until
-then.  Begin combat also skips the turn rules for the first creature.  See
-QA-TURN-01, QA-UI-18, QA-TURN-02 and QA-FIGHT-09.  Part of
-[[*Work through the findings in the QA report]].
+Manage HP had no target until the first Next turn.  Damage did nothing until
+then.  Quick Add now re-aims the editors and Begin combat aims them at the
+creature whose turn it is.  Begin combat also starts with the first creature
+that can act and runs its turn-start rules.  See QA-TURN-01, QA-UI-18,
+QA-TURN-02 and QA-FIGHT-09.  Part of [[*Work through the findings in the QA report]].
 
 * TODO Round ability modifiers down
 

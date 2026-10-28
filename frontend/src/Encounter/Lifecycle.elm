@@ -1,4 +1,7 @@
-module Encounter.Lifecycle exposing (nextTurn, applyBeginOfTurn, applyEndOfTurn)
+module Encounter.Lifecycle exposing
+    ( nextTurn, applyBeginOfTurn, applyEndOfTurn
+    , begin
+    )
 
 {-| Turn-progression machinery for the encounter manager.
 
@@ -69,6 +72,20 @@ nextTurn enc =
         |> applyEndOfTurn enc.activeName
         |> skipUnplayable (List.length enc.creatures)
         |> applyBeginOfTurnHook
+
+
+{-| Combat's first turn. The first creature in the queue that can act
+takes it. Its turn-start rules run as on any other turn. A queue where
+nobody can act starts on its head.
+-}
+begin : Encounter -> Encounter
+begin enc =
+    case List.filter (not << isUnplayable) enc.creatures ++ enc.creatures of
+        first :: _ ->
+            applyBeginOfTurn first.name { enc | activeName = first.name }
+
+        [] ->
+            enc
 
 
 skipUnplayable : Int -> Encounter -> Encounter

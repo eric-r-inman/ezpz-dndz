@@ -317,9 +317,9 @@ highest.  The app models this with three fields on =Encounter=:
 An empty ~activeName~ is the pre-combat sentinel: the queue is set up but no one
 has acted yet.  Reset / Clear / Load all return the live encounter to round 1
 with nobody active.  In that state the editor column's Turn button dispatches
-~EncounterRun~, which calls ~Encounter.run~ — it sets the active creature to the
-queue head (highest initiative).  Once someone is active the same button
-dispatches ~NextTurn~ instead.
+~EncounterRun~.  That calls ~Encounter.Lifecycle.begin~.  It hands the turn to
+the first creature that can act and runs its turn-start rules.  Once someone is
+active the same button dispatches ~NextTurn~ instead.
 
 Turns advance through =Encounter.Lifecycle.nextTurn=, invoked by
 ~Update.Encounter.nextTurn~ when the user presses the Turn button.  The

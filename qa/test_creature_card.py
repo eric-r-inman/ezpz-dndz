@@ -184,10 +184,6 @@ def test_the_lifecycle_badge_marks_dead_and_reverts_to_down(app):
     expect_pips(card, 1, 0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-09: Begin combat hands the first turn to a creature that is down or dead",
-)
 def test_combat_does_not_open_on_a_creature_that_is_already_down(app):
     app.add("Goblin Warrior", count=2)
     downed(app, "Goblin Warrior", begin=False)

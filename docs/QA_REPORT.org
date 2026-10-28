@@ -33,6 +33,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 1. Stop sign-in from replacing the account's compendium.  See QA-ACCT-01.  Done.
 2. Aim Manage HP before combat and when it begins.  See QA-TURN-01.  The same
    change should run the turn rules for the first creature.  See QA-TURN-02.
+   Done.
 3. Round ability modifiers down.  See QA-COMP-01.
 4. Give each batched roll its own dice.  See QA-FIGHT-01.
 5. Let the Condition/Effect editor add a second condition.  See QA-FIGHT-10.
@@ -83,6 +84,7 @@ The suite did not cover these:
 
 *** QA-TURN-01: Begin combat leaves Manage HP aimed at nobody
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Quick Add an Ogre and a Goblin Warrior.  Press Begin combat.  Type 5
   into Manage HP and press Damage.
@@ -94,11 +96,12 @@ The suite did not cover these:
   either.
 - Evidence ::
   ~test_begin_combat_aims_manage_hp_at_the_creature_whose_turn_it_is~
-- Action :: Send ~appendAtZero~ through ~Model.reaimStale~.  Have ~run~ release
-  the target the way ~nextTurn~ does.
+- Action :: Fixed.  Quick Add re-aims the editors through ~Model.reaimStale~.
+  Begin combat releases the target the way Next turn does.
 
 *** QA-TURN-02: Begin combat gives the first turn to an inactive creature
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Mark the top creature inactive with ∅.  Press Begin combat.
 - Expected :: The first creature that can act gets the turn.  The ∅ tooltip says
@@ -106,8 +109,8 @@ The suite did not cover these:
 - Actual :: The inactive creature becomes active.  ~Encounter.run~ takes the
   head of the queue and runs no turn-start rules.
 - Evidence :: ~test_begin_combat_passes_over_an_inactive_top_creature~
-- Action :: Start with the first creature that passes the skip test
-  ~Lifecycle.nextTurn~ already uses.  Apply ~applyBeginOfTurn~ to it.
+- Action :: Fixed.  ~Encounter.Lifecycle.begin~ starts with the first creature
+  that passes Next turn's skip test.  It runs that creature's turn-start rules.
 
 *** QA-TURN-03: Removing the active creature skips the turn rules
 
@@ -420,6 +423,7 @@ The suite did not cover these:
 
 *** QA-UI-18: Manage HP has no target before combat
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Quick Add two Goblin Warriors.  Type 3 in Manage HP and press Damage.
 - Expected :: The doc on ~Model.reaimStale~ says the editor aims at the head of
@@ -430,9 +434,8 @@ The suite did not cover these:
 - Evidence ::
   ~test_the_open_manage_hp_aims_at_the_head_of_the_queue_before_combat~ and
   ~test_manage_hp_damages_the_active_creature_on_the_first_turn~
-- Action :: This shares a root cause with QA-TURN-01.  One fix covers both.
-  Re-aim the open editor when creatures arrive and when combat begins.  Keep the
-  target when the amount changes.
+- Action :: Fixed with QA-TURN-01.  The open editor re-aims when creatures
+  arrive and when combat begins.
 
 *** QA-UI-19: Esc folds the lowest open panel
 
@@ -975,13 +978,14 @@ The suite did not cover these:
 
 *** QA-FIGHT-09: Begin combat can open on a creature that is down
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: This shares QA-TURN-02's root cause.  ~Encounter.run~ takes the head
   of the queue without the skip rules.  It also skips that creature's
   start-of-turn rules.  Legendary actions spent before Begin combat stayed spent
   on the dragon's first turn.
 - Evidence :: ~test_combat_does_not_open_on_a_creature_that_is_already_down~
-- Action :: Fix it with QA-TURN-02.
+- Action :: Fixed with QA-TURN-02.
 
 *** QA-FIGHT-10: A second condition replaces the first
 

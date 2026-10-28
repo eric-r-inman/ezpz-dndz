@@ -191,10 +191,12 @@ appendAtZero source model =
                 source
     in
     ( addDone
-        { model
-            | encounter =
-                Encounter.Roster.appendCreatures [ newCreature ] model.encounter
-        }
+        (Model.reaimStale
+            { model
+                | encounter =
+                    Encounter.Roster.appendCreatures [ newCreature ] model.encounter
+            }
+        )
     , Cmd.none
     )
 

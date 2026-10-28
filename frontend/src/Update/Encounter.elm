@@ -102,8 +102,7 @@ nextTurn model =
                 ++ Effects.areaRollCmdsFor Encounter.AtEnd outgoingName newEnc
 
         beginRolls =
-            Effects.autoRollCmdsFor Encounter.AutoRollAtBegin newEnc.activeName newEnc
-                ++ Effects.areaRollCmdsFor Encounter.AtBegin newEnc.activeName newEnc
+            turnStartRolls newEnc
 
         scrollCmds =
             if model.preferences.autoScrollActiveCard then
@@ -132,6 +131,15 @@ nextTurn model =
     ( releaseTarget { model | encounter = newEnc, flashConditions = flashes }
     , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls ++ flashCmds)
     )
+
+
+{-| The saves the active creature's turn starts with. These are its
+own saves set to roll then and the saves of areas it stands in.
+-}
+turnStartRolls : Encounter.Encounter -> List (Cmd Msg)
+turnStartRolls enc =
+    Effects.autoRollCmdsFor Encounter.AutoRollAtBegin enc.activeName enc
+        ++ Effects.areaRollCmdsFor Encounter.AtBegin enc.activeName enc
 
 
 {-| A creature taking the turn lets the highlight go, so every
@@ -725,23 +733,26 @@ fallExpression count =
     }
 
 
-{-| Begin combat: pick the highest-initiative creature as
-active. Domain rules live in [`Encounter.run`](Encounter#run);
-this branch handles the scroll-into-view side-effect so the new
-active card is visible.
+{-| Begin combat. [`Encounter.Lifecycle.begin`](Encounter-Lifecycle#begin)
+picks the first creature that can act. Its turn then starts the way
+Next turn starts one. The editors aim at it, its turn-start saves roll
+and its card scrolls into view.
 -}
 run : Model -> ( Model, Cmd Msg )
 run model =
     let
         nextEnc =
-            Encounter.run model.encounter
-    in
-    ( { model | encounter = nextEnc }
-    , if String.isEmpty nextEnc.activeName then
-        Cmd.none
+            Encounter.Lifecycle.begin model.encounter
 
-      else
-        Effects.scrollActiveIntoView nextEnc.activeName
+        scrollCmds =
+            if String.isEmpty nextEnc.activeName then
+                []
+
+            else
+                [ Effects.scrollActiveIntoView nextEnc.activeName ]
+    in
+    ( releaseTarget { model | encounter = nextEnc }
+    , Cmd.batch (scrollCmds ++ turnStartRolls nextEnc)
     )
 
 

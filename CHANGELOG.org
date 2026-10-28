@@ -6,6 +6,10 @@
 ** Fixes
 1. Signing in keeps the account's own custom creatures and groups.  No action
    needed.
+2. Manage HP aims at the right creature as soon as creatures arrive and when
+   combat begins.  No action needed.
+3. Begin combat hands the first turn to the first creature that can act and runs
+   its turn-start rules.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

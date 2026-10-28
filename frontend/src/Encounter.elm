@@ -7,7 +7,6 @@ module Encounter exposing
     , Timer
     , standardConditions
     , empty
-    , run
     , setActive, activeCreature
     , mapCreature, nextCover, toggleReaction, toggleSpecialReaction
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
@@ -48,11 +47,9 @@ damage), it belongs here.
 
 # Combat startup
 
-An empty `activeName` is the pre-combat sentinel: the queue is
-set up but no one has taken a turn. [`run`](#run) picks the
-first creature as active and the fight is underway.
-
-@docs run
+An empty `activeName` is the pre-combat sentinel. The queue is set up
+but no one has taken a turn. `Encounter.Lifecycle.begin` hands the
+first turn out and the fight is underway.
 
 
 # Turn marker
@@ -558,8 +555,9 @@ fixture (see `Encounter.Seed.initialEncounter`) — but the running
 app starts empty and either loads a persisted encounter from the
 server or waits for the user to add creatures from the compendium.
 
-An encounter starts at round 1 with nobody active; the empty
-`activeName` is the pre-combat sentinel — see [`run`](#run).
+An encounter starts at round 1 with nobody active. The empty
+`activeName` is the pre-combat sentinel. `Encounter.Lifecycle.begin`
+ends it.
 
 -}
 empty : Encounter
@@ -570,30 +568,6 @@ empty =
     , treasure = Nothing
     , treasureSettings = Encounter.Treasure.defaultSettings
     }
-
-
-{-| Begin combat: pick the first creature in the queue as
-active. The queue is in initiative order, so "first" is the
-highest-initiative combatant. The round is left alone — a GM
-who set it before starting meant it.
-
-This is the begin-combat half of the empty-`activeName`
-sentinel: the GM lays out the encounter with nobody active,
-then starts it and the queue begins ticking.
-
--}
-run : Encounter -> Encounter
-run enc =
-    let
-        firstActiveName =
-            case List.head enc.creatures of
-                Just c ->
-                    c.name
-
-                Nothing ->
-                    ""
-    in
-    { enc | activeName = firstActiveName }
 
 
 {-| The creature an editor aims at when nothing named one: the

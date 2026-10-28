@@ -71,10 +71,6 @@ def test_begin_combat_hands_the_first_turn_to_the_highest_initiative(app):
     app.shot("combat-begun")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-01: after Quick Add and Begin combat, Manage HP aims at nobody",
-)
 def test_begin_combat_aims_manage_hp_at_the_creature_whose_turn_it_is(app):
     app.add("Ogre")
     app.add("Goblin Warrior")
@@ -219,10 +215,6 @@ def test_downed_and_dead_creatures_lose_their_turns(app):
     assert turn_order(app, 3) == [(2, "Wolf"), (2, "Ogre"), (3, "Goblin Warrior 2")]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-02: Begin combat hands the first turn to an inactive creature",
-)
 def test_begin_combat_passes_over_an_inactive_top_creature(app):
     fight(app)
     toggle_inactive(app, "Goblin Warrior 2")

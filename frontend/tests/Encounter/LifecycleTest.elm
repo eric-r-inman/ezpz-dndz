@@ -16,7 +16,8 @@ import Test exposing (Test, describe, test)
 suite : Test
 suite =
     describe "Encounter.Lifecycle"
-        [ nextTurnSuite
+        [ beginSuite
+        , nextTurnSuite
         , deadSkipSuite
         , countdownTickSuite
         , untilTurnExpireSuite
@@ -104,6 +105,41 @@ type alias Condition =
 
 
 -- ── nextTurn ─────────────────────────────────────────────────────────────
+
+
+beginSuite : Test
+beginSuite =
+    let
+        idle =
+            { threeCreatures | activeName = "" }
+    in
+    describe "begin"
+        [ test "hands the first turn to the head of the queue" <|
+            \_ ->
+                (Lifecycle.begin idle).activeName
+                    |> Expect.equal "A"
+        , test "passes over an inactive head" <|
+            \_ ->
+                Lifecycle.begin (Encounter.mapCreature "A" (\c -> { c | inactive = True }) idle)
+                    |> .activeName
+                    |> Expect.equal "B"
+        , test "passes over a downed head that is not making death saves" <|
+            \_ ->
+                Lifecycle.begin (Encounter.mapCreature "A" (\c -> { c | currentHp = 0 }) idle)
+                    |> .activeName
+                    |> Expect.equal "B"
+        , test "runs the first creature's turn-start rules" <|
+            \_ ->
+                Lifecycle.begin (Encounter.mapCreature "A" (\c -> { c | reactionUsed = True }) idle)
+                    |> .creatures
+                    |> List.map .reactionUsed
+                    |> Expect.equal [ False, False, False ]
+        , test "starts on the head when nobody can act" <|
+            \_ ->
+                Lifecycle.begin { idle | creatures = List.map (\c -> { c | inactive = True }) idle.creatures }
+                    |> .activeName
+                    |> Expect.equal "A"
+        ]
 
 
 nextTurnSuite : Test
