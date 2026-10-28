@@ -224,10 +224,6 @@ def test_signing_up_with_a_local_fight_raises_a_toast_that_fades_on_its_own(app)
     expect(toast).to_have_count(0, timeout=8000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-11: every new account is greeted by a Save Chain decode error toast",
-)
 def test_a_fresh_sign_up_raises_no_error_toast(app):
     app.sign_up()
     app.page.wait_for_load_state("networkidle")

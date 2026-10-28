@@ -1071,10 +1071,6 @@ def test_signed_in_clear_all_empties_the_library(app, signed_in_tab):
     expect(tab.rows()).to_have_count(0, timeout=2000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-13: every fresh sign-in toasts a Save Chain decode error",
-)
 def test_signed_in_library_opens_without_an_error_toast(app, signed_in_tab):
     tab = signed_in_tab
     tab.select("Ogre")

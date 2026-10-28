@@ -462,10 +462,6 @@ def test_signing_in_with_an_anonymous_encounter_keeps_the_accounts_live_fight(ap
     assert ["Ogre"] in kept, f"The ogre fight is gone.  The account holds {kept}."
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-03: an account without Save Chain presets shows a decode error on every boot",
-)
 def test_a_new_account_boots_without_an_error_toast(app):
     app.sign_up(DM)
     settled_network(app.page)

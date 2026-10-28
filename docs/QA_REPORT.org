@@ -38,7 +38,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 4. Give each batched roll its own dice.  See QA-FIGHT-01.  Done.
 5. Let the Condition/Effect editor add a second condition.  See QA-FIGHT-10.
    Done.
-6. Accept an empty set of Save Chain presets.  See QA-UI-11.
+6. Accept an empty set of Save Chain presets.  See QA-UI-11.  Done.
 7. Keep the account's live fight when local work moves in.  See QA-ACCT-02.
 8. Move the account page off ~/me~.  See QA-ACCT-04.
 9. Repair the Treasure Table editor and Tune your rolls.  See QA-BUILD-09,
@@ -359,6 +359,7 @@ The suite did not cover these:
 
 *** QA-UI-11: Every new account gets an error toast
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Register an account.
 - Expected :: No error.
@@ -366,7 +367,7 @@ The suite did not cover these:
   ~GET /api/save-chain-presets~ answers ~null~ for a new account.  The decoder
   in ~Update.UserSync~ rejects it.
 - Evidence :: ~test_a_fresh_sign_up_raises_no_error_toast~
-- Action :: Answer an empty set from the server or decode ~null~ as no presets.
+- Action :: Fixed.  The client decodes ~null~ as no presets.
 
 *** QA-UI-12: A sign-up announces it imported nothing
 
@@ -508,14 +509,15 @@ The suite did not cover these:
 
 *** QA-ACCT-03: Every boot of an account shows a Save Chain error
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Sign up and load the app.
 - Expected :: No error.
 - Actual :: The same fault as QA-UI-11 shows on every load.  The same decode
   failure stops anonymous Save Chain presets from moving into the account.
 - Evidence :: ~test_a_new_account_boots_without_an_error_toast~
-- Action :: Decode ~null~ as no presets.  The condition preset decoder already
-  does.
+- Action :: Fixed with QA-UI-11.  Anonymous Save Chain presets now move into the
+  account too.
 
 *** QA-ACCT-04: Reloading the account page shows raw JSON
 
@@ -1240,6 +1242,7 @@ The suite did not cover these:
 
 *** QA-COMP-13: The Save Chain error shows in the compendium tab too
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: This is QA-UI-11 as the compendium tab shows it.
 - Evidence :: ~test_signed_in_library_opens_without_an_error_toast~

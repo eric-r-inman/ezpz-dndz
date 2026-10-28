@@ -17,6 +17,7 @@
 5. Rolls fired together give each creature its own dice.  No action needed.
 6. A second condition on one creature goes on beside the first.  No action
    needed.
+7. A new account boots without the Save Chain preset error.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

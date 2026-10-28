@@ -343,10 +343,11 @@ After one apply the editor only edited that condition.  The gear now opens it
 ready to add.  Edit mode has a New condition button.  See QA-FIGHT-10.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Accept an empty set of Save Chain presets
+* DONE Accept an empty set of Save Chain presets
 
-A new account answers ~null~ and every boot shows a decode error.  See QA-UI-11.
-Part of [[*Work through the findings in the QA report]].
+A new account answered ~null~ and every boot showed a decode error.  The decoder
+now reads ~null~ as no presets, as the condition preset decoder does.  See
+QA-UI-11.  Part of [[*Work through the findings in the QA report]].
 
 * TODO Keep the account's live fight when local work moves in
 
