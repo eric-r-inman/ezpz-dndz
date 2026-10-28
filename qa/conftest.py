@@ -16,6 +16,7 @@ import urllib.request
 
 import pytest
 
+from pages import compendium as library
 from pages.app import App
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
@@ -173,6 +174,23 @@ def app(page, server, request, browser_name):
     assert not instance.page_errors, "The page threw:\n" + "\n".join(
         instance.page_errors
     )
+
+
+@pytest.fixture
+def tab(app):
+    """The compendium tab.  It opens the way a DM opens it."""
+    compendium = library.open_from(app)
+    yield compendium
+    compendium.assert_quiet()
+
+
+@pytest.fixture
+def signed_in_tab(app):
+    """The compendium tab of a DM who just made an account."""
+    app.sign_up()
+    compendium = library.open_from(app)
+    yield compendium
+    compendium.assert_quiet()
 
 
 @pytest.fixture

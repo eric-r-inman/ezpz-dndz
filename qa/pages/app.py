@@ -9,6 +9,12 @@ import re
 
 from playwright.sync_api import expect
 
+NEXT_TURN = "Advance to next creature in initiative order"
+ACTIVE_MARKER = "It is this creature's turn"
+DM = "dm@example.test"
+PASSWORD = "correct horse battery staple"
+BEGIN_COMBAT = re.compile("^Begin combat")
+
 
 def settle(page):
     """Waits until Elm has drawn the view an action produced.
@@ -19,6 +25,15 @@ def settle(page):
     page.evaluate(
         "() => new Promise(done => requestAnimationFrame("
         "() => requestAnimationFrame(done)))"
+    )
+
+
+def settle_animations(page):
+    """Waits for fades, slides and the page's other finite animations."""
+    page.evaluate(
+        "() => Promise.all(document.getAnimations()"
+        ".filter(a => a.effect && a.effect.getTiming().iterations !== Infinity)"
+        ".map(a => a.finished.catch(() => null)))"
     )
 
 
@@ -46,12 +61,7 @@ class App:
     def settle(self):
         settle(self.page)
 
-    def sign_up(
-        self,
-        email="dm@example.test",
-        password="correct horse battery staple",
-        name="Test DM",
-    ):
+    def sign_up(self, email=DM, password=PASSWORD, name="Test DM"):
         """Registers an account and reloads the page signed in.
 
         It goes through the API, which shares the page's cookies.  The
@@ -63,6 +73,20 @@ class App:
         )
         assert response.ok, f"Sign-up failed: {response.status} {response.text()}"
         self.reload()
+
+    def sign_in(self, email=DM, password=PASSWORD):
+        """Signs in to an existing account and reloads the page signed in."""
+        response = self.page.request.post(
+            self.server.base_url + "/api/auth/login",
+            data={"email": email, "password": password},
+        )
+        assert response.ok, f"Sign-in failed: {response.status} {response.text()}"
+        self.reload()
+
+    def beside(self, page, label):
+        """Another page on the same server.  Its screenshots go beside these."""
+        shots = self.shots_dir.parent / f"{self.shots_dir.name}--{label}"
+        return App(page, self.server, shots)
 
     def shot(self, step):
         """Saves a full-page screenshot for the human pass over the run."""
@@ -100,14 +124,17 @@ class App:
     def card(self, name):
         return Card(self.page, name)
 
-    def card_names(self):
-        """Creature names in queue order."""
-        boxes = self.page.get_by_role("article").get_by_role(
+    def card_boxes(self):
+        """Each card's select box in queue order."""
+        return self.page.get_by_role("article").get_by_role(
             "checkbox", name=re.compile("^Select ")
         )
+
+    def card_names(self):
+        """Creature names in queue order."""
         return [
             label.removeprefix("Select ")
-            for label in boxes.evaluate_all(
+            for label in self.card_boxes().evaluate_all(
                 "els => els.map(e => e.getAttribute('aria-label'))"
             )
         ]
@@ -115,13 +142,11 @@ class App:
     # Running the fight.
 
     def begin_combat(self):
-        self.page.get_by_role("button", name=re.compile("^Begin combat")).click()
+        self.page.get_by_role("button", name=BEGIN_COMBAT).click()
         self.settle()
 
     def next_turn(self):
-        self.page.get_by_role(
-            "button", name="Advance to next creature in initiative order"
-        ).click()
+        self.page.get_by_role("button", name=NEXT_TURN).click()
         self.settle()
 
     def round_number(self):
@@ -130,7 +155,7 @@ class App:
 
     def active_name(self):
         """The creature whose turn it is, or None before the fight starts."""
-        marker = self.page.get_by_role("button", name="It is this creature's turn")
+        marker = self.page.get_by_role("button", name=ACTIVE_MARKER)
         if marker.count() == 0:
             return None
         card = self.page.get_by_role("article").filter(has=marker)
@@ -215,9 +240,19 @@ class Card:
         label = self.root.get_by_role("button", name=re.compile("^Initiative ")).inner_text()
         return int(re.search(r"-?\d+", label).group())
 
-    def select(self):
-        self.root.get_by_role("checkbox", name=f"Select {self.name}", exact=True).check()
+    def checkbox(self):
+        return self.root.get_by_role("checkbox", name=f"Select {self.name}", exact=True)
+
+    def select(self, shift=False):
+        """Clicks the card's checkbox.  With shift it selects or clears all."""
+        box = self.checkbox()
+        was = box.is_checked()
+        # The app cancels the native toggle and draws the box itself a frame
+        # later.  Playwright's check() reads that as a failed click.
+        box.click(modifiers=["Shift"] if shift else None)
         settle(self.page)
+        if not shift:
+            expect(box).to_be_checked(checked=not was)
 
     def remove(self):
         self.root.get_by_role("button", name="Remove", exact=True).click()

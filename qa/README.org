@@ -35,7 +35,8 @@ handling, focus and layout.
 
 Everything lands under ~target/qa/~, which git ignores.  A failing scenario
 leaves a screenshot and a Playwright trace in ~target/qa/artifacts/~.  Open the
-trace with ~playwright show-trace~ in the ~qa~ shell.
+trace with ~playwright show-trace~ in the ~qa~ shell.  The next run clears that
+folder.  Read a trace before running again.
 
 A scenario can also save named screenshots of the states it reaches.  They land
 in ~target/qa/shots/~.  They are for a person reviewing the run, since an
