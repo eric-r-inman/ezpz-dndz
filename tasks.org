@@ -307,12 +307,12 @@ one.  Each finding that a scenario shows carries a strict ~xfail~.  A fix makes
 that scenario pass.  The strict mark then fails ~just qa~ until the fix removes
 it.
 
-* TODO Stop sign-in from replacing the account's compendium
+* DONE Stop sign-in from replacing the account's compendium
 
-Signing in posts the browser's signed-out compendium to the import endpoint.
-That endpoint replaces the account's creatures and groups.  A plain sign-out and
-sign-in then empties them.  Migrate only a snapshot that holds creatures the DM
-made.  Merge by id.  See QA-ACCT-01.  Part of
+Signing in posted the browser's signed-out compendium to the import endpoint.
+That endpoint replaces the account's creatures and groups.  Sign-in now appends
+the snapshot's creatures and groups under fresh ids and keeps the account's own.
+An empty snapshot is skipped.  See QA-ACCT-01.  Part of
 [[*Work through the findings in the QA report]].
 
 * TODO Aim Manage HP before combat and when it begins

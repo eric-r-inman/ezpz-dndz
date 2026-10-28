@@ -4,19 +4,16 @@
 * Summary
 
 The suite played every area of the app as a DM would.  It ran in Chromium and
-Firefox.  It found one open blocker and 14 major faults among about 110 distinct
-issues.  A second blocker turned up while the suite was being built.  It is
-fixed in v0.35.0.
+Firefox.  It found two blockers and 14 major faults among about 110 distinct
+issues.  Both blockers are fixed.  One turned up while the suite was being built
+and shipped as a fix in v0.35.0.  The other let a sign-in replace the account's
+custom creatures and groups.
 
-The open blocker loses data.  Signing in through the form replaces the account's
-custom creatures and groups with whatever the browser held while signed out.
-That is usually nothing.  A plain sign-out and sign-in then empties the account.
-Until it is fixed, export the compendium before signing out.
-
-The suite holds 443 scenarios.  The last run passed 432 cases and held 156 as
-known faults.  A known fault is a strict ~xfail~ that names its finding below.
-No case failed.  Some findings show in more than one area.  A repeat points to
-its first entry.  The table counts a repeat in each area it shows in.
+The suite holds 443 scenarios.  The first full run passed 432 cases and held 156
+as known faults.  A known fault is a strict ~xfail~ that names its finding
+below.  No case failed.  A finding marked fixed has had its ~xfail~ removed.
+Some findings show in more than one area.  A repeat points to its first entry.
+The table counts a repeat in each area it shows in.
 
 | Area                         | Blocker | Major | Minor | Cosmetic | Question |
 |------------------------------+---------+-------+-------+----------+----------|
@@ -31,9 +28,9 @@ its first entry.  The table counts a repeat in each area it shows in.
 * Action items
 
 The list runs from the most harm to a DM at the table to the least.  Items 1 to
-15 are each a ~TODO~ in ~tasks.org~.
+15 each have an entry in ~tasks.org~.  It is marked DONE once the item is fixed.
 
-1. Stop sign-in from replacing the account's compendium.  See QA-ACCT-01.
+1. Stop sign-in from replacing the account's compendium.  See QA-ACCT-01.  Done.
 2. Aim Manage HP before combat and when it begins.  See QA-TURN-01.  The same
    change should run the turn rules for the first creature.  See QA-TURN-02.
 3. Round ability modifiers down.  See QA-COMP-01.
@@ -369,6 +366,7 @@ The suite did not cover these:
 
 *** QA-UI-12: A sign-up announces it imported nothing
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: A sign-up with no local work toasts "Imported 0 creatures from your
   pre-sign-in session."
@@ -473,6 +471,7 @@ The suite did not cover these:
 
 *** QA-ACCT-01: Signing in erases the account's own creatures and groups
 
+- Status :: fixed
 - Severity :: blocker
 - Steps :: Sign in.  Make a custom creature and a compendium group.  Sign out.
   Sign in again through the form.
@@ -486,9 +485,8 @@ The suite did not cover these:
 - Evidence :: ~test_signing_out_and_back_in_keeps_the_dms_creatures~,
   ~test_signing_in_keeps_the_accounts_own_creatures_and_groups~ and
   ~test_signing_in_with_anonymous_creatures_adds_them_beside_the_accounts_own~
-- Action :: Migrate only a snapshot that holds creatures the DM made.  Merge by
-  id rather than replace.  Never send an empty group list.  Until it is fixed,
-  export the compendium before signing out.
+- Action :: Fixed.  Sign-in appends the snapshot's creatures and groups under
+  fresh ids and keeps the account's own.  An empty snapshot is skipped.
 
 *** QA-ACCT-02: Signing in with local work discards the account's live fight
 
@@ -1271,6 +1269,7 @@ The suite did not cover these:
 
 *** QA-COMP-18: Signing out and back in wipes the account's creatures
 
+- Status :: fixed
 - Severity :: blocker
 - Actual :: This is QA-ACCT-01 as the compendium shows it.  A group "Hag Coven"
   and a creature "Bog Hag" were gone after one sign-out and sign-in.

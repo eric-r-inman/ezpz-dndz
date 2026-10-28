@@ -364,34 +364,23 @@ migrateLocalEncounterCmd raw dateLabel =
             Cmd.none
 
 
-{-| Replace the user's server compendium with the locally-stored
-list when the anonymous session had any changes. Uses the bare-
-array `POST /api/compendium/import` body so the server keeps the
-caller's groups intact — groups migration is handled separately
-in Round 7's flow.
-
-For brand-new accounts (just signed up after an anonymous trial)
-this populates the user's compendium with whatever they were
-working with anonymously. For pre-existing accounts who happened
-to use anonymous mode on this device first, this DOES replace
-their server compendium with the local one — that's the
-documented behavior of the import endpoint; users who want both
-can Export their server data first.
-
+{-| Add the signed-out session's creatures and groups to the account.
+The merge keeps what the account already holds. A snapshot with
+nothing in it is only cleared, so a sign-in that brings no work along
+changes nothing and announces nothing.
 -}
 migrateLocalCompendiumCmd : Maybe Decode.Value -> Cmd Msg
 migrateLocalCompendiumCmd raw =
-    case raw of
-        Just value ->
-            case Decode.decodeValue Compendium.Wire.decodeLocalCompendiumSnapshot value of
-                Ok snap ->
-                    Compendium.Wire.importCmd
-                        (LocalCompendiumMigrated (List.length snap.creatures))
-                        snap.creatures
-                        snap.groups
+    case Maybe.andThen (Decode.decodeValue Compendium.Wire.decodeLocalCompendiumSnapshot >> Result.toMaybe) raw of
+        Just snap ->
+            if List.isEmpty snap.creatures && List.isEmpty snap.groups then
+                Ports.clearLocalCompendium ()
 
-                Err _ ->
-                    Cmd.none
+            else
+                Compendium.Wire.mergeCmd
+                    (LocalCompendiumMigrated (List.length snap.creatures))
+                    snap.creatures
+                    snap.groups
 
         Nothing ->
             Cmd.none
@@ -519,19 +508,14 @@ localCompendiumMigrated count result model =
         Ok () ->
             let
                 ( withToast, toastCmd ) =
-                    Update.Toast.push
-                        ToastSuccess
-                        ("Imported "
-                            ++ String.fromInt count
-                            ++ " creatures from your pre-sign-in session."
-                        )
-                        model
+                    Update.Toast.push ToastSuccess (migratedMessage count) model
             in
             ( withToast
             , Cmd.batch
                 [ toastCmd
                 , Ports.clearLocalCompendium ()
                 , Compendium.Wire.fetchAll CompendiumLoaded
+                , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
                 ]
             )
 
@@ -540,6 +524,19 @@ localCompendiumMigrated count result model =
                 ToastError
                 "Couldn't import your pre-sign-in compendium changes. They're still in this browser."
                 model
+
+
+migratedMessage : Int -> String
+migratedMessage count =
+    case count of
+        0 ->
+            "Imported your pre-sign-in creature groups."
+
+        1 ->
+            "Imported 1 creature from your pre-sign-in session."
+
+        _ ->
+            "Imported " ++ String.fromInt count ++ " creatures from your pre-sign-in session."
 
 
 logout : Model -> ( Model, Cmd Msg )

@@ -390,7 +390,7 @@ def test_anonymous_work_moves_into_a_new_account(app):
     )
     wait_signed_in(app, "Dee Em")
     expect(success_toast(app.page, "Saved your pre-sign-in encounter as “Local — ")).to_be_visible()
-    expect(success_toast(app.page, "Imported 1 creatures from your pre-sign-in session.")).to_be_visible()
+    expect(success_toast(app.page, "Imported 1 creature from your pre-sign-in session.")).to_be_visible()
     shot(app, "moved-in")
     settled_network(app.page)
     assert app.card_names() == PARTY
@@ -406,10 +406,6 @@ def test_anonymous_work_moves_into_a_new_account(app):
     assert "encounter" not in left_behind and "compendium" not in left_behind
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-01: signing in through the form erases the account's own creatures and groups",
-)
 def test_signing_in_keeps_the_accounts_own_creatures_and_groups(app, devices):
     register(app.page, DM)
     hag = create_creature(app.page, "Bramble Hag")
@@ -423,10 +419,6 @@ def test_signing_in_keeps_the_accounts_own_creatures_and_groups(app, devices):
     assert kept == (["Bramble Hag"], ["Hag coven"])
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-01: signing in through the form erases the account's own creatures and groups",
-)
 def test_signing_out_and_back_in_keeps_the_dms_creatures(app):
     app.sign_up(DM, PASSWORD, "Dee Em")
     create_creature(app.page, "Bramble Hag")
@@ -438,10 +430,6 @@ def test_signing_out_and_back_in_keeps_the_dms_creatures(app):
     assert own_creature_names(app.page) == ["Bramble Hag"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-01: signing in through the form erases the account's own creatures and groups",
-)
 def test_signing_in_with_anonymous_creatures_adds_them_beside_the_accounts_own(app, devices):
     register(app.page, DM)
     create_creature(app.page, "Bramble Hag")

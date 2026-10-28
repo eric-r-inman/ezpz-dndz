@@ -119,14 +119,7 @@ impl CompendiumGroupStore {
       updated_at: now,
     };
     let mut tx = self.db.pool().begin().await.map_err(begin_error)?;
-    let position = sqlx::query_scalar::<_, i64>(
-      "SELECT COALESCE(MAX(position) + 1, 0) FROM compendium_groups \
-       WHERE user_id = $1",
-    )
-    .bind(user_id.as_str())
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(read_error)?;
+    let position = next_position(&mut tx, user_id).await?;
     insert_group(&mut tx, user_id, position, &group).await?;
     tx.commit().await.map_err(commit_error)?;
     Ok(group)
@@ -192,6 +185,20 @@ impl CompendiumGroupStore {
       .map_err(write_error)?;
     for (i, group) in groups.iter().enumerate() {
       insert_group(&mut tx, user_id, i as i64, group).await?;
+    }
+    tx.commit().await.map_err(commit_error)
+  }
+
+  /// Append `groups` to this user's list and keep what is there.
+  pub async fn append_for_user(
+    &self,
+    user_id: &UserId,
+    groups: Vec<Group>,
+  ) -> Result<(), CompendiumStoreError> {
+    let mut tx = self.db.pool().begin().await.map_err(begin_error)?;
+    let first = next_position(&mut tx, user_id).await?;
+    for (i, group) in groups.iter().enumerate() {
+      insert_group(&mut tx, user_id, first + i as i64, group).await?;
     }
     tx.commit().await.map_err(commit_error)
   }
@@ -364,6 +371,21 @@ fn parse_minion(token: &str) -> Result<MinionType, CompendiumStoreError> {
     "one" => Ok(MinionType::One),
     other => Err(decode_error(format!("unknown minion type {other:?}"))),
   }
+}
+
+/// The next free list slot for this user.  Appends go at the end.
+async fn next_position(
+  conn: &mut sqlx::AnyConnection,
+  user_id: &UserId,
+) -> Result<i64, CompendiumStoreError> {
+  sqlx::query_scalar::<_, i64>(
+    "SELECT COALESCE(MAX(position) + 1, 0) FROM compendium_groups \
+     WHERE user_id = $1",
+  )
+  .bind(user_id.as_str())
+  .fetch_one(conn)
+  .await
+  .map_err(read_error)
 }
 
 fn epoch_millis() -> i64 {

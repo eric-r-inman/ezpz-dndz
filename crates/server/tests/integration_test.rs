@@ -2373,3 +2373,112 @@ fn config_refuses_oidc_without_a_base_url() {
     "error should name base_url, got: {msg}"
   );
 }
+
+async fn send_json(
+  app: &Router,
+  cookie: &str,
+  method: &str,
+  uri: &str,
+  body: serde_json::Value,
+) -> axum::response::Response {
+  app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method(method)
+        .uri(uri)
+        .header("content-type", "application/json")
+        .header("cookie", cookie)
+        .body(Body::from(body.to_string()))
+        .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
+async fn list_groups(app: &Router, cookie: &str) -> Vec<serde_json::Value> {
+  let response = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/compendium/groups")
+        .header("cookie", cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(response.status(), StatusCode::OK);
+  serde_json::from_str(&read_body(response).await).unwrap()
+}
+
+#[tokio::test]
+async fn test_compendium_merge_keeps_what_the_account_already_holds() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+  let own_group = serde_json::json!({
+      "name": "Own Patrol",
+      "initiative_mode": { "type": "each_rolls" },
+      "entries": []
+  });
+  let created =
+    send_json(&app, &cookie, "POST", "/api/compendium/groups", own_group).await;
+  assert_eq!(created.status(), StatusCode::CREATED);
+
+  // A signed-out session's creature, copied from a bundled one.
+  let mut local = list_creatures(&app, &cookie)
+    .await
+    .into_iter()
+    .find(|c| c["is_bundled"] == true)
+    .expect("a bundled creature");
+  local["id"] = "local-1".into();
+  local["name"] = "Bog Hag".into();
+  local["is_bundled"] = false.into();
+  local["created_at"] = 0.into();
+  let snapshot = serde_json::json!({
+      "creatures": [local],
+      "groups": [{
+          "id": "local-group",
+          "name": "Coven",
+          "initiative_mode": { "type": "each_rolls" },
+          "entries": [{ "creature_id": "local-1", "count": 2 }],
+          "created_at": 0,
+          "updated_at": 0
+      }]
+  });
+
+  // Two browsers can send the same local ids.  Both merges land.
+  for _ in 0..2 {
+    let merged = send_json(
+      &app,
+      &cookie,
+      "POST",
+      "/api/compendium/merge",
+      snapshot.clone(),
+    )
+    .await;
+    assert_eq!(merged.status(), StatusCode::OK);
+  }
+
+  let hags: Vec<serde_json::Value> = list_creatures(&app, &cookie)
+    .await
+    .into_iter()
+    .filter(|c| c["name"] == "Bog Hag")
+    .collect();
+  assert_eq!(hags.len(), 2);
+  assert!(hags.iter().all(|c| c["id"] != "local-1"));
+  assert!(hags.iter().all(|c| c["created_at"].as_i64().unwrap() > 0));
+
+  let groups = list_groups(&app, &cookie).await;
+  let names: Vec<&str> =
+    groups.iter().map(|g| g["name"].as_str().unwrap()).collect();
+  assert_eq!(names, ["Own Patrol", "Coven", "Coven"]);
+  let coven_members: Vec<&str> = groups[1..]
+    .iter()
+    .map(|g| g["entries"][0]["creature_id"].as_str().unwrap())
+    .collect();
+  let hag_ids: Vec<&str> =
+    hags.iter().map(|c| c["id"].as_str().unwrap()).collect();
+  assert!(coven_members.iter().all(|id| hag_ids.contains(id)));
+}

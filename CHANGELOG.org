@@ -4,6 +4,8 @@
 * Upcoming
 ** Added
 ** Fixes
+1. Signing in keeps the account's own custom creatures and groups.  No action
+   needed.
 ** Breaking
 ** Maintenance
 ** Security

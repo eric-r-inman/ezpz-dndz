@@ -695,10 +695,6 @@ def test_signed_out_creature_follows_the_dm_into_a_new_account(app, tab, bundled
     signed_in.assert_quiet()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-18: signing out and back in wipes the account's own creatures and groups",
-)
 def test_signing_out_and_back_in_keeps_the_accounts_creatures_and_groups(
     app, signed_in_tab
 ):
@@ -713,7 +709,6 @@ def test_signing_out_and_back_in_keeps_the_accounts_creatures_and_groups(
     assert api(app.page, "POST", "/api/auth/logout").status == 204
     app.reload()
     app.sign_in()
-    expect(app.page.get_by_text(re.compile("from your pre-sign-in session"))).to_be_visible()
     app.shot("signed-back-in")
 
     kept = (

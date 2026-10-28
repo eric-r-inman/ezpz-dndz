@@ -235,10 +235,6 @@ def test_a_fresh_sign_up_raises_no_error_toast(app):
     expect(error_toasts(app.page)).to_have_count(0, timeout=1000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-12: a sign-up with nothing to import still toasts that it imported 0 creatures",
-)
 def test_a_fresh_sign_up_does_not_announce_importing_nothing(app):
     app.sign_up()
     app.page.wait_for_load_state("networkidle")
