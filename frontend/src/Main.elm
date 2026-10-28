@@ -45,8 +45,6 @@ import Msg
         , FeatureGroup(..)
         , HpField(..)
         , HpKind(..)
-        , MeInfo
-        , MeStatus(..)
         , Msg(..)
         , RollMode(..)
         , RollScope(..)
@@ -586,7 +584,6 @@ init flags url key =
         { key = key
         , url = url
         , route = route
-        , me = Loading
         , auth = Auth.AuthLoading
         , loginUi = LoginUi.empty
         , encounter = Encounter.empty
@@ -700,10 +697,7 @@ init flags url key =
       -- `Update.Auth.meReceived` because each one's destination —
       -- server route vs. public bundle vs. localStorage — depends
       -- on the cookie probe's result.
-    , Cmd.batch
-        [ Effects.fetchAuthMe
-        , Effects.cmdForRoute route
-        ]
+    , Effects.fetchAuthMe
     )
 
 
@@ -950,9 +944,6 @@ updateInner msg model =
 
         UrlChanged url ->
             Update.Shell.urlChanged url model
-
-        GotMe result ->
-            Update.Shell.gotMe result model
 
         NextTurn ->
             Update.Encounter.nextTurn model
@@ -2937,7 +2928,7 @@ viewPage model =
         Login ->
             View.Login.view model.loginUi
 
-        Me ->
+        Account ->
             View.Account.view model
 
         Donate ->

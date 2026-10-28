@@ -241,10 +241,6 @@ def test_a_dm_renames_themselves_and_the_new_name_sticks(app):
     assert api(app.page, "GET", "/api/auth/me").json()["display_name"] == "Dungeon Mistress"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-04: loading /me directly shows the server's JSON, not the account page",
-)
 def test_reloading_the_account_page_keeps_the_dm_on_it(app):
     app.sign_up(DM, PASSWORD, "Dee Em")
     AccountPage(app.page, app.server.base_url).goto("Dee Em")

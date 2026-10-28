@@ -20,7 +20,9 @@
 7. A new account boots without the Save Chain preset error.  No action needed.
 8. Signing in with a fight built while signed out saves the account's own live
    fight under a name before replacing it.  No action needed.
+9. Reloading the account page keeps the DM on it.  No action needed.
 ** Breaking
+1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 ** Maintenance
 ** Security
 * v0.36.0

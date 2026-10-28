@@ -41,7 +41,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 6. Accept an empty set of Save Chain presets.  See QA-UI-11.  Done.
 7. Keep the account's live fight when local work moves in.  See QA-ACCT-02.
    Done.
-8. Move the account page off ~/me~.  See QA-ACCT-04.
+8. Move the account page off ~/me~.  See QA-ACCT-04.  Done.
 9. Repair the Treasure Table editor and Tune your rolls.  See QA-BUILD-09,
    QA-BUILD-10 and QA-BUILD-11.
 10. Sync new creatures to the encounter tab and bring the import confirmation
@@ -524,6 +524,7 @@ The suite did not cover these:
 
 *** QA-ACCT-04: Reloading the account page shows raw JSON
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Open the account page from the app bar.  Reload it.
 - Expected :: The account page.
@@ -531,7 +532,8 @@ The suite did not cover these:
   /me~ route shadows the app's ~/me~ route.  The page works only when an in-app
   link reaches it.
 - Evidence :: ~test_reloading_the_account_page_keeps_the_dm_on_it~
-- Action :: Move the app's route to ~/account~ or move the foundation's route.
+- Action :: Fixed.  The account page moved to ~/account~.  The foundation keeps
+  its own ~/me~ route.
 
 *** QA-ACCT-05: Sign-in silently fails over plain HTTP on a home network
 

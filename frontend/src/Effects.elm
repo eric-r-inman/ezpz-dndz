@@ -3,7 +3,6 @@ module Effects exposing
     , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
     , RollSpec, rollBatch, autoRollSpecsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-    , fetchMe, cmdForRoute
     , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
@@ -30,7 +29,6 @@ way: Update modules → Effects.
 @docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
 @docs RollSpec, rollBatch, autoRollSpecsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-@docs fetchMe, cmdForRoute
 @docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
 @docs compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
 @docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
@@ -58,11 +56,10 @@ import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Model exposing (Model)
-import Msg exposing (BatchRoll(..), MeInfo, Msg(..))
+import Msg exposing (BatchRoll(..), Msg(..))
 import Ports
 import Process
 import Random
-import Route exposing (Route(..))
 import Task
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Condition
@@ -926,35 +923,6 @@ putTreasureProfiles encoded =
         , timeout = Nothing
         , tracker = Nothing
         }
-
-
-
--- ── /me ──────────────────────────────────────────────────────────────────────
-
-
-fetchMe : Cmd Msg
-fetchMe =
-    Http.get
-        { url = "/me"
-        , expect = Http.expectJson GotMe meDecoder
-        }
-
-
-meDecoder : Decode.Decoder MeInfo
-meDecoder =
-    Decode.map2 MeInfo
-        (Decode.field "name" Decode.string)
-        (Decode.field "auth_enabled" Decode.bool)
-
-
-cmdForRoute : Route -> Cmd Msg
-cmdForRoute route =
-    case route of
-        Me ->
-            fetchMe
-
-        _ ->
-            Cmd.none
 
 
 

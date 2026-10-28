@@ -1,11 +1,7 @@
-module View.AppBar exposing (me, view)
+module View.AppBar exposing (view)
 
 {-| Top-of-page application bar (brand + nav links + ⚙ settings
-popover) and the `/me` account view shown by `Route.Me`.
-
-`me` is here rather than in a separate `View.Me` because it's the
-only thing rendered for the `Me` route and shares the auth/identity
-domain with the app-bar nav.
+popover).
 
 The settings popover is a controlled `<div>` (not native
 `<details>`) because the global Esc + click-outside
@@ -28,19 +24,17 @@ import Html
         , button
         , div
         , fieldset
-        , h2
         , header
         , label
         , legend
         , nav
-        , p
         , span
         , text
         )
 import Html.Attributes as Attr exposing (attribute, class, href, name, type_)
 import Html.Events exposing (onClick, stopPropagationOn)
 import Json.Decode as Decode
-import Msg exposing (MeStatus(..), Msg(..), Profile(..), Theme(..))
+import Msg exposing (Msg(..), Profile(..), Theme(..))
 import Route exposing (Route(..))
 import View.Tooltips as Tooltips
 
@@ -204,7 +198,7 @@ signInTagline maybeUser =
 
 {-| Identity slot in the AppBar.
 
-  - Authenticated → display name link to `/me`.
+  - Authenticated → display name link to `/account`.
   - Anonymous (any route except `/login`) → "Sign in" link to
     `/login`.
   - Anonymous AND already on `/login` → render nothing. The form
@@ -218,7 +212,7 @@ userLink maybeUser route =
         Just user ->
             a
                 [ class "app-bar__user"
-                , href "/me"
+                , href "/account"
                 ]
                 [ text user.displayName ]
 
@@ -361,29 +355,3 @@ themeRadio current value labelText badge =
           else
             span [ class "app-settings__radio-badge" ] [ text (" " ++ badge) ]
         ]
-
-
-me : MeStatus -> Html Msg
-me status =
-    case status of
-        Loading ->
-            p [ class "empty" ] [ text "Loading…" ]
-
-        Failed ->
-            p [ class "empty" ] [ text "Failed to load user information." ]
-
-        Loaded info ->
-            div []
-                [ h2 [] [ text info.name ]
-                , p []
-                    [ text
-                        ("Authentication: "
-                            ++ (if info.authEnabled then
-                                    "enabled"
-
-                                else
-                                    "disabled"
-                               )
-                        )
-                    ]
-                ]

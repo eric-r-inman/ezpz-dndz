@@ -6,7 +6,7 @@ module Update.Account exposing
     , submitPassword, passwordChanged
     )
 
-{-| Update branches for the `/me` Account page.
+{-| Update branches for the `/account` page.
 
 Profile and Password are two independent forms on the same
 page; each has its own `submit*` dispatcher and response
@@ -39,7 +39,7 @@ import Util.Http
 {-| Sync the editable display-name field to the user's current
 display name when the page first renders (or after a `Sign out
 → Sign in` cycle). Cheap and idempotent; called from
-`Update.Shell.urlChanged` whenever the route resolves to `Me`.
+`Update.Shell.urlChanged` whenever the route resolves to `Account`.
 -}
 open : Model -> ( Model, Cmd Msg )
 open model =

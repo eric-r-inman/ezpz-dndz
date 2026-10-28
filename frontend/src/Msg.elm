@@ -1,5 +1,5 @@
 module Msg exposing
-    ( Msg(..), MeInfo, MeStatus(..)
+    ( Msg(..)
     , HpKind(..), HpField(..)
     , RollScope(..), RollMode(..)
     , DurationKind(..)
@@ -15,12 +15,11 @@ import from a stable surface without dragging in the entire
 application shell.
 
 The non-`Msg` types here are the message-shaped enums (HP-edit
-verb, condition-duration kind, initiative roll scope, etc.) plus
-`MeInfo` / `MeStatus`, which `Msg.GotMe` transports. Larger
+verb, condition-duration kind, initiative roll scope, etc.). Larger
 modal-state record types (`HpChangeUi`, `ConditionUi`, etc.)
 live in their per-feature `Ui/*` modules.
 
-@docs Msg, MeInfo, MeStatus
+@docs Msg
 @docs HpKind, HpField
 @docs RollScope, RollMode
 @docs DurationKind
@@ -44,30 +43,6 @@ import File exposing (File)
 import Http
 import Json.Decode as Decode
 import Url exposing (Url)
-
-
-
--- ── USER / AUTH ──────────────────────────────────────────────────────────────
-
-
-{-| Server-side user record returned by `/me`. `name` is the
-display label; `authEnabled` flips false when the server runs
-without OIDC configured (local-dev mode), in which case the name
-is the stub `"admin"`.
--}
-type alias MeInfo =
-    { name : String
-    , authEnabled : Bool
-    }
-
-
-{-| Loading state for the `/me` request. Drives the app-bar
-identity badge.
--}
-type MeStatus
-    = Loading
-    | Loaded MeInfo
-    | Failed
 
 
 
@@ -465,7 +440,6 @@ Update.Dice.Msg | ...`); for now everything is one ADT.
 type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
-    | GotMe (Result Http.Error MeInfo)
     | NextTurn
       -- Clears the save-reminder pulse a turn boundary or a hit
       -- set on a condition chip; fired by a `Process.sleep` once
@@ -1544,7 +1518,7 @@ type Msg
     | TreasureTableRevertRequest
     | TreasureTableRevertCancel
     | TreasureTableRevertConfirm
-      -- Account page (`/me`) form interactions.
+      -- Account page (`/account`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit
     | AccountProfileSaved (Result Http.Error Auth.User)

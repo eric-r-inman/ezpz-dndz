@@ -1,6 +1,6 @@
 module View.Account exposing (view)
 
-{-| Account page (`/me`).
+{-| Account page (`/account`).
 
 Three sections:
 

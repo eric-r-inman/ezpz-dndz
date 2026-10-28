@@ -3,7 +3,6 @@ module Update.Shell exposing
     , encounterMenuClose
     , encounterMenuToggle
     , encounterPersisted
-    , gotMe
     , noOp
     , settingsClose
     , settingsToggle
@@ -11,8 +10,8 @@ module Update.Shell exposing
     , urlRequested
     )
 
-{-| Application-shell Msg handlers: URL routing, identity (`/me`),
-encounter load + persist response, and the `NoOp` fallback.
+{-| Application-shell Msg handlers: URL routing, encounter load +
+persist response, and the `NoOp` fallback.
 
 These branches sit at the boundary between the Elm runtime and the
 domain modules — they receive Cmds the runtime fired off (HTTP
@@ -23,11 +22,10 @@ state or re-dispatch.
 
 import Browser
 import Browser.Navigation as Nav
-import Effects
 import Encounter exposing (Encounter)
 import Http
 import Model exposing (Model)
-import Msg exposing (MeInfo, MeStatus(..), Msg)
+import Msg exposing (Msg)
 import Route
 import Ui.Toast exposing (ToastKind(..))
 import Update.Account
@@ -50,9 +48,8 @@ urlRequested key req model =
             ( model, Nav.load url )
 
 
-{-| URL changed — re-derive the route, reset the identity badge to
-loading (the new page may need to refetch), and ask `Effects` what
-Cmd to fire for the route.
+{-| URL changed. Re-derive the route and run the one-shot step a
+route needs on entry.
 -}
 urlChanged : Url -> Model -> ( Model, Cmd Msg )
 urlChanged url model =
@@ -61,37 +58,18 @@ urlChanged url model =
             Route.fromUrl url
 
         withRoute =
-            { model | url = url, route = route, me = Loading }
-
-        -- Some routes need a one-shot side-effect on entry — the
-        -- Account page seeds its display-name input from the
-        -- authenticated user, for instance.  Keep this list flat
-        -- and route-shaped rather than scattering Cmd-emitting
-        -- effects across handlers.
-        ( finalModel, sideCmd ) =
-            case route of
-                Route.Me ->
-                    Update.Account.open withRoute
-
-                _ ->
-                    ( withRoute, Cmd.none )
+            { model | url = url, route = route }
     in
-    ( finalModel
-    , Cmd.batch [ Effects.cmdForRoute route, sideCmd ]
-    )
+    -- Some routes need a one-shot step on entry.  The Account page
+    -- seeds its display-name field from the signed-in user.  Keep
+    -- this list flat and route-shaped rather than scattering such
+    -- steps across handlers.
+    case route of
+        Route.Account ->
+            Update.Account.open withRoute
 
-
-{-| `/me` response landed. Success populates the badge; failure
-flips to `Failed` so the view can show "Sign in" or similar.
--}
-gotMe : Result Http.Error MeInfo -> Model -> ( Model, Cmd Msg )
-gotMe result model =
-    case result of
-        Ok info ->
-            ( { model | me = Loaded info }, Cmd.none )
-
-        Err _ ->
-            ( { model | me = Failed }, Cmd.none )
+        _ ->
+            ( withRoute, Cmd.none )
 
 
 {-| Initial encounter fetch landed. `Just` adopts the persisted

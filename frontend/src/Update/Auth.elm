@@ -552,7 +552,7 @@ logoutDone _ model =
     -- pressed logout, the cookie is now stale or about to be, and a
     -- fresh boot at the root URL gives us the consistent post-logout
     -- state. Going to `/` (instead of just reloading the current URL)
-    -- means a sign-out from `/me` doesn't leave the URL bar pointing
+    -- means a sign-out from `/account` doesn't leave the URL bar pointing
     -- at the now-inaccessible account page.
     --
     -- `localStorage.encounter` is deliberately NOT cleared here: a

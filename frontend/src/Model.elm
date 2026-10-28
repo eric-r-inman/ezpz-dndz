@@ -49,7 +49,7 @@ import Encounter.SaveChain exposing (SaveChain)
 import Encounter.Treasure
 import Encounter.Xp exposing (XpScope)
 import Json.Decode as Decode
-import Msg exposing (MeStatus, Profile(..))
+import Msg exposing (Profile(..))
 import Preferences exposing (Preferences)
 import Route exposing (Route)
 import Set exposing (Set)
@@ -1438,7 +1438,6 @@ type alias Model =
     { key : Nav.Key
     , url : Url
     , route : Route
-    , me : MeStatus
     , auth : AuthState
     , loginUi : LoginUi
     , encounter : Encounter
@@ -1596,7 +1595,7 @@ type alias Model =
     , nextRollPopupId : Int
     , preferences : Preferences
 
-    -- Account page (`/me`) form state.  Independent of the auth
+    -- Account page (`/account`) form state.  Independent of the auth
     -- ADT — `auth` holds *who's signed in*; `accountUi` holds
     -- *what the GM has typed into the profile / password forms
     -- on the Account page*.

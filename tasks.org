@@ -355,10 +355,11 @@ Signing in with a local encounter discarded the fight the server held.  The
 server now saves that fight as ~Account — <date>~ before the local one replaces
 it.  See QA-ACCT-02.  Part of [[*Work through the findings in the QA report]].
 
-* TODO Move the account page off /me
+* DONE Move the account page off /me
 
-The foundation's own ~/me~ route answers a reload with raw JSON.  See
-QA-ACCT-04.  Part of [[*Work through the findings in the QA report]].
+The foundation's own ~/me~ route answered a reload with raw JSON.  The page now
+lives at ~/account~.  See QA-ACCT-04.  Part of
+[[*Work through the findings in the QA report]].
 
 * TODO Repair the Treasure Table editor and Tune your rolls
 
