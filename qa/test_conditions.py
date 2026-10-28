@@ -362,6 +362,7 @@ def test_editing_a_chip_changes_that_condition_in_place(app):
     expect(cond.root.get_by_role("button", name="Apply Changes")).to_be_visible()
     cond.note("by Troll")
     cond.root.get_by_role("button", name="Apply Changes").click()
+    expect(ogre.root.get_by_role("button", name="Grappled (by Troll)")).to_be_visible()
     assert chip_names(ogre) == ["Grappled (by Troll)"]
 
 

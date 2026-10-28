@@ -237,6 +237,10 @@ class ConditionEditor:
     def pick(self, condition):
         self.root.get_by_role("radio", name=re.compile(f"^{re.escape(condition)}")).click()
         expect(self.root.get_by_role("radio", name=re.compile(f"^{re.escape(condition)}"))).to_be_checked()
+        # A fill sent before Elm redraws lands in a field that is gone.
+        # The browser checks the radio first.  The redraw hides the
+        # Custom row and rebuilds the Note field.
+        settle(self.app.page)
         return self
 
     def custom(self, name):
