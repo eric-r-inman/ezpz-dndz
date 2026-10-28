@@ -10,6 +10,8 @@
    combat begins.  No action needed.
 3. Begin combat hands the first turn to the first creature that can act and runs
    its turn-start rules.  No action needed.
+4. Ability modifiers for odd scores below 10 now match the rules.  No action
+   needed.
 ** Breaking
 ** Maintenance
 ** Security

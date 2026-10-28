@@ -323,11 +323,12 @@ creature whose turn it is.  Begin combat also starts with the first creature
 that can act and runs its turn-start rules.  See QA-TURN-01, QA-UI-18,
 QA-TURN-02 and QA-FIGHT-09.  Part of [[*Work through the findings in the QA report]].
 
-* TODO Round ability modifiers down
+* DONE Round ability modifiers down
 
-Elm's ~//~ rounds toward zero.  Odd scores below 10 show and roll one point too
-high.  Use one shared helper in the stat block, the editor and the parser.  See
-QA-COMP-01.  Part of [[*Work through the findings in the QA report]].
+Elm's ~//~ rounds toward zero.  Odd scores below 10 showed and rolled one point
+too high.  ~Compendium.abilityModifier~ now rounds down for the stat block, the
+editor, the paste preview and Save Chain.  See QA-COMP-01.  Part of
+[[*Work through the findings in the QA report]].
 
 * TODO Give each batched roll its own dice
 

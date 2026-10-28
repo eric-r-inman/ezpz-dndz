@@ -1485,7 +1485,7 @@ saveModifier ability c =
             first.bonus
 
         [] ->
-            abilityScoreModifier (abilityScore ability c.abilities)
+            Compendium.abilityModifier (abilityScore ability c.abilities)
 
 
 abilityScore : Compendium.Ability -> Compendium.Abilities -> Int
@@ -1508,22 +1508,6 @@ abilityScore ability abs =
 
         Compendium.Cha ->
             abs.cha
-
-
-abilityScoreModifier : Int -> Int
-abilityScoreModifier score =
-    let
-        raw =
-            score - 10
-    in
-    -- 5e ability-modifier formula rounds toward negative infinity.
-    -- Integer division `//` in Elm truncates toward zero, so a raw
-    -- -3 divides as -1 rather than -2.  Adjust for odd-negative.
-    if raw < 0 && modBy 2 raw /= 0 then
-        raw // 2 - 1
-
-    else
-        raw // 2
 
 
 signedInt : Int -> String

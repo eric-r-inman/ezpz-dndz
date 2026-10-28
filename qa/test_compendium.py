@@ -179,10 +179,6 @@ def test_picking_a_bundled_creature_shows_its_stat_block_read_only(app, tab):
     tab.shot("ogre-stat-block")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-01: odd ability scores below 10 show a modifier one too high",
-)
 def test_ability_cells_show_the_rules_modifier_for_every_score(tab, bundled):
     tab.select("Ogre")
     for short, key in [
@@ -213,10 +209,6 @@ def test_ability_check_rolls_straight_advantage_and_disadvantage(app, tab):
     tab.shot("triple-roll-popups")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-01: an INT 5 check rolls with -2 instead of -3",
-)
 def test_low_ability_check_rolls_with_the_rules_modifier(tab):
     tab.select("Ogre")
     tab.button(re.compile(r"^INT 5 ")).click()

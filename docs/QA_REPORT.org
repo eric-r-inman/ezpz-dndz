@@ -34,7 +34,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 2. Aim Manage HP before combat and when it begins.  See QA-TURN-01.  The same
    change should run the turn rules for the first creature.  See QA-TURN-02.
    Done.
-3. Round ability modifiers down.  See QA-COMP-01.
+3. Round ability modifiers down.  See QA-COMP-01.  Done.
 4. Give each batched roll its own dice.  See QA-FIGHT-01.
 5. Let the Condition/Effect editor add a second condition.  See QA-FIGHT-10.
 6. Accept an empty set of Save Chain presets.  See QA-UI-11.
@@ -1101,6 +1101,7 @@ The suite did not cover these:
 
 *** QA-COMP-01: Odd ability scores below 10 show the wrong modifier
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Open the Ogre in the compendium.
 - Expected :: INT 5 shows -3.  WIS 7 and CHA 7 show -2.  An INT check rolls
@@ -1113,8 +1114,9 @@ The suite did not cover these:
   ~//~ rounds toward zero.
 - Evidence :: ~test_ability_cells_show_the_rules_modifier_for_every_score~ and
   ~test_low_ability_check_rolls_with_the_rules_modifier~
-- Action :: Use one shared modifier helper that rounds down.  Cover scores 1 to
-  30 with an Elm unit test.
+- Action :: Fixed.  ~Compendium.abilityModifier~ rounds down.  The stat block,
+  the editor, the paste preview and Save Chain all use it.  An Elm unit test
+  covers scores 1 to 30.
 
 *** QA-COMP-02: A deep link selects the creature but leaves it off screen
 

@@ -825,7 +825,7 @@ applyAbilityRow ability score maybeSave c =
                     { abilities | cha = score }
 
         modifier =
-            (score - 10) // 2
+            Compendium.abilityModifier score
 
         savesAdditions =
             case maybeSave of

@@ -278,7 +278,7 @@ abilityField labelText field current =
             String.toInt current |> Maybe.withDefault 10
 
         modValue =
-            (score - 10) // 2
+            Compendium.abilityModifier score
     in
     label [ class "edit-field edit-field--ability" ]
         [ span [ class "edit-field__label" ] [ text labelText ]

@@ -20,8 +20,19 @@ suite =
         , sortByCrSuite
         , sortByRecencySuite
         , crToFloatSuite
+        , abilityModifierSuite
         , draftToInstanceRechargeSuite
         , rechargeNameTransformSuite
+        ]
+
+
+abilityModifierSuite : Test
+abilityModifierSuite =
+    describe "abilityModifier"
+        [ test "rounds down for every score from 1 to 30" <|
+            \_ ->
+                List.map Compendium.abilityModifier [ 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13, 29, 30 ]
+                    |> Expect.equal [ -5, -4, -4, -3, -2, -1, -1, 0, 0, 1, 1, 9, 10 ]
         ]
 
 
