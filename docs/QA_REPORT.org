@@ -40,6 +40,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
    Done.
 6. Accept an empty set of Save Chain presets.  See QA-UI-11.  Done.
 7. Keep the account's live fight when local work moves in.  See QA-ACCT-02.
+   Done.
 8. Move the account page off ~/me~.  See QA-ACCT-04.
 9. Repair the Treasure Table editor and Tune your rolls.  See QA-BUILD-09,
    QA-BUILD-10 and QA-BUILD-11.
@@ -495,6 +496,7 @@ The suite did not cover these:
 
 *** QA-ACCT-02: Signing in with local work discards the account's live fight
 
+- Status :: fixed
 - Severity :: major
 - Steps :: On one device, sign in and run a fight with an Ogre.  On a second
   device, add a Goblin Warrior without signing in.  Then sign in there.
@@ -504,8 +506,9 @@ The suite did not cover these:
   purpose.  Nothing saves the server's fight first.
 - Evidence ::
   ~test_signing_in_with_an_anonymous_encounter_keeps_the_accounts_live_fight~
-- Action :: Save the server's live encounter under a name before replacing it.
-  The other choice is to ask the DM which fight to keep.
+- Action :: Fixed.  Sign-in sends the local fight with ~?archive_as=Account —
+  <date>~.  The server saves the account's live fight under that name before
+  replacing it.
 
 *** QA-ACCT-03: Every boot of an account shows a Save Chain error
 

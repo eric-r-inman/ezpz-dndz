@@ -854,6 +854,7 @@ the server in parallel with the normal data fetches:
 | Snapshot              | Migration                                                                 |
 |-----------------------+---------------------------------------------------------------------------|
 | Encounter             | =PUT /api/encounter/saves/Local — <date>= (overwrite=true) — non-empty only |
+| Live encounter        | =PUT /api/encounter?archive_as=Account — <date>=, which saves the account's live fight first |
 | Compendium (creatures + groups) | =POST /api/compendium/merge=, non-empty only                   |
 | Lore groups / condition presets / Save Chain presets / treasure table / treasure profiles | One-shot PUT from =Update/UserSync.elm= when the server's copy comes back empty but the local snapshot has data |
 | Dice history          | *Not migrated* — server history takes over on next reload                 |

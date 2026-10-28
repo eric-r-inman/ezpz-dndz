@@ -2482,3 +2482,84 @@ async fn test_compendium_merge_keeps_what_the_account_already_holds() {
     hags.iter().map(|c| c["id"].as_str().unwrap()).collect();
   assert!(coven_members.iter().all(|id| hag_ids.contains(id)));
 }
+
+#[tokio::test]
+async fn test_encounter_put_with_archive_as_saves_the_live_fight_first() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+  let fight = |name: &str| {
+    serde_json::json!({
+        "creatures": [{
+            "name": name, "initiative": 10, "currentHp": 59,
+            "maxHp": 59, "armorClass": 11
+        }],
+        "activeName": name,
+        "round": 2
+    })
+  };
+  let first =
+    send_json(&app, &cookie, "PUT", "/api/encounter", fight("Ogre")).await;
+  assert_eq!(first.status(), StatusCode::OK);
+
+  let archived = send_json(
+    &app,
+    &cookie,
+    "PUT",
+    "/api/encounter?archive_as=Account",
+    fight("Goblin Warrior"),
+  )
+  .await;
+  assert_eq!(archived.status(), StatusCode::OK);
+
+  let live = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert!(read_body(live).await.contains("Goblin Warrior"));
+  let saved = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter/saves/Account")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(saved.status(), StatusCode::OK);
+  assert!(read_body(saved).await.contains("Ogre"));
+}
+
+#[tokio::test]
+async fn test_encounter_put_with_archive_as_skips_an_empty_live_fight() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+  let body =
+    serde_json::json!({ "creatures": [], "activeName": "", "round": 1 });
+  let put =
+    send_json(&app, &cookie, "PUT", "/api/encounter?archive_as=Account", body)
+      .await;
+  assert_eq!(put.status(), StatusCode::OK);
+  let saved = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter/saves/Account")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(saved.status(), StatusCode::NOT_FOUND);
+}

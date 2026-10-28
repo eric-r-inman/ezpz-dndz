@@ -349,10 +349,11 @@ A new account answered ~null~ and every boot showed a decode error.  The decoder
 now reads ~null~ as no presets, as the condition preset decoder does.  See
 QA-UI-11.  Part of [[*Work through the findings in the QA report]].
 
-* TODO Keep the account's live fight when local work moves in
+* DONE Keep the account's live fight when local work moves in
 
-Signing in with a local encounter discards the fight the server held.  See
-QA-ACCT-02.  Part of [[*Work through the findings in the QA report]].
+Signing in with a local encounter discarded the fight the server held.  The
+server now saves that fight as ~Account — <date>~ before the local one replaces
+it.  See QA-ACCT-02.  Part of [[*Work through the findings in the QA report]].
 
 * TODO Move the account page off /me
 

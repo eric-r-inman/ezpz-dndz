@@ -441,10 +441,6 @@ def test_signing_in_with_anonymous_creatures_adds_them_beside_the_accounts_own(a
     assert own_creature_names(laptop.page) == ["Bramble Hag", "Swamp Ogre"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-02: signing in with an anonymous encounter discards the account's live fight",
-)
 def test_signing_in_with_an_anonymous_encounter_keeps_the_accounts_live_fight(app, devices):
     app.sign_up(DM)
     app.add("Ogre")

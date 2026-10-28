@@ -87,10 +87,12 @@ meReceived result model =
                             -- active" matches what they see.  Skips
                             -- the GET that would otherwise overwrite
                             -- their work with the previous device's
-                            -- last save.
+                            -- last save.  The account's own live fight
+                            -- is saved under a name first.
                             ( enc
-                            , Encounter.Wire.persistEncounterCmd
+                            , Encounter.Wire.persistEncounterArchivingCmd
                                 EncounterPersisted
+                                ("Account — " ++ model.migrationDateLabel)
                                 enc
                             )
 

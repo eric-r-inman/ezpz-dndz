@@ -18,6 +18,8 @@
 6. A second condition on one creature goes on beside the first.  No action
    needed.
 7. A new account boots without the Save Chain preset error.  No action needed.
+8. Signing in with a fight built while signed out saves the account's own live
+   fight under a name before replacing it.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

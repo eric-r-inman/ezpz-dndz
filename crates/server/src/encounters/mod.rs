@@ -37,7 +37,9 @@
 //!   boot path branches on that), the canonical wire encoding
 //!   otherwise.
 //! - `PUT /api/encounter` — replace the persisted live encounter
-//!   (transactional swap); echoes the submitted body.
+//!   (transactional swap); echoes the submitted body.  With
+//!   `?archive_as=<name>` it first saves the live encounter under that
+//!   name.
 //! - `GET /api/encounter/saves` — list named saves (metadata only).
 //! - `GET /api/encounter/saves/:name` — read a single save's body.
 //! - `PUT /api/encounter/saves/:name` (?overwrite=true) — create or
@@ -74,6 +76,7 @@ use serde_json::Value;
 
 use crate::users::CurrentUser;
 use crate::web_base::AppState;
+use ezpz_dndz_lib::users::UserId;
 
 async fn get_encounter(
   State(state): State<AppState>,
@@ -85,14 +88,68 @@ async fn get_encounter(
   }
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct PutEncounterQuery {
+  /// Save the live encounter under this name before replacing it.
+  /// Sign-in uses it so a signed-out session's fight never erases the
+  /// account's.  A live encounter with no creatures is not saved.
+  #[serde(default)]
+  archive_as: Option<String>,
+}
+
 async fn put_encounter(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
+  Query(query): Query<PutEncounterQuery>,
   Json(body): Json<Value>,
 ) -> Response {
-  match state.encounter_store.replace(&user.id, &body).await {
+  let replaced: Result<(), EncounterStoreError> = async {
+    if let Some(name) = &query.archive_as {
+      archive_live(&state, &user.id, name).await?;
+    }
+    state.encounter_store.replace(&user.id, &body).await
+  }
+  .await;
+  match replaced {
     Ok(()) => Json(body).into_response(),
     Err(e) => e.into_response(),
+  }
+}
+
+/// Save the live encounter under `raw_name` when it holds creatures.
+async fn archive_live(
+  state: &AppState,
+  user_id: &UserId,
+  raw_name: &str,
+) -> Result<(), EncounterStoreError> {
+  let name = saves::validate_save_name(raw_name)?;
+  let live = state.encounter_store.read(user_id).await?;
+  let has_creatures = live["creatures"]
+    .as_array()
+    .is_some_and(|creatures| !creatures.is_empty());
+  if has_creatures {
+    upserted_save(state, user_id, name, live).await.map(|_| ())
+  } else {
+    Ok(())
+  }
+}
+
+/// Replace the named save, or create it when it does not exist.
+async fn upserted_save(
+  state: &AppState,
+  user_id: &UserId,
+  name: String,
+  body: Value,
+) -> Result<SavedEncounter, EncounterStoreError> {
+  match state
+    .encounter_saves
+    .replace(user_id, name.clone(), body.clone())
+    .await
+  {
+    Err(EncounterStoreError::SaveNotFound) => {
+      state.encounter_saves.create(user_id, name, body).await
+    }
+    other => other,
   }
 }
 
@@ -140,19 +197,7 @@ async fn put_save(
     Err(e) => return e.into_response(),
   };
   let result = if query.overwrite {
-    // Try replace; if missing, fall back to create so a single
-    // PUT?overwrite=true call upserts.
-    match state
-      .encounter_saves
-      .replace(&user.id, name.clone(), body.clone())
-      .await
-    {
-      Ok(record) => Ok(record),
-      Err(EncounterStoreError::SaveNotFound) => {
-        state.encounter_saves.create(&user.id, name, body).await
-      }
-      Err(other) => Err(other),
-    }
+    upserted_save(&state, &user.id, name, body).await
   } else {
     state.encounter_saves.create(&user.id, name, body).await
   };
@@ -212,7 +257,8 @@ pub fn router() -> ApiRouter<AppState> {
           "Replace the persisted live encounter with the supplied \
            JSON.  The body must decode through the encounter wire \
            schema (legacy shapes accepted); undecodable bodies are \
-           rejected with 400.",
+           rejected with 400.  ?archive_as=<name> first saves the \
+           current live encounter under that name.",
         )
       }),
     )
