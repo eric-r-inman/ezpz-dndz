@@ -6,9 +6,11 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.36.0
+** Maintenance
 1. =just qa= plays a DM's prep and session in Chromium and Firefox, each
    scenario against its own scratch server.  No action needed.
-** Security
 * v0.35.0
 ** Fixes
 1. A server built with Nix now creates and updates its database tables.  Before,
