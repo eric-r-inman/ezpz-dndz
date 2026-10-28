@@ -465,6 +465,35 @@
           inherit pkgs system;
           toolchain = rust;
         };
+        # Shell for the browser suite that `just qa` runs.  It stays apart
+        # from the default shell because its browsers weigh several hundred
+        # megabytes that everyday work never needs.
+        qa = pkgs.mkShell {
+          buildInputs = [
+            # The suite is pytest driving Playwright.  pytest-playwright
+            # supplies the browser and page fixtures.  pytest-xdist runs
+            # scenarios side by side, since each one owns its server.
+            (pkgs.python3.withPackages (ps: [
+              ps.playwright
+              ps.pytest
+              ps.pytest-playwright
+              ps.pytest-xdist
+            ]))
+          ];
+          # Playwright takes its browsers from here instead of downloading
+          # them.  This build matches the Python package's driver.
+          PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+          # The host check looks for distribution libraries that a Nix
+          # store build never loads.
+          PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
+          # The accessibility scenarios inject axe-core into each page.
+          QA_AXE_JS = "${pkgs.fetchzip {
+            url = "https://registry.npmjs.org/axe-core/-/axe-core-4.10.3.tgz";
+            hash = "sha256-4qOtKcV3+tXQGqiR+w3kcTBjJNtlbf3agKww6wQ2P/o=";
+          }}/axe.min.js";
+          # Bytecode caches would otherwise land beside the suite's sources.
+          PYTHONDONTWRITEBYTECODE = "1";
+        };
       };
     });
   in {

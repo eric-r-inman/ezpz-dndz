@@ -6,6 +6,8 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. =just qa= plays a DM's prep and session in Chromium and Firefox, each
+   scenario against its own scratch server.  No action needed.
 ** Security
 * v0.35.0
 ** Fixes
