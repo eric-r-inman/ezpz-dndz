@@ -330,10 +330,11 @@ too high.  ~Compendium.abilityModifier~ now rounds down for the stat block, the
 editor, the paste preview and Save Chain.  See QA-COMP-01.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Give each batched roll its own dice
+* DONE Give each batched roll its own dice
 
-Rolls fired together seed from the same millisecond and land on one total.
-Route them through ~Dice.batchRollCmd~.  See QA-FIGHT-01.  Part of
+Rolls fired together seeded from the same millisecond and landed on one total.
+Each event's rolls now go out as one ~Effects.rollBatch~ and land through
+~Update.BatchRoll~.  See QA-FIGHT-01.  Part of
 [[*Work through the findings in the QA report]].
 
 * TODO Let the Condition/Effect editor add a second condition

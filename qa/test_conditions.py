@@ -171,10 +171,6 @@ def test_a_save_at_the_end_of_turn_ends_the_condition_and_posts_a_notice(app):
     expect(notice).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-01: saves that fire together at the end of a turn all roll the same d20",
-)
 def test_each_end_of_turn_save_rolls_its_own_d20(app):
     three_goblins_in_combat(app)
     conditions = ["Blinded", "Charmed", "Deafened", "Frightened", "Poisoned", "Prone"]

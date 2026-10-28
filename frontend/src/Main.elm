@@ -85,6 +85,7 @@ import Ui.Toast
 import Update.AbilitySave
 import Update.Account
 import Update.Auth
+import Update.BatchRoll
 import Update.Compendium.Add
 import Update.Compendium.AddGroup
 import Update.Compendium.Browser
@@ -1153,9 +1154,6 @@ updateInner msg model =
         HpChangeManualRollClear ->
             Update.HpChange.manualRollClear model
 
-        HpChangeManualRollLanded name roll ->
-            Update.HpChange.manualRollLanded name roll model
-
         HpChangeLogToggle ->
             Update.HpChange.logToggle model
 
@@ -1183,8 +1181,8 @@ updateInner msg model =
         HpChangeFreshRollToggle ->
             Update.HpChange.freshRollToggle model
 
-        HpChangeFreshRollLanded kind target roll ->
-            Update.HpChange.freshRollLanded kind target roll model
+        BatchRollsLanded rolls ->
+            Update.BatchRoll.landed rolls model
 
         HpChangeUndoLatest ->
             Update.HpChange.undoLatest model

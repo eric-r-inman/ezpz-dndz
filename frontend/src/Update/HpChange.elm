@@ -41,7 +41,8 @@ import HpChange
 import Model exposing (Model, Surface(..))
 import Msg
     exposing
-        ( HpField(..)
+        ( BatchRoll(..)
+        , HpField(..)
         , HpKind(..)
         , Msg(..)
         )
@@ -143,11 +144,12 @@ manualApplyTo rawNames ui model =
                 , names
                     |> List.map
                         (\name ->
-                            Dice.rollCmd (HpChangeManualRollLanded name)
-                                { feature = "HP roll", target = Just name }
-                                expr
+                            ( SetHpRoll name
+                            , { feature = "HP roll", target = Just name }
+                            , Dice.generator expr
+                            )
                         )
-                    |> Cmd.batch
+                    |> Effects.rollBatch
                 )
 
             Err err ->
@@ -392,12 +394,12 @@ applyAs kind model =
                             , hpChangeTargets withKind modelWithKind.encounter
                                 |> List.map
                                     (\name ->
-                                        Dice.rollCmd
-                                            (HpChangeFreshRollLanded kind name)
-                                            { feature = kindLabel kind, target = Just name }
-                                            expr
+                                        ( FreshHpRoll kind name
+                                        , { feature = kindLabel kind, target = Just name }
+                                        , Dice.generator expr
+                                        )
                                     )
-                                |> Cmd.batch
+                                |> Effects.rollBatch
                             )
 
                         else

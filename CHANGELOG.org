@@ -12,6 +12,7 @@
    its turn-start rules.  No action needed.
 4. Ability modifiers for odd scores below 10 now match the rules.  No action
    needed.
+5. Rolls fired together give each creature its own dice.  No action needed.
 ** Breaking
 ** Maintenance
 ** Security

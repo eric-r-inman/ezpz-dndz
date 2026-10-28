@@ -35,7 +35,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
    change should run the turn rules for the first creature.  See QA-TURN-02.
    Done.
 3. Round ability modifiers down.  See QA-COMP-01.  Done.
-4. Give each batched roll its own dice.  See QA-FIGHT-01.
+4. Give each batched roll its own dice.  See QA-FIGHT-01.  Done.
 5. Let the Condition/Effect editor add a second condition.  See QA-FIGHT-10.
 6. Accept an empty set of Save Chain presets.  See QA-UI-11.
 7. Keep the account's live fight when local work moves in.  See QA-ACCT-02.
@@ -886,6 +886,7 @@ The suite did not cover these:
 
 *** QA-FIGHT-01: Rolls fired together all land on the same total
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Select five Ogres.  In Manage HP pick the selection, roll ~1d60~,
   tick "New roll for each creature" and press Damage.
@@ -897,9 +898,11 @@ The suite did not cover these:
 - Evidence :: ~test_a_fresh_roll_per_creature_gives_each_its_own_total~,
   ~test_set_hp_roll_gives_each_selected_creature_its_own_hit_points~ and
   ~test_each_end_of_turn_save_rolls_its_own_d20~
-- Action :: Route these paths through ~Dice.batchRollCmd~.  It exists for this
-  problem.  The paths are in ~Update.HpChange~ and ~Effects.autoRollCmdsFor~.
-  The damage-trigger and area rolls need it too.
+- Action :: Fixed.  Each event's rolls go out as one ~Effects.rollBatch~.  That
+  covers the fresh roll per creature, Set HP's roll, the saves at a turn
+  boundary, area saves and saves a hit sets off.  A failed save's damage roll
+  still fires on its own.  Two saves failing in one batch can still roll the
+  same damage.
 
 *** QA-FIGHT-02: The card's AC field opens without focus
 

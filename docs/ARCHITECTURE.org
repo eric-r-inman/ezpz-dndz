@@ -364,11 +364,11 @@ round-trip cleanly.
 
 The auto-roll save path lives in =Update/Encounter.elm=: when ~nextTurn~ fires,
 the outgoing name is captured before the lifecycle hooks run, then
-~Effects.autoRollCmdsFor AutoRollAtEnd outgoing newEnc~ + ~AutoRollAtBegin
-newName newEnc~ are batched.  Results land in ~ConditionSaveLanded~, which
-removes the condition on ~roll.total >= dc~ and posts a green "Saved:
-<Condition>" notice on success — the same notice a manual chip-roll success
-posts.
+~Effects.autoRollSpecsFor AutoRollAtEnd outgoing newEnc~ + ~AutoRollAtBegin
+newName newEnc~ go out as one ~Effects.rollBatch~.  Each result lands through
+~Update.BatchRoll.landed~ in ~Update.Condition.saveLanded~.  A save at or above
+the DC removes the condition and posts a green "Saved: <Condition>" notice.  A
+manual chip-roll success posts the same notice.
 
 The pure domain layer doesn't fire Cmds; that's the right boundary.
 
@@ -1416,12 +1416,13 @@ encounter from storage, whose numbers are not hits.
 An area chain (~SaveChain.area~) marks each target with a condition carrying an
 ~AreaTracker~ — the chain's name plus the ability, DC, and bonus fixed at apply
 time, as a save-to-end's are — and ~nextTurn~ rolls those markers at their phase
-through ~Effects.areaRollCmdsFor~.  The landing looks the chain up by name in
-the presets and resolves the earned side with the auto-rolled amounts
-~savesRolled~ uses, so a spell preset's blank DC is filled from the marker.  A
-companion effect lands as a second condition whose ~linkedTo~ names the
-primary's id; ~Encounter.removeCondition~ and the lifecycle ticks prune
-companions whose primary is gone, whichever way it went.
+through ~Effects.areaRollSpecsFor~.  They roll in the same batch as the turn's
+other saves.  The landing looks the chain up by name in the presets and resolves
+the earned side with the auto-rolled amounts ~savesRolled~ uses, so a spell
+preset's blank DC is filled from the marker.  A companion effect lands as a
+second condition whose ~linkedTo~ names the primary's id;
+~Encounter.removeCondition~ and the lifecycle ticks prune companions whose
+primary is gone, whichever way it went.
 
 * Editor vocabulary
 

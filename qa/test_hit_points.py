@@ -130,10 +130,6 @@ def test_damage_to_the_selection_shares_one_roll(app):
     assert "Ogre, Ogre 2, Ogre 3" in hp.log()[0]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-01: New roll for each creature hands every creature the same total",
-)
 def test_a_fresh_roll_per_creature_gives_each_its_own_total(app):
     app.add("Ogre", count=5)
     names = app.card_names()
@@ -227,10 +223,6 @@ def test_set_hp_roll_sets_hit_points_within_the_formula(app):
     assert ogre.max_hp() == max(68, rolled)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-01: Set HP's roll hands every selected creature the same total",
-)
 def test_set_hp_roll_gives_each_selected_creature_its_own_hit_points(app):
     app.add("Ogre", count=6)
     names = app.card_names()

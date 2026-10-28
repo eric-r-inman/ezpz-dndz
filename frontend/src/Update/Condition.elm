@@ -1147,16 +1147,16 @@ damageTriggered msg before ( after, cmd ) =
                 List.concatMap
                     (\name ->
                         Encounter.damageRolls name after.encounter
-                            |> List.map (\( id, spec, advantage ) -> Effects.damageSaveCmd name id spec advantage)
+                            |> List.map (\( id, spec, advantage ) -> Effects.damageSaveSpec name id spec advantage)
                     )
                     damaged
         in
         if List.isEmpty flashes then
-            ( after, Cmd.batch (cmd :: rolls) )
+            ( after, Cmd.batch [ cmd, Effects.rollBatch rolls ] )
 
         else
             ( { after | flashConditions = flashes ++ after.flashConditions }
-            , Cmd.batch (cmd :: Effects.saveFlashExpiry :: rolls)
+            , Cmd.batch [ cmd, Effects.saveFlashExpiry, Effects.rollBatch rolls ]
             )
 
 

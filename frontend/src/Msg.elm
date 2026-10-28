@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), DurationEdit(..), FlatCategory(..), ModalChromeEdge(..), Profile(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveStorage(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , BatchRoll(..), CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), DurationEdit(..), FlatCategory(..), ModalChromeEdge(..), Profile(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveStorage(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -84,6 +84,15 @@ type HpKind
     | HealKind
     | TempHpKind
     | MaxHpKind
+
+
+{-| Where one roll of a batch lands.
+-}
+type BatchRoll
+    = FreshHpRoll HpKind String
+    | SetHpRoll String
+    | ConditionSaveRoll String Int Int
+    | AreaSaveRoll String Int
 
 
 {-| Which of the queue's reference drop-downs a strip icon
@@ -600,10 +609,9 @@ type Msg
     | HpChangeManualApplySelected
       -- The Set section's roll: a formula that, applied, rolls
       -- once per target and sets that creature's hit points to the
-      -- total; each landing names its creature.
+      -- total.
     | HpChangeManualRollChanged String
     | HpChangeManualRollClear
-    | HpChangeManualRollLanded String Dice.Roll
       -- Fold or unfold the editor's log, or its Set HP section.
     | HpChangeLogToggle
     | HpChangeSetToggle
@@ -615,11 +623,8 @@ type Msg
     | HpChangeResetToDefault
     | HpChangeRollLanded Dice.Roll
     | HpChangeFreshRollToggle
-      -- One fresh-per-creature roll landing.  Carries the kind
-      -- and the target name because the editor closes when the
-      -- roll batch is dispatched — the landing must not depend on
-      -- surface state that is gone.
-    | HpChangeFreshRollLanded HpKind String Dice.Roll
+      -- Every roll one event sets off, landed together.
+    | BatchRollsLanded (List ( BatchRoll, Dice.Roll ))
     | HpChangeUndoLatest
       -- Save chain.  State is edited here, saved as a named
       -- preset in `localStorage.saveChainPresets`, and executed

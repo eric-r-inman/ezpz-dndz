@@ -1,14 +1,14 @@
 module Effects exposing
     ( cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
     , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
-    , autoRollCmdsFor
+    , RollSpec, rollBatch, autoRollSpecsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , fetchMe, cmdForRoute
     , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
-    , anchorDicePopup, areaRollCmd, areaRollCmdsFor, changePassword, compendiumListId, damageSaveCmd, diceInputId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, diceInputId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -28,7 +28,7 @@ way: Update modules → Effects.
 
 @docs cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
 @docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
-@docs autoRollCmdsFor
+@docs RollSpec, rollBatch, autoRollSpecsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs fetchMe, cmdForRoute
 @docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
@@ -58,9 +58,10 @@ import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Model exposing (Model)
-import Msg exposing (MeInfo, Msg(..))
+import Msg exposing (BatchRoll(..), MeInfo, Msg(..))
 import Ports
 import Process
+import Random
 import Route exposing (Route(..))
 import Task
 import Ui.Compendium exposing (CompendiumDb(..))
@@ -456,90 +457,107 @@ scrollCardToTop name =
 -- ── AUTO-ROLL SAVES ──────────────────────────────────────────────────────────
 
 
-{-| Build a list of Cmds that fire auto-roll saves for one
-creature in one turn-phase. Each result lands in
-`ConditionSaveLanded`, which applies the success / failure
-logic and updates the dice history.
-
-`mode` filters: only conditions whose `saveToEnd.autoRoll`
-matches `mode` produce a Cmd. The two phases (`AutoRollAtBegin`
-and `AutoRollAtEnd`) are fired separately — see the `NextTurn`
-update branch.
-
-Returns `[]` when the named creature isn't in the queue or has
-no matching auto-roll saves, which is the common case.
-
+{-| One roll of a batch: where it lands, the label the log shows and
+the dice.
 -}
-autoRollCmdsFor : Encounter.AutoRollMode -> String -> Encounter.Encounter -> List (Cmd Msg)
-autoRollCmdsFor mode name enc =
+type alias RollSpec =
+    ( BatchRoll, Dice.Source, Random.Generator Dice.Roll )
+
+
+{-| Fires every roll one event sets off as a single batch. Fired one
+by one in the same millisecond, they would share a seed and land on
+the same total.
+-}
+rollBatch : List RollSpec -> Cmd Msg
+rollBatch specs =
+    if List.isEmpty specs then
+        Cmd.none
+
+    else
+        Dice.batchRollCmd BatchRollsLanded specs
+
+
+{-| The auto-roll saves one creature makes in one turn phase. Only
+conditions whose `saveToEnd.autoRoll` matches `mode` roll. Empty when
+the creature is gone or has none. That is the common case.
+-}
+autoRollSpecsFor : Encounter.AutoRollMode -> String -> Encounter.Encounter -> List RollSpec
+autoRollSpecsFor mode name enc =
     enc.creatures
         |> List.filter (\c -> c.name == name)
-        |> List.concatMap
-            (\c ->
-                List.filterMap (autoRollCmdForCondition mode c.name) c.conditions
+        |> List.concatMap (\c -> List.filterMap (autoRollSpec mode c.name) c.conditions)
+
+
+autoRollSpec : Encounter.AutoRollMode -> String -> Encounter.Condition -> Maybe RollSpec
+autoRollSpec mode bearer cond =
+    cond.saveToEnd
+        |> Maybe.andThen
+            (\spec ->
+                if spec.autoRoll == mode then
+                    Just
+                        ( ConditionSaveRoll bearer cond.id spec.dc
+                        , saveSource cond bearer spec
+                        , Dice.generator (saveExpression spec.bonus)
+                        )
+
+                else
+                    Nothing
             )
 
 
-autoRollCmdForCondition : Encounter.AutoRollMode -> String -> Encounter.Condition -> Maybe (Cmd Msg)
-autoRollCmdForCondition mode bearer cond =
-    case cond.saveToEnd of
-        Just spec ->
-            if spec.autoRoll == mode then
-                Just
-                    (Dice.rollCmd
-                        (ConditionSaveLanded bearer cond.id spec.dc)
-                        (saveSource cond bearer spec)
-                        (saveExpression spec.bonus)
-                    )
-
-            else
-                Nothing
-
-        Nothing ->
-            Nothing
-
-
-{-| A save fired by a hit on the bearer: straight, or with
+{-| A save fired by a hit on the bearer. It rolls straight, or with
 advantage for an effect whose rules grant it.
 -}
-damageSaveCmd : String -> Int -> Encounter.SaveToEnd -> Bool -> Cmd Msg
-damageSaveCmd bearer id spec advantage =
-    let
-        source =
-            { feature = "Save on damage: " ++ spec.ability ++ " DC " ++ String.fromInt spec.dc
-            , target = Just bearer
-            }
-    in
-    if advantage then
-        Dice.advantageCmd (ConditionSaveLanded bearer id spec.dc) source spec.bonus
+damageSaveSpec : String -> Int -> Encounter.SaveToEnd -> Bool -> RollSpec
+damageSaveSpec bearer id spec advantage =
+    ( ConditionSaveRoll bearer id spec.dc
+    , { feature = "Save on damage: " ++ spec.ability ++ " DC " ++ String.fromInt spec.dc
+      , target = Just bearer
+      }
+    , if advantage then
+        Dice.advantageGenerator spec.bonus
 
-    else
-        Dice.rollCmd (ConditionSaveLanded bearer id spec.dc) source (saveExpression spec.bonus)
+      else
+        Dice.generator (saveExpression spec.bonus)
+    )
 
 
 {-| The save each area marker on the named creature rolls at this
-phase of its turn, landing in `AreaSaveLanded`.
+phase of its turn.
 -}
-areaRollCmdsFor : Encounter.TurnPhase -> String -> Encounter.Encounter -> List (Cmd Msg)
-areaRollCmdsFor phase name enc =
+areaRollSpecsFor : Encounter.TurnPhase -> String -> Encounter.Encounter -> List RollSpec
+areaRollSpecsFor phase name enc =
     Encounter.SaveChain.areaRollsDue phase name enc
-        |> List.map (\( cond, tracker ) -> areaRollCmd name cond tracker)
+        |> List.map
+            (\( cond, tracker ) ->
+                ( AreaSaveRoll name cond.id
+                , areaSource name tracker
+                , Dice.generator (saveExpression tracker.bonus)
+                )
+            )
 
 
+{-| One area save the DM asks for by hand.
+-}
 areaRollCmd : String -> Encounter.Condition -> Encounter.AreaTracker -> Cmd Msg
 areaRollCmd bearer cond tracker =
     Dice.rollCmd (AreaSaveLanded bearer cond.id)
-        { feature =
-            "Area: "
-                ++ tracker.chain
-                ++ " ("
-                ++ tracker.ability
-                ++ " DC "
-                ++ String.fromInt tracker.dc
-                ++ ")"
-        , target = Just bearer
-        }
+        (areaSource bearer tracker)
         (saveExpression tracker.bonus)
+
+
+areaSource : String -> Encounter.AreaTracker -> Dice.Source
+areaSource bearer tracker =
+    { feature =
+        "Area: "
+            ++ tracker.chain
+            ++ " ("
+            ++ tracker.ability
+            ++ " DC "
+            ++ String.fromInt tracker.dc
+            ++ ")"
+    , target = Just bearer
+    }
 
 
 {-| Clears the save-reminder pulse once `condition-chip-flash`'s

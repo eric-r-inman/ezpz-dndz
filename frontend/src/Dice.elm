@@ -1343,8 +1343,8 @@ worries.
 
 -}
 batchRollCmd :
-    (List ( String, Roll ) -> msg)
-    -> List ( String, Source, Random.Generator Roll )
+    (List ( tag, Roll ) -> msg)
+    -> List ( tag, Source, Random.Generator Roll )
     -> Cmd msg
 batchRollCmd toMsg specs =
     Time.now
