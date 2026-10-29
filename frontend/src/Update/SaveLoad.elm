@@ -33,6 +33,7 @@ account at either end.
 -}
 
 import Auth
+import Effects
 import Encounter exposing (Encounter)
 import Encounter.Wire
 import File exposing (File)
@@ -155,7 +156,8 @@ storageSet storage model =
 
 {-| Pick the save the list's actions work on. Picking a different
 one drops a rename or confirmation begun on the last, which would
-otherwise land on a save the GM has moved away from.
+otherwise land on a save the GM has moved away from. Focus follows
+the pick, so the arrow keys carry on from the picked row.
 -}
 select : String -> Model -> ( Model, Cmd Msg )
 select name model =
@@ -173,7 +175,7 @@ select name model =
                 }
         )
         model
-    , Cmd.none
+    , Effects.focusField (Effects.saveRowId name)
     )
 
 

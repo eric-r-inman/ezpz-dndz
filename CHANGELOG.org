@@ -28,6 +28,7 @@
     action needed.
 14. The import confirmation can be clicked once a file is picked.  No action
     needed.
+15. A saved encounter can be picked from the keyboard.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 ** Maintenance

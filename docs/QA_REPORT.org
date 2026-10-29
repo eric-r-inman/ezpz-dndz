@@ -839,13 +839,16 @@ The suite did not cover these:
 
 *** QA-BUILD-14: A keyboard user cannot pick a saved encounter
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Sign in.  Save.  Open Load.  Tab to the list and press Enter.
 - Expected :: The save is picked.
 - Actual :: The rows are options with no tab stop and no key handling.  Load,
   Rename and Delete stay disabled.
 - Evidence :: ~test_a_keyboard_dm_can_pick_a_server_save~
-- Action :: Make the rows focusable.  Handle Enter, Space and the arrow keys.
+- Action :: Fixed.  The picked row takes Tab.  With nothing picked, the first
+  row takes it.  Enter and Space pick a row.  The arrow keys move the pick and
+  the focus.
 
 *** QA-BUILD-15: Random Encounter names run under the CR and XP
 

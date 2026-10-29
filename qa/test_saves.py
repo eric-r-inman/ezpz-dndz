@@ -321,10 +321,26 @@ def test_deleting_a_server_save_asks_first(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-14: the saved-encounter list cannot be used from the keyboard",
-)
+def test_the_arrow_keys_walk_the_save_list(app):
+    app.sign_up()
+    build_ambush(app)
+    save_to_server(app, "Bridge Fight")
+    expect(app.page.get_by_text('Saved "Bridge Fight".')).to_be_visible()
+    save_to_server(app, "Cave Fight")
+    expect(app.page.get_by_text('Saved "Cave Fight".')).to_be_visible()
+    dialog = open_encounter_dialog(app.page, "Load")
+    options = dialog.get_by_role("listbox").get_by_role("option")
+    expect(options).to_have_count(2)
+    options.nth(0).focus()
+    app.page.keyboard.press("ArrowDown")
+    expect(options.nth(1)).to_have_attribute("aria-selected", "true")
+    expect(options.nth(1)).to_be_focused()
+    app.page.keyboard.press("ArrowUp")
+    expect(options.nth(0)).to_have_attribute("aria-selected", "true")
+    expect(options.nth(0)).to_be_focused()
+
+
+@pytest.mark.cross_browser
 def test_a_keyboard_dm_can_pick_a_server_save(app):
     app.sign_up()
     build_ambush(app)
