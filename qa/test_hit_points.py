@@ -57,7 +57,8 @@ def test_hit_points_never_drop_below_zero(app):
     ogre = app.card("Ogre")
     hp = ManageHp(app).open_for("Ogre")
 
-    hp.damage(500)
+    # The 32 left over past 0 falls short of the 68 that would kill outright.
+    hp.damage(100)
     expect_pools(ogre, 0, 68)
     expect(lifecycle_badge(ogre)).to_have_text("💤 DOWN")
     app.shot("down")

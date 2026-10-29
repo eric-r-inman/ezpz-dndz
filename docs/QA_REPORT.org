@@ -955,6 +955,7 @@ The suite did not cover these:
 
 *** QA-FIGHT-04: Damage at 0 HP adds no failure and massive damage never kills
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Deal 3 damage to a creature that is down with death saves begun.
   Separately, deal 20 damage to a Goblin Warrior with 10 hit points.
@@ -963,8 +964,9 @@ The suite did not cover these:
 - Actual :: No failure is added.  The goblin only shows DOWN.
 - Evidence :: ~test_damage_while_down_counts_as_a_failed_death_save~ and
   ~test_massive_damage_kills_outright~
-- Action :: Add both rules to ~HpChange.applyDamage~ for creatures that track
-  death saves.  A critical hit adds two failures and would need its own control.
+- Action :: Fixed.  Damage at 0 adds a failed save for a creature making death
+  saves.  Leftover damage that meets the maximum kills any creature.  A critical
+  hit's second failure is still added by hand.
 
 *** QA-FIGHT-05: Concentration outlasts a drop to 0
 

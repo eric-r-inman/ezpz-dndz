@@ -146,10 +146,6 @@ def test_healing_a_downed_creature_clears_its_death_saves(app):
     expect_pips(card, 0, 0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-04: damage taken at 0 HP does not add a failed death save",
-)
 def test_damage_while_down_counts_as_a_failed_death_save(app):
     app.add("Goblin Warrior")
     card = downed(app, "Goblin Warrior")
@@ -158,10 +154,6 @@ def test_damage_while_down_counts_as_a_failed_death_save(app):
     expect(pip(card, "Failure", 1)).to_have_attribute("aria-pressed", "true", timeout=2000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-04: damage past 0 that equals the HP maximum does not kill outright",
-)
 def test_massive_damage_kills_outright(app):
     app.add("Goblin Warrior")
     card = app.card("Goblin Warrior")

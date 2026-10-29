@@ -43,6 +43,7 @@ prompts upstream and hand the engine a final integer amount.
 -}
 
 import Encounter exposing (Creature)
+import Encounter.DeathSaves as DeathSaves
 
 
 
@@ -143,9 +144,14 @@ applyDrain n c =
 
 {-| Damage: temp HP absorbs first, then current HP. Negative amounts
 are clamped to zero so passing in a misparsed roll can't accidentally
-heal. The death-save tracker becomes visible automatically once
-`currentHp == 0` (handled in view code) — no flag bookkeeping
-needed here.
+heal.
+
+The 2024 rules for dying apply after that. Damage left over past
+zero that meets the creature's maximum kills it outright. A creature
+making death saves fails one each time damage lands while it is at
+zero hit points. A critical hit fails two. The engine cannot tell a
+critical hit, so the GM adds the second pip by hand.
+
 -}
 applyDamage : Int -> Creature -> Creature
 applyDamage n c =
@@ -158,11 +164,24 @@ applyDamage n c =
 
         remainder =
             incoming - absorbed
+
+        hit =
+            { c
+                | tempHp = c.tempHp - absorbed
+                , currentHp = Basics.max 0 (c.currentHp - remainder)
+            }
+
+        failures =
+            if remainder > 0 && remainder - c.currentHp >= c.maxHp then
+                3
+
+            else if remainder > 0 && c.currentHp == 0 && c.acceptingDeathSaves then
+                1
+
+            else
+                0
     in
-    { c
-        | tempHp = c.tempHp - absorbed
-        , currentHp = Basics.max 0 (c.currentHp - remainder)
-    }
+    { hit | deathSaves = DeathSaves.addFailures failures hit.deathSaves }
 
 
 {-| Heal: add, cap at maxHp. If a creature was at 0 and lands above

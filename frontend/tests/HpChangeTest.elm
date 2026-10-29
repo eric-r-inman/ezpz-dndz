@@ -290,10 +290,44 @@ restoreSuite =
         ]
 
 
+dyingSuite : Test
+dyingSuite =
+    let
+        down =
+            { fixture | currentHp = 0, acceptingDeathSaves = True }
+
+        failuresAfter damage creature =
+            creature
+                |> HpChange.apply (HpChange.Damage damage)
+                |> .deathSaves
+                |> .failures
+    in
+    describe "Damage at or through 0 HP"
+        [ test "damage while making death saves adds one failure" <|
+            \_ -> failuresAfter 3 down |> Expect.equal 1
+        , test "damage to a downed creature not making death saves adds none" <|
+            \_ -> failuresAfter 3 { down | acceptingDeathSaves = False } |> Expect.equal 0
+        , test "leftover damage that meets the maximum kills outright" <|
+            \_ ->
+                { fixture | currentHp = 10, maxHp = 10 }
+                    |> HpChange.apply (HpChange.Damage 20)
+                    |> .deathSaves
+                    |> DeathSaves.isDead
+                    |> Expect.equal True
+        , test "leftover damage short of the maximum only drops the creature" <|
+            \_ -> failuresAfter 19 { fixture | currentHp = 10, maxHp = 10 } |> Expect.equal 0
+        , test "temporary hit points soak before the leftover is counted" <|
+            \_ -> failuresAfter 24 { fixture | currentHp = 10, maxHp = 10, tempHp = 5 } |> Expect.equal 0
+        , test "damage at 0 that meets the maximum kills outright" <|
+            \_ -> failuresAfter 50 down |> Expect.equal 3
+        ]
+
+
 suite : Test
 suite =
     describe "HpChange (pure HP arithmetic)"
         [ damageSuite
+        , dyingSuite
         , healSuite
         , tempHpSuite
         , setHpSuite
