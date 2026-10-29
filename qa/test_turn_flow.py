@@ -322,16 +322,14 @@ def test_reactions_come_back_at_the_start_of_their_own_turn(app):
     expect(reaction(app, "Wolf")).to_have_attribute("aria-pressed", "false")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-04: a readied action never clears at the start of its next turn",
-)
 def test_a_readied_action_ends_at_the_start_of_its_next_turn(app):
     fight(app)
     app.begin_combat()
     readied(app, "Goblin Warrior 2").click()
     app.settle()
-    expect(readied(app, "Goblin Warrior 2")).to_have_accessible_name("Action Readied")
+    expect(readied(app, "Goblin Warrior 2")).to_have_accessible_name(
+        "Action Readied for Goblin Warrior 2"
+    )
     expect(readied(app, "Goblin Warrior 2")).to_have_attribute("aria-pressed", "true")
 
     advance(app, 3)

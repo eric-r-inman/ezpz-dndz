@@ -39,6 +39,8 @@
     needed.
 20. The skip link jumps to the page's main content on every page.  No action
     needed.
+21. A readied action lapses at the start of its creature's next turn.  No action
+    needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 ** Maintenance

@@ -215,7 +215,7 @@ def reaction(app, name):
 
 def readied(app, name):
     return app.card(name).root.get_by_role(
-        "button", name=re.compile("^(Ready an Action|Action Readied)$")
+        "button", name=re.compile(f"^(Ready an Action|Action Readied) for {re.escape(name)}$")
     )
 
 

@@ -133,13 +133,14 @@ The suite did not cover these:
 
 *** QA-TURN-04: A readied action never lapses
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Ready an action with ✋ and play a full round.
 - Expected :: Under the 2024 rules a readied action lapses at the start of the
   creature's next turn.  The mark clears then.
 - Actual :: It stays until the DM clicks it.
 - Evidence :: ~test_a_readied_action_ends_at_the_start_of_its_next_turn~
-- Action :: Clear ~readied~ in ~applyBeginOfTurn~ beside the reaction reset.
+- Action :: Fixed.  A readied action lapses as its creature's turn begins.
 
 *** QA-TURN-05: Legendary pools always count the lair
 
