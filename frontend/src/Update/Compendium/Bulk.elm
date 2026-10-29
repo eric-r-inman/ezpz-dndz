@@ -56,7 +56,22 @@ importClick model =
 
 importFileChosen : File -> Model -> ( Model, Cmd Msg )
 importFileChosen file model =
-    ( model, Task.perform CompendiumImportFileRead (File.toString file) )
+    ( { model | surface = withoutLoadDialog model.surface }
+    , Task.perform CompendiumImportFileRead (File.toString file)
+    )
+
+
+{-| The Load Compendium dialog would cover what a picked file brings
+up on the page: the confirmation, or the alert for a bad file.
+-}
+withoutLoadDialog : Maybe Model.Surface -> Maybe Model.Surface
+withoutLoadDialog surface =
+    case surface of
+        Just (Model.SurfaceLoadCompendium _) ->
+            Nothing
+
+        _ ->
+            surface
 
 
 importFileRead : String -> Model -> ( Model, Cmd Msg )
@@ -75,8 +90,7 @@ importFileRead raw model =
 
 The two parsers are tried in order via `Decode.oneOf`; whichever
 matches sets the `PendingImport` ready for the confirmation
-banner. On parse failure we keep the modal open and show the
-error.
+banner. A parse failure shows its error on the page instead.
 
 -}
 importFileLoaded : String -> CompendiumUi -> CompendiumUi

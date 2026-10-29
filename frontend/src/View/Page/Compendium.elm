@@ -10,12 +10,10 @@ The tab opens with nothing selected — a highlight is the GM's
 choice, not a default. The AppBar is suppressed on this route,
 since the tab is meant to be parked on a second monitor.
 
-**Cross-tab caveat.** Each tab runs its own Elm app with its
-own `model.compendium`. Edits made here show up in this tab
-immediately, but the main tab's copy won't reflect them until
-a reload (no live sync today). "Add to encounter" targets this
-tab's encounter, not the main tab's — so those flows are best
-avoided here.
+**Cross-tab sync.** Each tab runs its own Elm app with its own
+model. Edits made here reach the app's other tabs over a
+BroadcastChannel. So does the encounter that "Add to encounter"
+changes.
 
 -}
 

@@ -344,6 +344,7 @@ subscriptions model =
         (primary
             :: Ports.incomingDiceRoll DiceRollFromOtherTab
             :: Ports.incomingEncounter EncounterFromOtherTab
+            :: Ports.incomingCompendium CompendiumFromOtherTab
             :: Ports.logRowOverflow LogRowOverflowReported
             :: Hotkeys.subscription model.route
             :: settingsSubs
@@ -775,6 +776,13 @@ update msg model =
             else
                 Cmd.none
 
+        compendiumBroadcastCmd =
+            if Effects.shouldBroadcastCompendiumAfter msg && Effects.compendiumChanged model next then
+                Effects.broadcastCompendiumFor next
+
+            else
+                Cmd.none
+
         conditionPresetsCmd =
             if Effects.shouldPersistAfter msg && model.conditionPresets /= next.conditionPresets then
                 case next.auth of
@@ -933,6 +941,7 @@ update msg model =
         , encounterBroadcastCmd
         , diceHistoryCmd
         , compendiumCmd
+        , compendiumBroadcastCmd
         , conditionPresetsCmd
         , saveChainPresetsCmd
         , timerPresetsCmd
@@ -1100,6 +1109,9 @@ updateInner msg model =
 
         EncounterFromOtherTab raw ->
             Update.Tabs.encounterFromOtherTab raw model
+
+        CompendiumFromOtherTab raw ->
+            Update.Tabs.compendiumFromOtherTab raw model
 
         DiceHistoryLoaded result ->
             Update.Dice.historyLoaded result model

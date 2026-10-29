@@ -350,79 +350,54 @@ if (app.ports && app.ports.clearLocalUserTreasureTable) {
   });
 }
 
-// Cross-tab dice-roll sync.  When a roll lands in any tab,
-// Elm fires `broadcastDiceRoll` with the encoded roll; every
-// other tab of the app open in the same browser profile
-// receives the same value via `incomingDiceRoll` and pushes
-// it into its own dice history.  Solves the case where a
-// stat block is opened in its own tab — rolls fired there
-// would otherwise be invisible to the main encounter tab's
-// dice modal.  `BroadcastChannel` does NOT echo to the
-// sender, so no self-filtering is needed.
-var diceChannel = null;
-try {
-  if (typeof BroadcastChannel === "function") {
-    diceChannel = new BroadcastChannel("ezpz-dndz-dice");
+// Bridges an outbound and an inbound Elm port over one
+// BroadcastChannel.  A value posted in one tab reaches every other
+// tab of the app in the same browser profile.  The channel does not
+// echo to its sender, so no tab filters out its own posts.  Without
+// a channel the tabs simply stay apart.
+function bridgeChannel(name, outPort, inPort) {
+  if (!(app.ports && app.ports[outPort])) {
+    return;
   }
-} catch (_) {
-  // Older browser / disabled by privacy mode — degrade to
-  // per-tab dice histories.
-}
-if (
-  diceChannel &&
-  app.ports &&
-  app.ports.broadcastDiceRoll &&
-  app.ports.incomingDiceRoll
-) {
-  app.ports.broadcastDiceRoll.subscribe(function (value) {
-    try {
-      diceChannel.postMessage(value);
-    } catch (_) {}
-  });
-  diceChannel.onmessage = function (event) {
-    try {
-      app.ports.incomingDiceRoll.send(event.data);
-    } catch (_) {}
-  };
-} else if (app.ports && app.ports.broadcastDiceRoll) {
-  // No channel available — swallow outbound broadcasts so
-  // the port still has a subscriber (Elm errors otherwise).
-  app.ports.broadcastDiceRoll.subscribe(function () {});
+  var channel = null;
+  try {
+    if (typeof BroadcastChannel === "function") {
+      channel = new BroadcastChannel(name);
+    }
+  } catch (_) {
+    // An older browser or privacy mode can refuse the channel.
+  }
+  if (channel && app.ports[inPort]) {
+    app.ports[outPort].subscribe(function (value) {
+      try {
+        channel.postMessage(value);
+      } catch (_) {}
+    });
+    channel.onmessage = function (event) {
+      try {
+        app.ports[inPort].send(event.data);
+      } catch (_) {}
+    };
+  } else {
+    // Elm errors when an outbound port has no subscriber.
+    app.ports[outPort].subscribe(function () {});
+  }
 }
 
-// Cross-tab encounter sync.  Mirrors the dice channel above:
-// a workspace tab posts the encounter on every change, and a
-// second one opened in the same browser profile picks the
-// changes up live.  Same BroadcastChannel discipline — no
-// self-echo, so loops are impossible.
-var encounterChannel = null;
-try {
-  if (typeof BroadcastChannel === "function") {
-    encounterChannel = new BroadcastChannel("ezpz-dndz-encounter");
-  }
-} catch (_) {
-  // Older browser / privacy mode — a second tab won't
-  // auto-update, but the app still works.
-}
-if (
-  encounterChannel &&
-  app.ports &&
-  app.ports.broadcastEncounter &&
-  app.ports.incomingEncounter
-) {
-  app.ports.broadcastEncounter.subscribe(function (value) {
-    try {
-      encounterChannel.postMessage(value);
-    } catch (_) {}
-  });
-  encounterChannel.onmessage = function (event) {
-    try {
-      app.ports.incomingEncounter.send(event.data);
-    } catch (_) {}
-  };
-} else if (app.ports && app.ports.broadcastEncounter) {
-  app.ports.broadcastEncounter.subscribe(function () {});
-}
+// A stat block opened in its own tab rolls there.  The main tab's
+// dice history needs those rolls too.
+bridgeChannel("ezpz-dndz-dice", "broadcastDiceRoll", "incomingDiceRoll");
+
+// A second workspace tab follows the encounter live.
+bridgeChannel("ezpz-dndz-encounter", "broadcastEncounter", "incomingEncounter");
+
+// A creature made in the library tab reaches the encounter tab's
+// Quick Add and stat blocks.
+bridgeChannel(
+  "ezpz-dndz-compendium",
+  "broadcastCompendium",
+  "incomingCompendium",
+);
 
 // Standalone Compendium tab.  Each Elm app instance keeps a
 // single window reference; opening twice from the same main

@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, clearLocalCompendium, clearLocalEncounter, clearLocalUserTreasureTable, incomingDiceRoll, incomingEncounter, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
+    , broadcastCompendium, broadcastDiceRoll, broadcastEncounter, clearLocalCompendium, clearLocalEncounter, clearLocalUserTreasureTable, incomingCompendium, incomingDiceRoll, incomingEncounter, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -201,6 +201,18 @@ tab decodes the payload and replaces its own
 `model.encounter` — no persist, no re-broadcast.
 -}
 port incomingEncounter : (D.Value -> msg) -> Sub msg
+
+
+{-| Post the user's creatures and groups to every other tab.
+`Compendium.Wire.encodeTabSync` gives the shape.
+-}
+port broadcastCompendium : E.Value -> Cmd msg
+
+
+{-| Creatures and groups another tab posted through
+[`broadcastCompendium`](#broadcastCompendium).
+-}
+port incomingCompendium : (D.Value -> msg) -> Sub msg
 
 
 {-| Ask the JS host to open the standalone `/compendium` route

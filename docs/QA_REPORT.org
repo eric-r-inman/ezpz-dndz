@@ -45,7 +45,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 9. Repair the Treasure Table editor and Tune your rolls.  See QA-BUILD-09,
    QA-BUILD-10 and QA-BUILD-11.  Done.
 10. Sync new creatures to the encounter tab and bring the import confirmation
-    forward.  See QA-COMP-06 and QA-COMP-11.
+    forward.  See QA-COMP-06 and QA-COMP-11.  Done.
 11. Make the app work by keyboard and screen reader.  Start with QA-UI-05,
     QA-UI-14, QA-TURN-08, QA-TURN-09 and QA-BUILD-14.
 12. Close the gaps against the 2024 rules.  See QA-FIGHT-04, QA-FIGHT-05,
@@ -1180,6 +1180,7 @@ The suite did not cover these:
 
 *** QA-COMP-06: New creatures do not reach the encounter tab until it reloads
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Make "Marsh Troll" in the compendium tab.  Search Quick Add in the
   encounter tab.
@@ -1190,8 +1191,10 @@ The suite did not cover these:
   module comment admits there is no live sync.
 - Evidence :: ~test_new_creature_shows_up_in_quick_add_without_a_reload~ and
   ~test_new_creature_sent_from_the_library_shows_its_stat_block_on_the_card~
-- Action :: Broadcast compendium changes the way the encounter is broadcast.  At
-  the least, fix the card's message.
+- Action :: Fixed.  The compendium now syncs between tabs the way the encounter
+  does.  A tab takes only its own owner's creatures.
+  ~test_a_signed_out_tab_keeps_its_creatures_out_of_a_signed_in_one~ covers
+  that.
 
 *** QA-COMP-07: The editor saves a creature with 0 max HP
 
@@ -1230,6 +1233,7 @@ The suite did not cover these:
 
 *** QA-COMP-11: The import confirmation sits behind the Load dialog
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Press Import.  Choose Device and pick an export file.
 - Expected :: The confirmation can be clicked.
@@ -1237,8 +1241,7 @@ The suite did not cover these:
   open dialog in both browsers.  Clicks land on the dialog's backdrop.  The
   bad-file alert's OK button has the same problem.
 - Evidence :: ~test_import_confirmation_is_reachable_from_the_load_dialog~
-- Action :: Close the dialog once a file is chosen.  The other choice is to
-  confirm inside it as the server path does.
+- Action :: Fixed.  Picking a file closes the Load dialog.
 
 *** QA-COMP-12: Clear All does not stay cleared
 

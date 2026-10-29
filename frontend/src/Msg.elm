@@ -539,6 +539,9 @@ type Msg
       -- the receiving handler decodes and replaces
       -- `model.encounter` in place.  No re-broadcast.
     | EncounterFromOtherTab Decode.Value
+      -- A peer tab's compendium changed.  The payload is
+      -- `Compendium.Wire.encodeTabSync`'s.  No re-broadcast.
+    | CompendiumFromOtherTab Decode.Value
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())

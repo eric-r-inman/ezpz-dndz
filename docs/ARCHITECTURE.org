@@ -175,7 +175,7 @@ tree, and Cmd helper lives in its own module.
 | Domain          | =Dice.elm=, =DrawerLayout.elm=, =HpChange.elm=, =Preferences.elm=                                                                                            |
 | Routing / Cmd   | =Route.elm= (~Home / Login / Account / Donate / About / CompendiumCreaturePage / Compendium / NotFound~), =Effects.elm= (every Cmd-emitting helper, HTTP included, plus the ~shouldPersistAfter~ / ~shouldBroadcastAfter~ persistence predicates), =Ports.elm= (outbound JS — ~savePreferences~, the ~persistLocal*~ ports, the three ~clearLocal*~ sign-in-migration ports, and the cross-tab BroadcastChannel ports) |
 | UI substate     | =Ui/{Account,Compendium,Condition,CrCalculator,Dice,Duplicate,GroupEdit,HpChange,Initiative,LoadCompendium,Login,LoreEdit,Memo,ModalChrome,Note,PlaceholderRename,QuickAdd,RandomEncounter,SaveChain,SaveCompendium,SaveLoad,Timer,Toast,Treasure,TreasureTable}.elm= |
-| Update / shell  | =Update/Shell.elm= (URL routing, encounter persist response, settings popover, ~NoOp~), =Update/Tabs.elm= (the cross-tab BroadcastChannel receive path, ~encounterFromOtherTab~) |
+| Update / shell  | =Update/Shell.elm= (URL routing, encounter persist response, settings popover, ~NoOp~), =Update/Tabs.elm= (the cross-tab BroadcastChannel receive path, ~encounterFromOtherTab~ and ~compendiumFromOtherTab~) |
 | Update / auth   | =Update/Auth.elm= (boot probe, login / register submit + response, logout, form-field changes), =Update/UserSync.elm= (boot + one-shot-migration responses for the per-user server stores) |
 | Update / domain | =Update/*.elm= — one module per feature, each exposing one function per Msg branch |
 | Update / split  | =Update/Compendium/{Add,AddGroup,Browser,Bulk,Edit,Group,Lore,Paste}.elm=                                                               |
@@ -412,6 +412,10 @@ here rather than inflating =Main.elm=.
 path: ~encounterFromOtherTab~ adopts an encounter another tab broadcast.  The
 outbound side stays in the =Main.update= wrapper, guarded by
 ~Effects.shouldBroadcastAfter~ so a received broadcast is never re-broadcast.
+~compendiumFromOtherTab~ adopts another tab's own creatures and groups.  It
+drops a post whose owner differs from its own.  Its outbound side is guarded by
+~Effects.shouldBroadcastCompendiumAfter~.  That guard also leaves out loads.  A
+tab posting what it just loaded could undo a newer edit made elsewhere.
 
 * View dispatch
 
@@ -807,13 +811,14 @@ to ~localStorage~ instead; the result is the same diff-and-write discipline.
 
 The same wrapper also broadcasts encounter changes to other tabs
 (~Ports.broadcastEncounter~ under the ~shouldBroadcastAfter~ guard); the receive
-side lives in =Update/Tabs.elm=.
+side lives in =Update/Tabs.elm=.  Compendium changes go out the same way through
+~Ports.broadcastCompendium~.
 
 A small set of Msgs is excluded from ~Effects.shouldPersistAfter~:
 ~EncounterLoaded~ / ~EncounterPersisted~ / ~AuthMeReceived~ /
-~LocalEncounterMigrated~ / ~LocalCompendiumMigrated~ / ~EncounterFromOtherTab~ —
-these flow data IN from the authoritative source, so re-writing it back would be
-wasted work or an infinite loop.
+~LocalEncounterMigrated~ / ~LocalCompendiumMigrated~ / ~EncounterFromOtherTab~ /
+~CompendiumFromOtherTab~.  These flow data in from the authoritative source.
+Writing it back would be wasted work or an infinite loop.
 
 ** Boot flag flow
 

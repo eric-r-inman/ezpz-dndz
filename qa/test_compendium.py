@@ -502,18 +502,15 @@ def test_new_creature_saves_and_shows_its_stat_block(app, tab):
     expect(tab.row("Marsh Troll")).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-06: the encounter tab's Quick Add misses new creatures until reload",
-)
 def test_new_creature_shows_up_in_quick_add_without_a_reload(app, tab):
     tab.create("Bog Hag", ac="17", hp="82")
     app.page.bring_to_front()
     quick_add = app.panel("Quick Add").open()
     quick_add.root.get_by_role("searchbox", name="Filter Quick Add by name").fill("Bog Hag")
-    expect(
-        quick_add.root.get_by_role("button", name=re.compile("^Bog Hag CR "))
-    ).to_be_visible(timeout=2000)
+    # Made with no CR, its entry reads "Bog Hag—".
+    expect(quick_add.root.get_by_role("button", name=re.compile("^Bog Hag"))).to_be_visible(
+        timeout=2000
+    )
 
 
 def test_new_creature_lands_on_a_card_with_its_numbers(app, tab):
@@ -531,10 +528,6 @@ def test_new_creature_lands_on_a_card_with_its_numbers(app, tab):
     app.shot("marsh-troll-card")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-06: a card sent from the library has no stat block until reload",
-)
 def test_new_creature_sent_from_the_library_shows_its_stat_block_on_the_card(app, tab):
     fill_marsh_troll(tab)
     tab.submit("Marsh Troll", "Create")
@@ -547,6 +540,19 @@ def test_new_creature_sent_from_the_library_shows_its_stat_block_on_the_card(app
     )
     app.shot("card-stat-block-opened")
     expect(app.page.get_by_text("Fetid Breath (Recharge 5–6).")).to_be_visible(timeout=2000)
+
+
+def test_a_signed_out_tab_keeps_its_creatures_out_of_a_signed_in_one(app, tab):
+    # The library tab opened signed out.  It stays so until it reloads.
+    app.sign_up()
+    tab.create("Bog Hag", ac="17", hp="82")
+    app.page.bring_to_front()
+    quick_add = app.panel("Quick Add").open()
+    quick_add.root.get_by_role("searchbox", name="Filter Quick Add by name").fill("Bog Hag")
+    # A tab post lands in milliseconds.  Nothing marks a dropped one.  Half a
+    # second is a guess with room to spare.
+    app.page.wait_for_timeout(500)
+    expect(quick_add.root.get_by_role("button", name=re.compile("^Bog Hag"))).to_have_count(0)
 
 
 def test_library_and_editor_read_in_the_dark_theme(app):
@@ -926,7 +932,7 @@ def import_from_file(tab, path):
     with tab.page.expect_file_chooser() as chooser_info:
         dialog.get_by_role("button", name="📁 Choose file…").click()
     chooser_info.value.set_files(str(path))
-    return dialog
+    expect(dialog).to_be_hidden()
 
 
 def close_dialog(dialog):
@@ -953,14 +959,13 @@ def exported_bog_hag(tab, tmp_path, bundled):
 @pytest.mark.cross_browser
 def test_export_then_import_round_trips_the_library(app, tab, tmp_path, bundled):
     path = exported_bog_hag(tab, tmp_path, bundled)
-    dialog = import_from_file(tab, path)
+    import_from_file(tab, path)
     expect(
         tab.page.get_by_text(
             f"Import {len(bundled) + 1} creatures? This REPLACES the entire current library."
         )
     ).to_be_visible()
-    tab.shot("import-confirm-behind-dialog")
-    close_dialog(dialog)
+    tab.shot("import-confirm")
     tab.button("Replace library").click()
     expect(tab.toast(f"Imported {len(bundled) + 1} creatures")).to_be_visible()
     expect(tab.row("Bog Hag")).to_be_visible()
@@ -968,10 +973,6 @@ def test_export_then_import_round_trips_the_library(app, tab, tmp_path, bundled)
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-11: the import confirmation sits behind the Load Compendium dialog",
-)
 def test_import_confirmation_is_reachable_from_the_load_dialog(tab, tmp_path, bundled):
     path = exported_bog_hag(tab, tmp_path, bundled)
     import_from_file(tab, path)
@@ -983,10 +984,9 @@ def test_importing_a_file_that_is_not_a_compendium_changes_nothing(app, tab, tmp
     tab.create("Bog Hag")
     junk = tmp_path / "shopping-list.json"
     junk.write_text('{"eggs": 12}')
-    dialog = import_from_file(tab, junk)
+    import_from_file(tab, junk)
     expect(tab.page.get_by_text(re.compile("compatibility issues"))).to_be_visible()
     tab.shot("import-junk")
-    close_dialog(dialog)
     tab.button("OK").click()
     expect(tab.rows()).to_have_count(len(bundled) + 1)
     expect(tab.row("Bog Hag")).to_be_visible()

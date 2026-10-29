@@ -368,11 +368,13 @@ clipped in the column.  Each now works.  The editor's footer also covers the
 rows behind it.  See QA-BUILD-09, QA-BUILD-10, QA-BUILD-11 and QA-BUILD-20.
 Part of [[*Work through the findings in the QA report]].
 
-* TODO Sync new creatures to the encounter tab
+* DONE Sync new creatures to the encounter tab
 
-A creature made in the compendium tab is missing from the encounter tab until a
-reload.  The file import's confirmation also sits behind its dialog.  See
-QA-COMP-06 and QA-COMP-11.  Part of [[*Work through the findings in the QA report]].
+A creature made in the compendium tab was missing from the encounter tab until a
+reload.  The compendium now syncs between tabs like the encounter.  The file
+import's confirmation sat behind its dialog.  Picking a file now closes the
+dialog.  See QA-COMP-06 and QA-COMP-11.  Part of
+[[*Work through the findings in the QA report]].
 
 * TODO Make the app work by keyboard and screen reader
 

@@ -3,8 +3,8 @@ module Effects exposing
     , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
     , RollSpec, rollBatch, autoRollSpecsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-    , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
-    , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
+    , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+    , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
     , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, deleteTreasureTable, diceInputId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
@@ -29,8 +29,8 @@ way: Update modules → Effects.
 @docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
 @docs RollSpec, rollBatch, autoRollSpecsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-@docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
-@docs compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
+@docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+@docs compendiumChanged, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
 @docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
 @docs importCompendiumBundle, clearCompendiumCreatures, resetCompendium
 
@@ -1218,26 +1218,41 @@ persistCompendiumFor : Model -> Cmd Msg
 persistCompendiumFor model =
     case model.auth of
         Auth.AuthAnonymous ->
-            -- Snapshot only carries creatures the user authored or
-            -- imported locally — bundled SRD creatures are always
-            -- refetched from `/bundled-creatures.json` on boot,
-            -- never stored client-side.  Filtering by `isBundled`
-            -- keeps the snapshot small AND ensures stale bundled
-            -- bytes can't shadow a corrected bundle after an app
-            -- update.
             Ports.persistLocalCompendium
-                (Compendium.Wire.encodeLocalCompendiumSnapshot
-                    { creatures =
-                        loadedCreatures model.compendium.db
-                            |> List.filter (\c -> not c.isBundled)
-                    , groups = Dict.values model.compendium.groups
-                    , nextLocalId = model.nextLocalCreatureId
-                    , bundledVersion = Compendium.Wire.currentBundledVersion
-                    }
-                )
+                (Compendium.Wire.encodeLocalCompendiumSnapshot (localSnapshot model))
 
         _ ->
             Cmd.none
+
+
+{-| Post the compendium to the app's other tabs, so a creature made
+in one is in every other one's Quick Add and stat blocks.
+-}
+broadcastCompendiumFor : Model -> Cmd Msg
+broadcastCompendiumFor model =
+    Auth.owner model.auth
+        |> Maybe.map
+            (\owner ->
+                Ports.broadcastCompendium
+                    (Compendium.Wire.encodeTabSync owner (localSnapshot model))
+            )
+        |> Maybe.withDefault Cmd.none
+
+
+localSnapshot : Model -> Compendium.Wire.LocalCompendiumSnapshot
+localSnapshot model =
+    -- The snapshot carries only creatures the user authored or
+    -- imported.  Bundled creatures come from
+    -- `/bundled-creatures.json` on every boot.  Leaving them out
+    -- keeps the snapshot small.  It also keeps stale bundled
+    -- bytes from shadowing a corrected bundle after an update.
+    { creatures =
+        loadedCreatures model.compendium.db
+            |> List.filter (\c -> not c.isBundled)
+    , groups = Dict.values model.compendium.groups
+    , nextLocalId = model.nextLocalCreatureId
+    , bundledVersion = Compendium.Wire.currentBundledVersion
+    }
 
 
 shouldPersistAfter : Msg -> Bool
@@ -1271,6 +1286,35 @@ shouldPersistAfter msg =
         -- (and already broadcast), so re-doing either from this
         -- tab would loop.
         EncounterFromOtherTab _ ->
+            False
+
+        CompendiumFromOtherTab _ ->
+            False
+
+        _ ->
+            True
+
+
+{-| Whether to fire `broadcastCompendium` after this Msg. A load is
+left out as well as the inbound broadcast. A tab posting what it
+just loaded could undo a newer edit made in another tab.
+-}
+shouldBroadcastCompendiumAfter : Msg -> Bool
+shouldBroadcastCompendiumAfter msg =
+    case msg of
+        CompendiumFromOtherTab _ ->
+            False
+
+        CompendiumLoaded _ ->
+            False
+
+        CompendiumGroupsLoaded _ ->
+            False
+
+        AuthMeReceived _ ->
+            False
+
+        LocalCompendiumMigrated _ _ ->
             False
 
         _ ->
