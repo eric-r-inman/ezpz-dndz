@@ -9697,6 +9697,9 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .cond-phase {
+  /* This anchors the hidden radio in place.  Focusing the radio then
+     scrolls nowhere. */
+  position: relative;
   display: inline-flex;
   align-items: center;
   padding: 3px 8px;
@@ -9716,8 +9719,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   color: #ffffff;
 }
 
-.cond-phase input[type="radio"] {
-  display: none;
+.cond-phase:focus-within {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
 }
 
 /* Disabled segment of a cond-phase-toggle. The label is still
@@ -11998,4 +12002,18 @@ button.creature-card__lifecycle--dead:focus-visible {
 
 .save-chain__log-applied-sep {
   color: var(--color-text-muted);
+}
+
+/* The element is hidden from sight but stays in the tab order and the
+   accessibility tree.  display: none would drop it from both. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

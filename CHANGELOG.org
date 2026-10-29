@@ -31,6 +31,8 @@
 15. A saved encounter can be picked from the keyboard.  No action needed.
 16. The memo, note and timer editors open with the cursor in their field.  No
     action needed.
+17. The turn controls work with a keyboard and a screen reader.  No action
+    needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 ** Maintenance

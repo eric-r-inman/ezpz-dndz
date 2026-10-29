@@ -1895,17 +1895,31 @@ timerSlot creature surface =
 
         Just t ->
             span
-                [ class
+                ([ class
                     (if t.ringing then
                         "timer-pill timer-pill--ringing"
 
                      else
                         "timer-pill"
                     )
-                , Tooltips.attr (timerTooltip t)
-                ]
+                 , Tooltips.attr (timerTooltip t)
+                 ]
+                    -- The flash and the ping are all a ringing timer
+                    -- otherwise shows.
+                    ++ (if t.ringing then
+                            [ attribute "role" "status" ]
+
+                        else
+                            []
+                       )
+                )
                 [ span [ class "timer-pill__count" ]
                     [ text (String.fromInt t.remaining) ]
+                , if t.ringing then
+                    span [ class "visually-hidden" ] [ text "Timer rang." ]
+
+                  else
+                    text ""
                 , if String.isEmpty t.note then
                     text ""
 

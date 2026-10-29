@@ -476,7 +476,7 @@ def test_quick_view_lists_the_queue_and_can_show_enemies_alone(app):
     expect(names.filter(has_text="Wolf")).to_have_class(re.compile("quick-view__name--down"))
     app.shot("quick-view-all")
 
-    enemies = column.get_by_role("button", name="Enemies only")
+    enemies = column.get_by_role("button", name="Show only enemies in the quick view")
     enemies.click()
     expect(enemies).to_have_attribute("aria-pressed", "true")
     expect(names).to_have_text(ORDER)
@@ -485,8 +485,8 @@ def test_quick_view_lists_the_queue_and_can_show_enemies_alone(app):
     hide.click()
     expect(column).to_have_count(0)
     app.page.get_by_role("button", name="Show quick-view").click()
-    expect(column.get_by_role("button", name="Enemies only")).to_have_attribute("aria-pressed", "true")
-    column.get_by_role("button", name="Enemies only").click()
+    expect(enemies).to_have_attribute("aria-pressed", "true")
+    enemies.click()
     expect(names).to_have_count(5)
 
 
@@ -670,10 +670,6 @@ def test_timer_setup_is_discarded_by_cancel_escape_or_its_own_button(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-08: the timer's begin and end choice is hidden from the keyboard",
-)
 def test_the_timer_phase_can_be_chosen_from_the_keyboard(app):
     fight(app)
     form = open_timer(app, "Wolf")
@@ -681,6 +677,11 @@ def test_the_timer_phase_can_be_chosen_from_the_keyboard(app):
     app.page.keyboard.press("Tab")
     focused = app.page.evaluate("() => document.activeElement.getAttribute('type')")
     assert focused == "radio"
+    # A timer starts at the end of the turn.  The arrow wraps to beginning.
+    app.page.keyboard.press("ArrowRight")
+    expect(form.get_by_role("radio", name="beginning", exact=True)).to_be_checked()
+    # The lit segment follows the model, not the browser's own radio state.
+    expect(form.locator(".cond-phase--on")).to_have_text("beginning")
 
 
 @pytest.mark.cross_browser

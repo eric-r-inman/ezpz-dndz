@@ -261,9 +261,8 @@ class ConditionEditor:
 
     def phase(self, word):
         """`word` is beginning or end.  It acts on the duration row on show."""
-        # The phase radios are display: none.  Only their labels can be
-        # reached.  Only a pointer reaches them.
-        self.root.locator(".cond-subsection").get_by_text(word, exact=True).click()
+        # The radio is hidden from sight.  A pointer clicks its label.
+        self.root.locator(".cond-subsection .cond-phase").filter(has_text=word).click()
         return self
 
     def turns_of(self, name):

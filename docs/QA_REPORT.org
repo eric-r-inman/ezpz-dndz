@@ -181,6 +181,7 @@ The suite did not cover these:
 
 *** QA-TURN-08: Turn controls a keyboard or screen reader cannot use
 
+- Status :: fixed
 - Severity :: minor
 - Actual ::
   - The timer's beginning and end radios use ~display: none~.  Tab skips them
@@ -193,11 +194,13 @@ The suite did not cover these:
   - A ringing timer and a struck-through name in Quick View show only by look.
   - The timer preset name field has a placeholder but no label.
   - Only a mouse drag can reorder the queue.
-- Evidence :: ~test_the_timer_phase_can_be_chosen_from_the_keyboard~ fails in
-  both browsers.  The rest show in the CSS locators ~qa/pages/turns.py~ needs.
-- Action :: Hide the radios visually rather than with ~display: none~.  Label
-  each button row as a group.  Name the Quick View column.  Give the ringing
-  timer a status role.
+- Evidence :: ~test_the_timer_phase_can_be_chosen_from_the_keyboard~
+- Action :: Fixed.  The phase radios are hidden from sight only.  Each button
+  row is a named group.  The Quick View column and its switch have names of
+  their own.  A struck-through name says why in its label.  A ringing timer has
+  a status role and says it rang.  The preset name field has a label.  Drag
+  still reorders the queue by mouse alone.  A typed initiative reorders it from
+  the keyboard.
 
 *** QA-TURN-09: Card editors open without the cursor in them
 
