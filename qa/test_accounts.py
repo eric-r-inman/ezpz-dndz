@@ -118,7 +118,7 @@ def test_an_email_already_registered_is_refused_whatever_its_case(app):
     signed_out(app)
     form = LoginPage(app.page, app.server.base_url).goto().to_create_account()
     form.create_account("DM@Example.TEST", "another long password", "Impostor")
-    expect(form.error()).to_have_text("That email is already registered.")
+    expect(form.error()).to_have_text("Email is already registered.")
     shot(app, "taken")
     assert login(app.page, DM, "another long password").status == 401
     assert login(app.page, DM).status == 200
@@ -153,7 +153,7 @@ def test_empty_fields_keep_the_sign_in_form_from_sending(app):
 def test_a_blank_display_name_is_refused(app):
     form = LoginPage(app.page, app.server.base_url).goto().to_create_account()
     form.create_account(DM, PASSWORD, "   ")
-    expect(form.error()).to_contain_text("display name")
+    expect(form.error()).to_contain_text("display name", ignore_case=True)
     shot(app, "blank-name")
     assert login(app.page, DM).status == 401
 
@@ -194,10 +194,6 @@ def test_a_burst_of_bad_sign_ins_is_throttled_until_the_window_passes(app):
     assert login(app.page, DM).status == 200
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-08: a throttled sign-in says only 'Something went wrong'",
-)
 def test_a_throttled_dm_is_told_to_wait(app):
     signed_out(app)
     bad_logins(app.page, 10)
@@ -206,6 +202,7 @@ def test_a_throttled_dm_is_told_to_wait(app):
     expect(form.error()).to_be_visible()
     shot(app, "throttled")
     expect(form.error()).to_contain_text(re.compile("too many|wait", re.IGNORECASE))
+    expect(form.error()).to_contain_text(re.compile(r"Try again in \d+ seconds"))
 
 
 @pytest.mark.xfail(

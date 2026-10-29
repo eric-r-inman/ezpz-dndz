@@ -45,6 +45,7 @@
     No action needed.
 23. Concentration ends at 0 hit points, and damage prompts its save DC.  No
     action needed.
+24. The sign-in form shows the server's reason for a refusal.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 ** Maintenance

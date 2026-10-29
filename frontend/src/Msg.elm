@@ -1282,7 +1282,7 @@ type Msg
     | AuthLoginDisplayNameChanged String
     | AuthLoginModeChanged Auth.LoginMode
     | AuthLoginSubmit
-    | AuthLoginResponse (Result Http.Error Auth.User)
+    | AuthLoginResponse (Result Auth.SubmitError Auth.User)
     | AuthLogout
     | AuthLogoutDone (Result Http.Error ())
       -- Anonymous-mode nudge: gated controls (Save to Server, etc.)

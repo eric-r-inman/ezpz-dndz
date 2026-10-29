@@ -585,13 +585,16 @@ The suite did not cover these:
 
 *** QA-ACCT-08: The sign-in form hides the server's reasons
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A throttled sign-in shows "Something went wrong.  Try again."  The
   server sent "Too many authentication attempts" and a wait time.  A blank
   display name gets a generic hint about every field.
 - Evidence :: ~test_a_throttled_dm_is_told_to_wait~ and
   ~test_a_blank_display_name_is_refused~
-- Action :: Show the server's message.  Show a countdown for a 429.
+- Action :: Fixed.  The form shows the server's reason.  A throttled sign-in
+  also says how many seconds to wait.  The number is fixed when the reply lands
+  and does not count down.
 
 *** QA-ACCT-09: The sign-in throttle trusts any forwarded address
 

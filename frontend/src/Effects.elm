@@ -998,8 +998,38 @@ submitLogin { email, password } =
                     , ( "password", Encode.string password )
                     ]
                 )
-        , expect = Http.expectJson AuthLoginResponse Auth.userDecoder
+        , expect = Http.expectStringResponse AuthLoginResponse submitResult
         }
+
+
+{-| The sign-in and registration reply. A refusal keeps its body
+because the body holds the server's reason. `Http.expectJson` would
+drop it.
+-}
+submitResult : Http.Response String -> Result Auth.SubmitError Auth.User
+submitResult response =
+    case response of
+        Http.GoodStatus_ _ body ->
+            Decode.decodeString Auth.userDecoder body
+                |> Result.mapError (\_ -> Auth.Unreadable)
+
+        Http.BadStatus_ metadata body ->
+            Err
+                (Auth.Refused
+                    { status = metadata.statusCode
+                    , reason = Result.toMaybe (Decode.decodeString (Decode.field "error" Decode.string) body)
+                    , retryAfterSecs = Result.toMaybe (Decode.decodeString (Decode.field "retry_after_secs" Decode.int) body)
+                    }
+                )
+
+        Http.Timeout_ ->
+            Err Auth.TimedOut
+
+        Http.NetworkError_ ->
+            Err Auth.Unreachable
+
+        Http.BadUrl_ _ ->
+            Err Auth.Unreachable
 
 
 submitRegister :
@@ -1016,7 +1046,7 @@ submitRegister { email, password, displayName } =
                     , ( "display_name", Encode.string displayName )
                     ]
                 )
-        , expect = Http.expectJson AuthLoginResponse Auth.userDecoder
+        , expect = Http.expectStringResponse AuthLoginResponse submitResult
         }
 
 

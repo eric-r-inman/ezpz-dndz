@@ -394,8 +394,8 @@ QA-FIGHT-05, QA-TURN-04 and QA-TURN-05.  Part of
 
 * TODO Harden sign-in and sessions
 
-Sessions live in memory.  The form hides the server's reasons.  The throttle
-trusts any forwarded address.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
+Sessions live in memory.  The throttle trusts any forwarded address.  The form
+now shows the server's reasons.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
 QA-ACCT-09.  Part of [[*Work through the findings in the QA report]].
 
 * TODO Keep random encounters inside their budget and scale
