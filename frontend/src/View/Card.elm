@@ -309,6 +309,7 @@ inlineSurface ctx creature =
                 , maxLength = MemoUi.maxMemoLength
                 , placeholder = "e.g. legendary res used"
                 , ariaLabel = "Edit memo for " ++ creature.name
+                , inputId = MemoUi.inputId
                 , onChange = MemoChange
                 , commit = MemoCommit
                 , cancel = MemoCancel
@@ -321,6 +322,7 @@ inlineSurface ctx creature =
                 , maxLength = NoteUi.maxNoteLength
                 , placeholder = "e.g. boss, summoned, ally"
                 , ariaLabel = "Edit note for " ++ creature.name
+                , inputId = NoteUi.inputId
                 , onChange = NoteEditChange
                 , commit = NoteEditCommit
                 , cancel = NoteEditCancel
@@ -758,6 +760,7 @@ compactEditor :
     , maxLength : Int
     , placeholder : String
     , ariaLabel : String
+    , inputId : String
     , onChange : String -> Msg
     , commit : Msg
     , cancel : Msg
@@ -767,12 +770,12 @@ compactEditor cfg =
     div [ class "creature-card__inline creature-card__inline--compact" ]
         [ span [ class "creature-card__inline-title" ] [ text cfg.title ]
         , input
-            [ class "note-edit__input note-edit__input--in-place"
+            [ id cfg.inputId
+            , class "note-edit__input note-edit__input--in-place"
             , type_ "text"
             , value cfg.inputValue
             , maxlength cfg.maxLength
             , Attr.placeholder cfg.placeholder
-            , autofocus True
             , onInput cfg.onChange
             , on "keydown" (commitCancelKeyDecoder cfg.commit cfg.cancel)
             , attribute "aria-label" cfg.ariaLabel

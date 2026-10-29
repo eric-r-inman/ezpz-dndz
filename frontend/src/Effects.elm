@@ -7,7 +7,7 @@ module Effects exposing
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
-    , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, deleteTreasureTable, diceInputId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, deleteTreasureTable, diceInputId, editorFieldFocus, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -267,6 +267,20 @@ focusField : String -> Cmd Msg
 focusField elementId =
     Browser.Dom.focus elementId
         |> Task.attempt (always NoOp)
+
+
+{-| Put the cursor in a card editor's field once its button has
+opened the editor. A press that closed the editor leaves focus on
+the button. `autofocus` cannot do this, because it acts only on
+page load.
+-}
+editorFieldFocus : String -> Model -> Cmd Msg
+editorFieldFocus elementId model =
+    if model.surface == Nothing then
+        Cmd.none
+
+    else
+        focusField elementId
 
 
 {-| Scroll so the panel at `index` sits at the top of the stack's

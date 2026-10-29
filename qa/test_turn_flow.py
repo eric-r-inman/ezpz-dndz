@@ -684,10 +684,6 @@ def test_the_timer_phase_can_be_chosen_from_the_keyboard(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-09: the memo, note and timer fields open without the cursor in them",
-)
 def test_opening_a_card_editor_puts_the_cursor_in_its_field(app):
     fight(app)
     card = app.card("Wolf").root

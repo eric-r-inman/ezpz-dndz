@@ -201,14 +201,14 @@ The suite did not cover these:
 
 *** QA-TURN-09: Card editors open without the cursor in them
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Click 📝, ✏️ or ⏱️ on a card.
 - Expected :: The cursor lands in the field.
 - Actual :: Focus stays on the button in both browsers.  ~autofocus~ does
   nothing on a field added after the page loads.
 - Evidence :: ~test_opening_a_card_editor_puts_the_cursor_in_its_field~
-- Action :: Focus the field with ~Browser.Dom.focus~ when the editor opens.
-  ~View.Modal.focusInitial~ does the same for dialogs.
+- Action :: Fixed.  Opening a card editor focuses its field.
 
 *** QA-TURN-10: Timers and condition countdowns count the current turn apart
 
