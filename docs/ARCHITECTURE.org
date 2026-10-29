@@ -1418,6 +1418,13 @@ The pass skips the save-landing messages themselves, or a condition whose failed
 save deals damage would roll without end, and the messages that swap in a whole
 encounter from storage, whose numbers are not hits.
 
+~Update.Concentration.savePrompts~ runs right after it.  A creature still
+concentrating after a hit gets a toast naming its Constitution save and DC.  The
+DC comes from ~Encounter.Concentration.savesOwed~.  Both passes share
+~Effects.couldDealDamage~ for the messages whose numbers are not hits.  A
+creature dropped to 0 stops concentrating in ~HpChange~ itself.  It owes no
+save.
+
 An area chain (~SaveChain.area~) marks each target with a condition carrying an
 ~AreaTracker~ — the chain's name plus the ability, DC, and bonus fixed at apply
 time, as a save-to-end's are — and ~nextTurn~ rolls those markers at their phase

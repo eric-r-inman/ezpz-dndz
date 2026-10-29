@@ -384,11 +384,12 @@ QA-BUILD-14 are fixed.  QA-UI-03 is fixed with them.  The naming gaps each area
 of the report lists are left to the sweep of minor entries.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Close the gaps against the 2024 rules
+* DONE Close the gaps against the 2024 rules
 
-The tracker misses five rules.  They cover damage at 0 HP, massive damage,
-concentration at 0, a readied action's lapse and legendary pools outside the
-lair.  See QA-FIGHT-04, QA-FIGHT-05, QA-TURN-04 and QA-TURN-05.  Part of
+The tracker missed five rules.  Four now hold: damage at 0 HP, massive damage,
+concentration under damage and a readied action's lapse.  Legendary pools
+outside the lair wait on the question QA-TURN-05 asks.  See QA-FIGHT-04,
+QA-FIGHT-05, QA-TURN-04 and QA-TURN-05.  Part of
 [[*Work through the findings in the QA report]].
 
 * TODO Harden sign-in and sessions

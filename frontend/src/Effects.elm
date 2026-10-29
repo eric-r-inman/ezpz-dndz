@@ -4,7 +4,7 @@ module Effects exposing
     , RollSpec, rollBatch, autoRollSpecsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
     , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
-    , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
+    , compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
     , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, deleteTreasureTable, diceInputId, editorFieldFocus, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
@@ -30,7 +30,7 @@ way: Update modules → Effects.
 @docs RollSpec, rollBatch, autoRollSpecsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
 @docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
-@docs compendiumChanged, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
+@docs compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
 @docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
 @docs importCompendiumBundle, clearCompendiumCreatures, resetCompendium
 
@@ -1318,6 +1318,47 @@ shouldPersistAfter msg =
             False
 
         CompendiumFromOtherTab _ ->
+            False
+
+        _ ->
+            True
+
+
+{-| Whether hit points that fell during this Msg were a hit. A Msg
+that swaps in a whole encounter from storage or another tab, resets
+one, or undoes a change moves the numbers without dealing damage.
+-}
+couldDealDamage : Msg -> Bool
+couldDealDamage msg =
+    case msg of
+        EncounterLoaded _ ->
+            False
+
+        EncounterFromOtherTab _ ->
+            False
+
+        AuthMeReceived _ ->
+            False
+
+        LocalEncounterMigrated _ _ ->
+            False
+
+        SaveLoadLoadRequested _ ->
+            False
+
+        SaveLoadServerResponse _ _ ->
+            False
+
+        SaveLoadDeviceFileRead _ ->
+            False
+
+        EncounterReset ->
+            False
+
+        EncounterClear ->
+            False
+
+        HpChangeUndoLatest ->
             False
 
         _ ->

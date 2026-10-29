@@ -286,10 +286,6 @@ def test_falling_damage_rolls_a_d6_per_ten_feet_and_grounds_the_creature(app):
     expect_pools(ogre, 68, 68)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-05: a concentrating creature dropped to 0 HP keeps concentrating",
-)
 def test_concentration_ends_when_the_creature_drops_to_zero(app):
     app.add("Ogre")
     ogre = app.card("Ogre")
@@ -301,6 +297,17 @@ def test_concentration_ends_when_the_creature_drops_to_zero(app):
     expect(concentrating).to_be_visible()
     ManageHp(app).open_for("Ogre").damage(68)
     expect(concentrating).to_have_count(0, timeout=2000)
+
+
+def test_damage_to_a_concentrating_creature_prompts_its_save(app):
+    app.add("Ogre")
+    status = status_panel(app, "Ogre")
+    status.root.get_by_role("button", name="concentrating", exact=True).click()
+    status.root.get_by_role("button", name="Target", exact=True).click()
+    ManageHp(app).open_for("Ogre").damage(24)
+    expect(
+        app.page.get_by_text("Ogre makes a DC 12 Constitution save to keep concentrating.")
+    ).to_be_visible()
 
 
 # Legendary pools, recharge and special reactions.

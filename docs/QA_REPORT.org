@@ -49,7 +49,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 11. Make the app work by keyboard and screen reader.  Start with QA-UI-05,
     QA-UI-14, QA-TURN-08, QA-TURN-09 and QA-BUILD-14.  Done.
 12. Close the gaps against the 2024 rules.  See QA-FIGHT-04, QA-FIGHT-05,
-    QA-TURN-04 and QA-TURN-05.
+    QA-TURN-04 and QA-TURN-05.  Done except QA-TURN-05.  That one is a question.
 13. Harden sign-in and sessions.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
     QA-ACCT-09.
 14. Keep random encounters inside their budget and scale.  See QA-BUILD-04,
@@ -970,14 +970,15 @@ The suite did not cover these:
 
 *** QA-FIGHT-05: Concentration outlasts a drop to 0
 
+- Status :: fixed
 - Severity :: minor
 - Expected :: At 0 the creature is Unconscious.  Its concentration ends.  Damage
   should prompt a Constitution save.  Its DC is the higher of 10 and half the
   damage.
 - Actual :: "concen." stays on the card.  Damage prompts nothing.
 - Evidence :: ~test_concentration_ends_when_the_creature_drops_to_zero~
-- Action :: Clear concentration at 0.  Flash the "concen." label with its DC on
-  damage.
+- Action :: Fixed.  A creature dropped to 0 stops concentrating.  Damage to a
+  creature still concentrating raises a toast with its Constitution save DC.
 
 *** QA-FIGHT-06: Legendary creatures always get their lair pools
 

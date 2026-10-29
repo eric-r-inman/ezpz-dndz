@@ -43,6 +43,8 @@
     needed.
 22. Damage at 0 hit points fails a death save and massive damage kills outright.
     No action needed.
+23. Concentration ends at 0 hit points, and damage prompts its save DC.  No
+    action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 ** Maintenance

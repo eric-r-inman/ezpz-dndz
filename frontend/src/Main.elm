@@ -92,6 +92,7 @@ import Update.Compendium.Edit
 import Update.Compendium.Group
 import Update.Compendium.Lore
 import Update.Compendium.Paste
+import Update.Concentration
 import Update.Condition
 import Update.CrCalculator
 import Update.DeathSave
@@ -732,11 +733,13 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
         -- A hit on a creature may owe a save to one of its
-        -- conditions, so every message's result passes through the
-        -- damage check before anything else reads it.
+        -- conditions or to its concentration.  Every message's
+        -- result passes through both damage checks before anything
+        -- else reads it.
         ( next, innerCmd ) =
             updateInner msg model
                 |> Update.Condition.damageTriggered msg model
+                |> Update.Concentration.savePrompts msg model
                 |> Tuple.mapFirst Model.dropStaleConditionEdit
 
         encounterCmd =
