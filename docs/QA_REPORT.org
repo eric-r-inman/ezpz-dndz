@@ -51,7 +51,8 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 12. Close the gaps against the 2024 rules.  See QA-FIGHT-04, QA-FIGHT-05,
     QA-TURN-04 and QA-TURN-05.  Done except QA-TURN-05.  That one is a question.
 13. Harden sign-in and sessions.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
-    QA-ACCT-09.
+    QA-ACCT-09.  Done as far as this repository reaches.  The rest needs
+    rust-template.  QA-ACCT-05 is a question.
 14. Keep random encounters inside their budget and scale.  See QA-BUILD-04,
     QA-BUILD-05 and QA-BUILD-06.
 15. Fit the phone layout.  See QA-UI-01.
@@ -561,6 +562,7 @@ The suite did not cover these:
 
 *** QA-ACCT-06: A server restart signs every DM out and loses edits quietly
 
+- Status :: partly fixed
 - Severity :: minor
 - Steps :: Restart the server in the middle of a fight.  Change HP in the open
   tab.
@@ -572,8 +574,10 @@ The suite did not cover these:
   sessions live in memory.
 - Evidence :: ~test_a_server_restart_keeps_the_dm_signed_in~ and
   ~test_an_open_tab_tells_the_dm_to_sign_in_again_after_a_restart~
-- Action :: Keep sessions in the database.  Turn a 401 into a prompt to sign in
-  again.
+- Action :: Partly fixed.  A 401 on a save now says to sign in again.  The tab
+  keeps the fight in the browser, so a reload shows it and the next sign-in
+  keeps it live.  Sessions still live in memory.  The foundation's runner builds
+  a ~MemoryStore~ itself, so a lasting store needs a rust-template change.
 
 *** QA-ACCT-07: Form errors are not announced
 

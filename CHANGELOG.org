@@ -48,6 +48,8 @@
 24. The sign-in form shows the server's reason for a refusal.  No action needed.
 25. A forged =X-Forwarded-For= header no longer resets the sign-in throttle.
     See Breaking for the flag a proxied deployment needs.
+26. A save refused after a server restart says to sign in again and keeps the
+    fight in this browser.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 2. The sign-in throttle reads =X-Forwarded-For= only with

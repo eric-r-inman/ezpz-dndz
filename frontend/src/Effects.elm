@@ -3,7 +3,7 @@ module Effects exposing
     , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
     , RollSpec, rollBatch, autoRollSpecsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-    , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+    , persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
     , compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
@@ -29,7 +29,7 @@ way: Update modules → Effects.
 @docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
 @docs RollSpec, rollBatch, autoRollSpecsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-@docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+@docs persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
 @docs compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
 @docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
 @docs importCompendiumBundle, clearCompendiumCreatures, resetCompendium
@@ -1223,10 +1223,17 @@ persistEncounterFor auth encounter =
             Encounter.Wire.persistEncounterCmd EncounterPersisted encounter
 
         Auth.AuthAnonymous ->
-            Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
+            persistLocalEncounter encounter
 
         Auth.AuthLoading ->
             Cmd.none
+
+
+{-| Write the encounter to the browser's own slot.
+-}
+persistLocalEncounter : Encounter.Encounter -> Cmd Msg
+persistLocalEncounter encounter =
+    Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
 
 
 {-| Persist the full dice-history list to `localStorage` when

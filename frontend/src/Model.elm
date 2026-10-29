@@ -1591,6 +1591,10 @@ type alias Model =
     , quickView : QuickViewUi
     , toasts : List Toast
     , nextToastId : Int
+
+    -- The server answered a save with 401 since the page loaded.  The
+    -- prompt to sign in again shows once, not after every edit.
+    , sessionLost : Bool
     , rollPopups : List RollPopup
     , nextRollPopupId : Int
     , preferences : Preferences

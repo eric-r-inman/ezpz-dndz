@@ -638,6 +638,7 @@ init flags url key =
         , encounterMenuOpen = False
         , toasts = []
         , nextToastId = 0
+        , sessionLost = False
         , rollPopups = []
         , nextRollPopupId = 0
         , preferences = prefs
