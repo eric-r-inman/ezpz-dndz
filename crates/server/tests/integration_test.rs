@@ -1435,6 +1435,55 @@ async fn test_treasure_table_put_then_get_roundtrip() {
 }
 
 #[tokio::test]
+async fn test_treasure_table_delete_puts_get_back_to_null() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let put = send_json(
+    &app,
+    &cookie,
+    "PUT",
+    "/api/treasure-table",
+    serde_json::json!({
+      "individualBrackets": {},
+      "hoardBrackets": {},
+      "gems": { "50gp": ["Custom gem"] },
+      "art": {},
+      "magic": {},
+    }),
+  )
+  .await;
+  assert_eq!(put.status(), StatusCode::OK);
+
+  let delete = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("DELETE")
+        .uri("/api/treasure-table")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(delete.status(), StatusCode::NO_CONTENT);
+
+  let get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/treasure-table")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(read_body(get).await.trim(), "null");
+}
+
+#[tokio::test]
 async fn test_treasure_table_per_user_isolation() {
   let (_temp, state) = stub_app_state().await;
   let app = build_test_router(state);

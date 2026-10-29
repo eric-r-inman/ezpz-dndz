@@ -340,6 +340,16 @@ if (app.ports && app.ports.persistLocalUserTreasureTable) {
   });
 }
 
+// Treasure table eraser.  Fires when the GM reverts to the
+// bundled table.
+if (app.ports && app.ports.clearLocalUserTreasureTable) {
+  app.ports.clearLocalUserTreasureTable.subscribe(function () {
+    try {
+      localStorage.removeItem("userTreasureTable");
+    } catch (_) {}
+  });
+}
+
 // Cross-tab dice-roll sync.  When a roll lands in any tab,
 // Elm fires `broadcastDiceRoll` with the encoded roll; every
 // other tab of the app open in the same browser profile

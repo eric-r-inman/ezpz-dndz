@@ -7,7 +7,7 @@ module Effects exposing
     , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
-    , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, diceInputId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, deleteTreasureTable, diceInputId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -891,6 +891,22 @@ putTreasureTable table =
         , url = "/api/treasure-table"
         , body =
             Http.jsonBody (Encounter.Treasure.TableWire.encodeTable table)
+        , expect = Http.expectWhatever TreasureTablePersisted
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
+{-| DELETE the caller's treasure table, so the bundled one applies
+again.
+-}
+deleteTreasureTable : Cmd Msg
+deleteTreasureTable =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/treasure-table"
+        , body = Http.emptyBody
         , expect = Http.expectWhatever TreasureTablePersisted
         , timeout = Nothing
         , tracker = Nothing

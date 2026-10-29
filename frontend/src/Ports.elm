@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, clearLocalCompendium, clearLocalEncounter, incomingDiceRoll, incomingEncounter, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
+    , broadcastDiceRoll, broadcastEncounter, clearLocalCompendium, clearLocalEncounter, clearLocalUserTreasureTable, incomingDiceRoll, incomingEncounter, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -148,6 +148,12 @@ encoded by [`Encounter.Treasure.TableWire`](Encounter-Treasure-TableWire).
 Fires on every edit in the Treasure Table editor.
 -}
 port persistLocalUserTreasureTable : E.Value -> Cmd msg
+
+
+{-| Drop `localStorage.userTreasureTable` once the GM reverts to the
+bundled table.
+-}
+port clearLocalUserTreasureTable : () -> Cmd msg
 
 
 {-| Broadcast a freshly-landed `Dice.Roll` to every other tab of

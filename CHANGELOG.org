@@ -21,6 +21,9 @@
 8. Signing in with a fight built while signed out saves the account's own live
    fight under a name before replacing it.  No action needed.
 9. Reloading the account page keeps the DM on it.  No action needed.
+10. The Treasure Table editor closes again.  No action needed.
+11. Revert to bundled stays reverted after a reload.  No action needed.
+12. Every Tune your rolls knob fits in the editor column.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 ** Maintenance

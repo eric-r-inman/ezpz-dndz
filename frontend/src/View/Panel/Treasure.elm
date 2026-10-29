@@ -422,8 +422,6 @@ scrollChanceRow current magicNone =
                 []
             , span [ class "treasure__settings-scroll-unit" ] [ text "%" ]
             ]
-        , span [ class "treasure__settings-row-spacer" ] []
-        , span [ class "treasure__settings-row-spacer" ] []
         ]
 
 
@@ -438,25 +436,19 @@ settingsRow :
 settingsRow kind label_ itemClass maybeCount maybeValue noneOn =
     div [ class "treasure__settings-row" ]
         [ span [ class "treasure__settings-row-label" ] [ text label_ ]
-        , case maybeCount of
-            Just countValue ->
-                countSegmented itemClass countValue noneOn
-
-            Nothing ->
-                span [ class "treasure__settings-row-spacer" ] []
-        , case maybeValue of
-            Just valueValue ->
-                valueSegmented itemClass valueValue noneOn
-
-            Nothing ->
-                span [ class "treasure__settings-row-spacer" ] []
+        , maybeCount
+            |> Maybe.map (\countValue -> countSegmented itemClass countValue noneOn)
+            |> Maybe.withDefault (text "")
+        , maybeValue
+            |> Maybe.map (\valueValue -> valueSegmented itemClass valueValue noneOn)
+            |> Maybe.withDefault (text "")
         , noneToggle kind itemClass noneOn
         ]
 
 
-{-| Right-edge toggle that suppresses the whole category at
-roll time. Stays at the far right of every row regardless of
-whether the row has Count, Value, or both knobs to its left.
+{-| Toggle that suppresses the whole category at roll time. It
+sits at the right end of the row's label line. The Count and
+Value knobs sit on lines beneath it.
 
 Rendered as a button (not a native `<input type=checkbox>`)
 with a glyph indicator, so the new value is decided explicitly

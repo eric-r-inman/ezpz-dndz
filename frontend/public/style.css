@@ -94,6 +94,7 @@
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
+  --modal-body-pad-y: var(--space-4);
   --header-height: 56px;
   /* The space between the queue's cards, which a drag's landing
      line sits in the middle of. */
@@ -2309,24 +2310,19 @@ body {
 }
 
 .treasure__settings-row {
-  /* Label | Count | Value | None — four columns so the None
-     toggle pins to the far right regardless of whether the row
-     has Value or only Count. */
+  /* The label and None share the top line.  Each knob takes a line of
+     its own, since the editor column is too narrow for all of them. */
   display: grid;
-  grid-template-columns: 70px 1fr 1fr auto;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
   align-items: center;
   min-height: 28px;
 }
 
-.treasure__settings-row-spacer {
-  /* Empty placeholder so coin-style rows (which have no Value
-     column) still grid-align with the gem/art rows above and
-     below them. */
-  display: block;
-}
-
 .treasure__settings-none {
+  grid-row: 1;
+  grid-column: 2;
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -2395,6 +2391,7 @@ body {
 }
 
 .treasure__settings-segmented {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -3076,10 +3073,14 @@ body {
   gap: 10px;
   justify-content: flex-end;
   margin-top: 12px;
+  /* Sticks through the body's bottom padding, so no row scrolls past
+     beneath the buttons. */
+  margin-bottom: calc(-1 * var(--modal-body-pad-y));
   padding-top: 12px;
+  padding-bottom: var(--modal-body-pad-y);
   border-top: 1px solid var(--color-border);
   position: sticky;
-  bottom: 0;
+  bottom: calc(-1 * var(--modal-body-pad-y));
   background: var(--color-surface);
 }
 
@@ -8369,7 +8370,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .modal__body {
-  padding: 16px 20px;
+  padding: var(--modal-body-pad-y) 20px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

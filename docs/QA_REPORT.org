@@ -43,7 +43,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
    Done.
 8. Move the account page off ~/me~.  See QA-ACCT-04.  Done.
 9. Repair the Treasure Table editor and Tune your rolls.  See QA-BUILD-09,
-   QA-BUILD-10 and QA-BUILD-11.
+   QA-BUILD-10 and QA-BUILD-11.  Done.
 10. Sync new creatures to the encounter tab and bring the import confirmation
     forward.  See QA-COMP-06 and QA-COMP-11.
 11. Make the app work by keyboard and screen reader.  Start with QA-UI-05,
@@ -781,6 +781,7 @@ The suite did not cover these:
 
 *** QA-BUILD-09: Revert to bundled comes undone on reload
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Sign in.  Save a treasure table edit.  Revert and confirm.  Reload.
 - Expected :: The bundled table.
@@ -788,10 +789,12 @@ The suite did not cover these:
   ~userTreasureTableCmd~ sends nothing when the table becomes ~Nothing~.  The
   doc on ~revertConfirm~ says otherwise.
 - Evidence :: ~test_a_reverted_table_stays_reverted_after_a_reload~
-- Action :: Delete the table on the server and in localStorage on revert.
+- Action :: Fixed.  Revert deletes the saved table on the server and in
+  localStorage.
 
 *** QA-BUILD-10: The Treasure Table editor can never be closed
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Open the editor from Treasure.  Press Cancel, ×, Esc, the backdrop or
   Save.
@@ -801,11 +804,11 @@ The suite did not cover these:
   Revert all route through ~Update.Treasure.open~.  Since Treasure moved into
   the column, that opens a panel and never clears ~model.surface~.
 - Evidence :: ~test_the_table_editor_closes~
-- Action :: Set ~surface~ to ~Nothing~ on close, save and revert in
-  ~Update.TreasureTable~.
+- Action :: Fixed.  Cancel, ×, Esc, Save and Revert close the editor.
 
 *** QA-BUILD-11: The Tune your rolls knobs are clipped and cannot be clicked
 
+- Status :: fixed
 - Severity :: major
 - Steps :: Open Treasure and then Tune your rolls at 1440 by 900.
 - Expected :: Every knob fits in the column.
@@ -813,8 +816,8 @@ The suite did not cover these:
   overflow.  "More", the whole Value and Rarity knob and every None switch are
   cut off.  An active "More" shows as "Mo".  Firefox matches.
 - Evidence :: ~test_tune_your_rolls_fits_inside_the_editor_column~
-- Action :: Lay the rows out for the column.  The CSS still assumes the old
-  modal.
+- Action :: Fixed.  The label and None share the top line.  Each knob takes a
+  line below.
 
 *** QA-BUILD-12: A JSON file that is not an encounter floods the error
 
@@ -886,9 +889,12 @@ The suite did not cover these:
 
 *** QA-BUILD-20: The Treasure Table footer overlaps the rows behind it
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: Text from the next row shows through the Save and Cancel row.
-- Action :: Give the footer a solid background.
+- Action :: Fixed.  The background was solid.  Rows showed in the body's bottom
+  padding below the buttons.  The footer now reaches the bottom edge.
+- Evidence :: ~test_no_row_shows_below_the_table_editor_buttons~
 
 ** Hit points, death, conditions and saves
 

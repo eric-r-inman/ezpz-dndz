@@ -325,6 +325,9 @@ subscriptions model =
                 Just (SurfaceLoadCompendium _) ->
                     Browser.Events.onKeyDown (escKey LoadCompendiumClose)
 
+                Just (SurfaceTreasureTable _) ->
+                    Browser.Events.onKeyDown (escKey TreasureTableClose)
+
                 _ ->
                     case Model.newestShowing model of
                         Just ( _, panel ) ->
@@ -848,8 +851,16 @@ update msg model =
                         Ports.persistLocalUserTreasureTable
                             (Encounter.Treasure.TableWire.encodeTable table)
 
+                    -- The local copy goes too when signed in.  Boot reads
+                    -- it either way, and an empty account uploads it.
+                    ( Auth.AuthAuthenticated _, Nothing ) ->
+                        Cmd.batch
+                            [ Effects.deleteTreasureTable
+                            , Ports.clearLocalUserTreasureTable ()
+                            ]
+
                     ( _, Nothing ) ->
-                        Cmd.none
+                        Ports.clearLocalUserTreasureTable ()
 
             else
                 Cmd.none

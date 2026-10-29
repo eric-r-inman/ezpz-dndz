@@ -338,10 +338,6 @@ def test_higher_gem_value_reaches_the_next_tier_up(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-11: the Tune your rolls knobs overflow the column and are cut off",
-)
 def test_tune_your_rolls_fits_inside_the_editor_column(app):
     app.add("Ogre")
     panel = treasure_panel(app)
@@ -469,10 +465,9 @@ def unfold(dialog, label):
 
 
 def save_table(app, dialog):
-    """Saves a signed-in DM's table edits and dismisses the editor.
+    """Saves a signed-in DM's table edits and reloads.
 
-    The editor cannot be closed.  See QA-BUILD-10.  A reload ends it once the
-    server has the table.
+    What the editor shows next then comes back from the server.
     """
     with app.page.expect_response(
         lambda response: response.url.endswith("/api/treasure-table")
@@ -501,10 +496,6 @@ def test_table_editor_sections_fold_and_unfold(app):
 
 @pytest.mark.cross_browser
 @pytest.mark.parametrize("way", ["Cancel", "Close", "Escape", "Save"])
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-10: the Treasure Table editor never closes, short of a reload",
-)
 def test_the_table_editor_closes(app, way):
     if way == "Save":
         app.sign_up()
@@ -515,6 +506,15 @@ def test_the_table_editor_closes(app, way):
     else:
         dialog.get_by_role("button", name=way, exact=True).click()
     expect(dialog).to_be_hidden(timeout=2000)
+
+
+@pytest.mark.cross_browser
+def test_no_row_shows_below_the_table_editor_buttons(app):
+    dialog = open_table(app)
+    unfold(dialog, "Items 133 entries")
+    footer = dialog.locator(".treasure-table__save-row").bounding_box()
+    body = dialog.locator(".modal__body").bounding_box()
+    assert footer["y"] + footer["height"] == pytest.approx(body["y"] + body["height"], abs=1)
 
 
 @pytest.mark.cross_browser
@@ -616,10 +616,6 @@ def test_revert_asks_first_then_drops_the_custom_table(app):
     expect(dialog.get_by_text("Revert to bundled?")).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-09: Revert to bundled is not saved, so the custom table returns on reload",
-)
 def test_a_reverted_table_stays_reverted_after_a_reload(app):
     app.sign_up()
     save_one_extra_mundane_item(app)

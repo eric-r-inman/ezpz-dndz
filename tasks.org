@@ -361,11 +361,12 @@ The foundation's own ~/me~ route answered a reload with raw JSON.  The page now
 lives at ~/account~.  See QA-ACCT-04.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Repair the Treasure Table editor and Tune your rolls
+* DONE Repair the Treasure Table editor and Tune your rolls
 
-The editor never closes.  A revert comes undone on reload.  The knobs are
-clipped in the column.  See QA-BUILD-09, QA-BUILD-10, QA-BUILD-11 and
-QA-BUILD-20.  Part of [[*Work through the findings in the QA report]].
+The editor never closed.  A revert came undone on reload.  The knobs were
+clipped in the column.  Each now works.  The editor's footer also covers the
+rows behind it.  See QA-BUILD-09, QA-BUILD-10, QA-BUILD-11 and QA-BUILD-20.
+Part of [[*Work through the findings in the QA report]].
 
 * TODO Sync new creatures to the encounter tab
 

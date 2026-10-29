@@ -761,7 +761,7 @@ analogue; ~model.auth~ picks at write time, the boot path picks at read time.
 | Party (Difficulty) | (localStorage in both modes)         | =party=                         |
 | Editor-column layout | (localStorage in both modes)       | =drawerLayout=                  |
 | Lore groups        | =PUT /api/lore-groups=               | =userLoreGroups=                |
-| Treasure table     | =PUT /api/treasure-table=            | =userTreasureTable=             |
+| Treasure table     | =PUT= or =DELETE /api/treasure-table= | =userTreasureTable=             |
 | Treasure profiles  | =PUT /api/treasure-profiles=         | (not persisted anonymously)     |
 | Theme              | =savePreferences= port → =theme=     | =theme= (same key; never auth-gated) |
 
@@ -906,7 +906,7 @@ maintains.
 | ~/api/compendium/*~               | ~user_creatures~ + children                           | yes       | Per-user creatures; the bundled bestiary merges in at request time from the binary.                                                               |
 | ~/api/compendium/saves(/:name)*~  | ~compendium_saves~ + ~compendium_save_nodes~          | yes       | User-named compendium snapshots (Save / Load Compendium modals).  Mirrors the encounter-saves wire shape — PUT?overwrite=true upserts, semantic errors line up. |
 | ~/api/compendium/groups(/:id)*~   | ~compendium_groups~ + ~compendium_group_entries~      | yes       | Creature groups (a.k.a. Hordes) keyed by server-issued UUID.  REST CRUD: GET list / POST draft / PUT full record / DELETE; ~created_at~ preserved server-side. |
-| ~/api/{lore-groups,condition-presets,save-chain-presets,treasure-table,treasure-profiles}~ GET / PUT | the five preset families (presence parent + children) | yes | Served by the shared GET/PUT pair in =per_user_store.rs=; GET returns ~null~ until the user first persists (the tri-state contract). |
+| ~/api/{lore-groups,condition-presets,save-chain-presets,treasure-table,treasure-profiles}~ GET / PUT | the five preset families (presence parent + children) | yes | Served by the shared GET/PUT pair in =per_user_store.rs=; GET returns ~null~ until the user first persists (the tri-state contract).  The treasure table also takes a DELETE, which Revert to bundled sends. |
 | ~/api/dice/history~               | ~dice_rolls~ + children                               | yes       | Bounded persistent dice-roll log (30-entry cap, per user).                                                                                         |
 
 The server-side codecs (=presets/*=, =compendium/creature_rows.rs=,
