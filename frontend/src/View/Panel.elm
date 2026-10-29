@@ -58,12 +58,12 @@ view config =
              ]
                 ++ config.header.dragAttrs
             )
-            [ collapseToggle config.header
+            [ collapseToggle config.title config.header
             , div [ class "panel__title panel__title--drawer" ]
                 [ text config.title
                 , Maybe.withDefault (text "") config.titleTrail
                 ]
-            , pinButton config.header
+            , pinButton config.title config.header
             ]
             :: (if config.header.collapsed then
                     []
@@ -81,15 +81,15 @@ its own state rather than as what the click will do, the way a
 checkbox does — `aria-pressed` says the same thing to a reader
 that cannot see the tilt.
 -}
-pinButton : Header -> Html Msg
-pinButton header =
+pinButton : String -> Header -> Html Msg
+pinButton title header =
     let
         label =
             if header.pinned then
-                Tooltips.drawerUnpinPanel
+                Tooltips.drawerUnpinPanel title
 
             else
-                Tooltips.drawerPinPanel
+                Tooltips.drawerPinPanel title
     in
     button
         [ class (pinClass header.pinned)
@@ -150,13 +150,13 @@ points at a revealed body and ▶ at a folded one. It is a button
 and not a span because it is also the panel's keyboard control:
 a bare clickable row leaves nothing to tab to.
 -}
-collapseToggle : Header -> Html Msg
-collapseToggle header =
+collapseToggle : String -> Header -> Html Msg
+collapseToggle title header =
     button
         [ class "panel-drawer__collapse"
         , type_ "button"
         , stopPropagationOn "click" (Decode.map (\msg -> ( msg, True )) (headerClick header))
-        , attribute "aria-label" Tooltips.drawerCollapse
+        , attribute "aria-label" (Tooltips.drawerCollapse title)
         , attribute "aria-expanded"
             (if header.collapsed then
                 "false"

@@ -468,6 +468,7 @@ rerunControl idx isOpen roll =
             [ class "dice-history__rerun"
             , onClick (DiceRerunMenuToggle idx)
             , Tooltips.attr Tooltips.diceRollAgain
+            , attribute "aria-label" ("Roll " ++ tightFormula roll ++ " again")
             , attribute "aria-haspopup" "menu"
             , attribute "aria-expanded"
                 (if isOpen then

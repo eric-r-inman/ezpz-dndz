@@ -33,6 +33,8 @@
     action needed.
 17. The turn controls work with a keyboard and a screen reader.  No action
     needed.
+18. A screen reader names the creature or panel each button acts on.  No action
+    needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 ** Maintenance

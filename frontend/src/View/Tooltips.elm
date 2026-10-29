@@ -1032,19 +1032,19 @@ logRowFold =
     "Fold the entry back to one line"
 
 
-drawerPinPanel : String
-drawerPinPanel =
-    "Pin to the top of the column"
+drawerPinPanel : String -> String
+drawerPinPanel title =
+    "Pin " ++ title ++ " to the top of the column"
 
 
-drawerUnpinPanel : String
-drawerUnpinPanel =
-    "Unpin from the top of the column"
+drawerUnpinPanel : String -> String
+drawerUnpinPanel title =
+    "Unpin " ++ title ++ " from the top of the column"
 
 
-drawerCollapse : String
-drawerCollapse =
-    "Fold this panel away, or open it back up"
+drawerCollapse : String -> String
+drawerCollapse title =
+    "Fold " ++ title ++ " away, or open it back up"
 
 
 

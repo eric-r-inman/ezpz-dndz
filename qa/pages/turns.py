@@ -168,7 +168,10 @@ def initiatives(app):
 
 def turn_arrow(app, name):
     return app.card(name).root.get_by_role(
-        "button", name=re.compile(f"^(Set as active creature|{re.escape(ACTIVE_MARKER)})$")
+        "button",
+        name=re.compile(
+            f"^(Make {re.escape(name)} the active creature|It is {re.escape(name)}'s turn)$"
+        ),
     )
 
 

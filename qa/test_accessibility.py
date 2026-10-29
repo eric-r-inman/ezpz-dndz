@@ -110,12 +110,17 @@ def test_tab_walks_the_app_bar_then_the_column_then_the_cards_in_order(app):
         assert name in names, f"{name!r} was never reached:\n{names}"
         return names.index(name)
 
+    def first_fold():
+        folds = [i for i, name in enumerate(names) if name.startswith("Fold ")]
+        assert folds, f"No panel fold button was reached:\n{names}"
+        return folds[0]
+
     assert (
         first("Go to the Encounter page")
         < first("Open settings")
         < first("Compendium (new tab)")
         < first("Begin combat \u2014 highest-initiative creature acts")
-        < first("Fold this panel away, or open it back up")
+        < first_fold()
         < first("Set the round number")
         < first("Select Goblin Warrior")
         < first("Current HP for Goblin Warrior")
@@ -219,10 +224,6 @@ def test_the_settings_popover_works_from_the_keyboard(app):
 NAMES_JS = "els => els.map(e => (e.getAttribute('aria-label') || e.textContent || '').trim())"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-14: most card buttons, such as Remove, never say which creature they act on",
-)
 def test_every_card_button_names_its_creature(app):
     app.add("Goblin Warrior", count=2)
     names = app.card("Goblin Warrior 2").root.get_by_role("button").evaluate_all(NAMES_JS)
@@ -230,10 +231,6 @@ def test_every_card_button_names_its_creature(app):
     assert vague == [], f"Card buttons that do not name their creature: {vague}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-14: every panel's fold and pin buttons share one name that omits the panel",
-)
 def test_every_panel_heading_button_names_its_panel(app):
     for title in ["Manage HP", "Dice Roller", "Quick Add"]:
         names = heading(app.panel(title)).get_by_role("button").evaluate_all(NAMES_JS)
@@ -241,10 +238,6 @@ def test_every_panel_heading_button_names_its_panel(app):
         assert vague == [], f"{title} heading buttons: {vague}"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-14: the dice log's re-roll button is named only by its glyph",
-)
 def test_the_reroll_button_says_what_it_rerolls(app):
     dice = Dice(app).open()
     dice.roll("2d6+5")

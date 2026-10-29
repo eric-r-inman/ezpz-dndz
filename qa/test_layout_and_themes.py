@@ -115,7 +115,7 @@ def test_the_controls_a_dm_needs_are_reachable_at_every_size(app, size):
         "quick add": page.get_by_role("button", name="Quick Add", exact=True),
         "manage hp damage": page.get_by_role("button", name="Damage", exact=True),
         "last card hp": hp_button(app.card("Ogre"), "Current"),
-        "last card remove": app.card("Ogre").root.get_by_role("button", name="Remove", exact=True),
+        "last card remove": app.card("Ogre").root.get_by_role("button", name="Remove Ogre", exact=True),
         "about": page.get_by_role("link", name="About"),
         "donate": page.get_by_role("link", name="Donate"),
         "settings": page.get_by_role("button", name="Open settings"),

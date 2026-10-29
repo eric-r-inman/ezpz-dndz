@@ -175,7 +175,9 @@ def test_set_as_active_moves_the_marker_without_a_new_round(app):
     app.begin_combat()
     make_active(app, "Ogre")
     assert (app.round_number(), app.active_name()) == (1, "Ogre")
-    expect(turn_arrow(app, "Goblin Warrior 2")).to_have_accessible_name("Set as active creature")
+    expect(turn_arrow(app, "Goblin Warrior 2")).to_have_accessible_name(
+        "Make Goblin Warrior 2 the active creature"
+    )
     expect(turn_arrow(app, "Ogre")).to_have_accessible_name(ACTIVE_MARKER)
 
     app.next_turn()
@@ -303,7 +305,7 @@ def test_reactions_come_back_at_the_start_of_their_own_turn(app):
         reaction(app, name).click()
         app.settle()
         expect(reaction(app, name)).to_have_attribute("aria-pressed", "true")
-        expect(reaction(app, name)).to_have_accessible_name("Reaction spent — click to refund")
+        expect(reaction(app, name)).to_have_accessible_name(f"Reaction spent for {name}")
     app.shot("reactions-spent")
 
     app.next_turn()

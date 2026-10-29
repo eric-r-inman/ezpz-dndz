@@ -392,6 +392,7 @@ The suite did not cover these:
 
 *** QA-UI-14: Many buttons have names that do not say what they act on
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Ten card buttons never name their creature.  They include Remove,
   Toggle inactive, Show stat block, Add memo and Set timer.  All 13 panels share
@@ -399,7 +400,8 @@ The suite did not cover these:
 - Evidence :: ~test_every_card_button_names_its_creature~,
   ~test_every_panel_heading_button_names_its_panel~ and
   ~test_the_reroll_button_says_what_it_rerolls~
-- Action :: Add the creature or panel name to each label.
+- Action :: Fixed.  Each card button's name ends with its creature.  The fold
+  and pin buttons name their panel.  The re-roll button names its formula.
 
 *** QA-UI-15: The title link shows no focus ring
 

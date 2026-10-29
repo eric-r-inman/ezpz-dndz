@@ -220,7 +220,7 @@ view ctx index creature =
                     [ class "icon-btn icon-btn--danger"
                     , onClick (RemoveCreature creature.name)
                     , Tooltips.attr Tooltips.queueRemove
-                    , attribute "aria-label" "Remove"
+                    , attribute "aria-label" ("Remove " ++ creature.name)
                     ]
                     [ text "×" ]
                 ]
@@ -243,7 +243,7 @@ view ctx index creature =
                          else
                             Tooltips.queueInactive
                         )
-                    , attribute "aria-label" "Toggle inactive"
+                    , attribute "aria-label" (forCreature creature.name "Toggle inactive")
                     , attribute "aria-pressed"
                         (if creature.inactive then
                             "true"
@@ -534,7 +534,12 @@ initBadge creature =
         , onClick (InitiativeOpenFor creature.name)
         , Tooltips.attr Tooltips.initiativeManager
         , attribute "aria-label"
-            ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
+            ("Initiative "
+                ++ String.fromInt creature.initiative
+                ++ " for "
+                ++ creature.name
+                ++ " — open initiative manager"
+            )
         ]
         [ text ("(" ++ String.fromInt creature.initiative ++ ")") ]
 
@@ -572,7 +577,7 @@ creatureName statBlockOpen creature renameState =
                 , type_ "button"
                 , onClick (StatBlockToggle creature.name)
                 , Tooltips.attr label
-                , attribute "aria-label" label
+                , attribute "aria-label" (forCreature creature.name label)
                 , attribute "aria-expanded"
                     (if statBlockOpen then
                         "true"
@@ -690,7 +695,7 @@ noteOrPencil creature surface =
                  else
                     Tooltips.noteAdd
                 )
-            , attribute "aria-label" "Add note"
+            , attribute "aria-label" (forCreature creature.name "Add note")
             , ariaExpanded editing
             ]
             [ text "✏️" ]
@@ -1564,7 +1569,13 @@ turnArrow isActive name =
             )
         , onClick (SetActive name)
         , Tooltips.attr tip
-        , attribute "aria-label" tip
+        , attribute "aria-label"
+            (if isActive then
+                "It is " ++ name ++ "'s turn"
+
+             else
+                "Make " ++ name ++ " the active creature"
+            )
         ]
         [ text "→" ]
 
@@ -1769,6 +1780,14 @@ legendaryReadout cfg =
             )
 
 
+{-| Every card carries the same buttons, so the action alone cannot
+tell one card's from another's.
+-}
+forCreature : String -> String -> String
+forCreature name action =
+    action ++ " for " ++ name
+
+
 {-| Append the open-editor highlight to a trigger's class list
 while its own editor is expanded, so the GM can spot which
 editor is open even after scrolling away and back.
@@ -1814,7 +1833,7 @@ memoSlot creature surface =
                  else
                     Tooltips.memoAdd
                 )
-            , attribute "aria-label" "Add memo"
+            , attribute "aria-label" (forCreature creature.name "Add memo")
             , ariaExpanded editing
             ]
             [ span [ class "action-btn__icon" ] [ text "📝" ]
@@ -1848,7 +1867,7 @@ memoPill creature editing =
             [ class "memo-pill__dismiss"
             , onClick (MemoClear creature.name)
             , Tooltips.attr Tooltips.memoClear
-            , attribute "aria-label" "Clear memo"
+            , attribute "aria-label" (forCreature creature.name "Clear memo")
             ]
             [ text "×" ]
         ]
@@ -1886,7 +1905,7 @@ timerSlot creature surface =
                      else
                         Tooltips.timerSet
                     )
-                , attribute "aria-label" "Set timer"
+                , attribute "aria-label" (forCreature creature.name "Set timer")
                 , ariaExpanded editing
                 ]
                 [ span [ class "action-btn__icon" ] [ text "⏱️" ]
@@ -1929,7 +1948,7 @@ timerSlot creature surface =
                     [ class "timer-pill__dismiss"
                     , onClick (TimerDismiss creature.name)
                     , Tooltips.attr Tooltips.timerCancel
-                    , attribute "aria-label" "Cancel timer"
+                    , attribute "aria-label" (forCreature creature.name "Cancel timer")
                     ]
                     [ text "×" ]
                 ]
@@ -1972,7 +1991,7 @@ readiedToggle creature =
         [ class cls
         , onClick (ToggleReadied creature.name)
         , Tooltips.attr tooltip
-        , attribute "aria-label" tooltip
+        , attribute "aria-label" (forCreature creature.name tooltip)
         , attribute "aria-pressed"
             (if creature.readied then
                 "true"
@@ -1995,22 +2014,24 @@ reactionPip creature =
         -- Deliberately identical for every creature — special
         -- reaction mechanics are announced by the banner strip
         -- above the queue, not by restyling this toggle.
-        ( cls, tooltip ) =
+        ( cls, tooltip, state ) =
             if creature.reactionUsed then
                 ( "action-btn action-btn--icon action-btn--reaction action-btn--reaction-spent"
                 , Tooltips.reactionSpent
+                , "Reaction spent"
                 )
 
             else
                 ( "action-btn action-btn--icon action-btn--reaction action-btn--reaction-ready"
                 , Tooltips.reactionReady
+                , "Reaction available"
                 )
     in
     button
         [ class cls
         , onClick (ToggleReaction creature.name)
         , Tooltips.attr tooltip
-        , attribute "aria-label" tooltip
+        , attribute "aria-label" (forCreature creature.name state)
         , attribute "aria-pressed"
             (if creature.reactionUsed then
                 "true"
