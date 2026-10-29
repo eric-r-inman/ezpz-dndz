@@ -193,6 +193,20 @@ basePool =
     [ kobold, wolf, imp, ogre, youngDragon ]
 
 
+{-| The pool covers the XP steps a level-1 budget meets: 25, 50, 100
+and 200. Each middle step has two species.
+-}
+levelOnePool : List Compendium.Creature
+levelOnePool =
+    [ kobold
+    , wolf
+    , mkCreature { id = "jackal", name = "Jackal Pack", race = "Beast", xp = 50, habitats = [ Compendium.Forest ] }
+    , mkCreature { id = "scout", name = "Scout", race = "Humanoid", xp = 100, habitats = [ Compendium.Hill ] }
+    , mkCreature { id = "boar", name = "Boar", race = "Beast", xp = 100, habitats = [ Compendium.Forest ] }
+    , imp
+    ]
+
+
 baseParams : Int -> GenParams
 baseParams budget =
     { budget = budget
@@ -265,6 +279,7 @@ suite =
         , budgetForSuite
         , generatorInvariantSuite
         , pinnedSuite
+        , budgetSuite
         , minionSuite
         ]
 
@@ -455,6 +470,40 @@ pinnedSuite =
         ]
 
 
+budgetSuite : Test
+budgetSuite =
+    let
+        params =
+            baseParams 300
+    in
+    describe "budget and scale promises"
+        [ test "a default Moderate roll for four level-1 characters lands above Low" <|
+            \_ ->
+                rollMany params levelOnePool
+                    |> expectAllRolls (\r -> totalXp r > 200 && totalXp r <= 400)
+        , test "a Few roll at Low keeps two to four creatures" <|
+            \_ ->
+                rollMany (baseParams 200) levelOnePool
+                    |> expectAllRolls (\r -> totalCount r >= 2 && totalCount r <= 4)
+        , test "a Many roll brings four creatures or more" <|
+            \_ ->
+                rollMany { params | scale = ScaleMany } levelOnePool
+                    |> expectAllRolls (\r -> totalCount r >= 4)
+        , test "a Few roll with minions always brings them" <|
+            \_ ->
+                rollMany { params | includeMinions = True } levelOnePool
+                    |> expectAllRolls (\r -> not (List.isEmpty r.minionIds))
+        , test "Include minions changes nothing for a One roll" <|
+            \_ ->
+                let
+                    one =
+                        baseParams 250
+                in
+                rollMany { one | scale = ScaleOne, includeMinions = True } levelOnePool
+                    |> Expect.equal (rollMany { one | scale = ScaleOne } levelOnePool)
+        ]
+
+
 minionSuite : Test
 minionSuite =
     describe "minions"
@@ -464,10 +513,12 @@ minionSuite =
                     params =
                         baseParams 2000
 
+                    -- A Many slot takes cheap species when nothing bigger
+                    -- fits, so the pool needs cheap species to spare.
                     rolls =
                         rollMany
                             { params | scale = ScaleMany, includeMinions = True }
-                            basePool
+                            levelOnePool
 
                     minionRowsValid r =
                         List.all

@@ -760,22 +760,16 @@ def test_include_minions_adds_a_small_group_tagged_as_minions(app):
 
 
 @pytest.mark.parametrize("scale", ["One", "Few (2-4)"])
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-04: Include minions adds none to One or Few rolls yet holds back budget",
-)
 def test_include_minions_adds_minions_or_is_unavailable(app, scale):
     panel = random_panel(app, [12, 12, 12, 12])
-    choose(panel, scale=scale, minions=True)
+    # The box goes unavailable once One is chosen, so it is ticked first.
+    choose(panel, minions=True)
+    choose(panel, scale=scale)
     box = panel.root.get_by_role("checkbox", name="Include minions")
     minion_rolls = [any(group[3] for group in roll_random(panel)[0]) for _ in range(5)]
     assert box.is_disabled() or all(minion_rolls)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-05: Few and Many rolls often come back with fewer creatures than promised",
-)
 def test_scale_few_and_many_keep_their_promised_creature_counts(app):
     panel = random_panel(app)
     choose(panel, difficulty="Low", scale="Few (2-4)")
@@ -796,10 +790,6 @@ def test_a_large_roll_lands_roughly_on_the_budget(app, tier):
     assert all(0.5 * budget <= total <= 1.25 * budget for total in totals), totals
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-06: about one default Moderate roll in seven lands in the Low band",
-)
 def test_the_default_roll_lands_in_the_moderate_band(app):
     panel = random_panel(app)
     low, _, high = party_budget([1, 1, 1, 1])

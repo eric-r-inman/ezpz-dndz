@@ -54,7 +54,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
     QA-ACCT-09.  Done as far as this repository reaches.  The rest needs
     rust-template.  QA-ACCT-05 is a question.
 14. Keep random encounters inside their budget and scale.  See QA-BUILD-04,
-    QA-BUILD-05 and QA-BUILD-06.
+    QA-BUILD-05 and QA-BUILD-06.  Done.
 15. Fit the phone layout.  See QA-UI-01.
 16. Decide each open question.  Every entry marked question needs a decision
     before it can be fixed or closed.
@@ -757,31 +757,37 @@ The suite did not cover these:
 
 *** QA-BUILD-04: Include minions adds none to small rolls but keeps their budget
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: One rolls never get minions.  Few rolls got them in at most 3 of 20
   rolls.  A fifth of the budget is set aside for minions anyway.  For 4 level-1
   characters at Low, One rolls 100 to 200 XP without minions.  It always rolls
   100 XP with them.
 - Evidence :: ~test_include_minions_adds_minions_or_is_unavailable~
-- Action :: Hold back minion budget only when the scale has room.  Otherwise
-  disable the option for One.
+- Action :: Fixed.  Minions keep two places and a fifth of the budget only when
+  a main group fits beside them.  For One the option is disabled.
 
 *** QA-BUILD-05: Few and Many rolls often bring fewer creatures than promised
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: For 4 level-1 characters, a Low Few roll gave 1 creature in 4 of 10
   rolls.  A Moderate Many roll gave 2 or 3 creatures in half the rolls.  The
   first slot may take the whole budget.  Later slots are then skipped.
 - Evidence :: ~test_scale_few_and_many_keep_their_promised_creature_counts~
-- Action :: Cap each slot at its share of the budget.
+- Action :: Fixed.  Each slot spends at most its share.  A Many slot brings at
+  least two creatures.
 
 *** QA-BUILD-06: About one default roll in seven lands a band low
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Of 100 Moderate rolls at 300 XP, 14 landed at 200 or 150 XP.  The
   app's own difficulty panel calls those Low.
 - Evidence :: ~test_the_default_roll_lands_in_the_moderate_band~
-- Action :: Let the top-up pass run when a roll is well under budget.
+- Action :: Fixed.  A slot prefers creatures that spend at least three fifths of
+  its share.  The top-up pass was not the cause.  At level 1 four cheap
+  creatures filled the count cap before it could run.
 
 *** QA-BUILD-07: By creature keeps loot that was removed or re-rolled
 

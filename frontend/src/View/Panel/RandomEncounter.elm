@@ -361,12 +361,19 @@ creatureTypeSlot { isFirst, index, current } =
 minionsRow : RandomEncounterUi -> Html Msg
 minionsRow ui =
     div [ class "cond-row" ]
-        [ Field.checkbox
-            { checked = ui.includeMinions
-            , msg = RandomEncounterMinionsToggle
-            , label = "Include minions"
-            , extra = []
-            }
+        [ if RE.minionsFit ui.scale ui.pinned then
+            Field.checkbox
+                { checked = ui.includeMinions
+                , msg = RandomEncounterMinionsToggle
+                , label = "Include minions"
+                , extra = []
+                }
+
+          else
+            Field.unavailableCheckbox
+                { label = "Include minions"
+                , reason = "This scale leaves no room for minions beside the pinned creatures"
+                }
         , span [ class "cond-section__caption" ]
             [ text "(adds 2–6 low-CR creatures from the same habitat)" ]
         ]

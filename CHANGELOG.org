@@ -50,6 +50,10 @@
     See Breaking for the flag a proxied deployment needs.
 26. A save refused after a server restart says to sign in again and keeps the
     fight in this browser.  No action needed.
+27. Random encounters bring the creature count their scale promises and land in
+    their difficulty band.  No action needed.
+28. Include minions is unavailable for a One roll and always adds minions to Few
+    and Many.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 2. The sign-in throttle reads =X-Forwarded-For= only with
