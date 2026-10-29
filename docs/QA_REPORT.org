@@ -598,6 +598,7 @@ The suite did not cover these:
 
 *** QA-ACCT-09: The sign-in throttle trusts any forwarded address
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Make 10 bad attempts.  Send an 11th with a made-up ~X-Forwarded-For~
   header.
@@ -607,8 +608,10 @@ The suite did not cover these:
   client can lock every DM out for up to a minute.  Good sign-ins count toward
   the ten.
 - Evidence :: ~test_a_forged_forwarded_for_header_does_not_dodge_the_throttle~
-- Action :: Trust the header only from a configured proxy.  Otherwise key the
-  bucket on the connection's address.
+- Action :: Fixed.  The header counts only with ~--trust-forwarded-for~.  Then
+  only its last entry counts.  The proxy wrote that one.  A direct deployment
+  still shares one bucket.  Keying by connection needs the foundation to pass
+  the peer address on.  Good sign-ins still count toward the ten.
 
 *** QA-ACCT-10: A wrong current password reads "Server returned 401."
 

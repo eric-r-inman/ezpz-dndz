@@ -647,9 +647,10 @@ user (see [[*Persistence][Persistence]]).
 ~crates/server/src/auth_rate_limit.rs~ wraps ~/api/auth/login~ and
 ~/api/auth/register~ with a per-IP fixed- window token bucket: 10 attempts / IP
 / 60 seconds, returning ~429 Too Many Requests~ + ~Retry-After~ once the bucket
-overflows.  IPs come from ~X-Forwarded-For~'s first hop (Caddy / nginx set this
-in the documented deployment) with a shared fallback bucket for direct
-connections.
+overflows.  With ~--trust-forwarded-for~ the IP is the last ~X-Forwarded-For~
+entry.  The reverse proxy wrote that entry.  Otherwise every client shares one
+fallback bucket.  The foundation's listener does not hand the peer address on.
+A direct deployment therefore cannot key by connection.
 
 Session-only endpoints (~logout~, ~me~, ~password~) are *not* rate-limited
 because they already require a valid session cookie as the implicit gate.  The

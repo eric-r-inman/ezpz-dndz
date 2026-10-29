@@ -46,8 +46,14 @@
 23. Concentration ends at 0 hit points, and damage prompts its save DC.  No
     action needed.
 24. The sign-in form shows the server's reason for a refusal.  No action needed.
+25. A forged =X-Forwarded-For= header no longer resets the sign-in throttle.
+    See Breaking for the flag a proxied deployment needs.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
+2. The sign-in throttle reads =X-Forwarded-For= only with
+   =--trust-forwarded-for= or =trust_forwarded_for = true=.  Behind Caddy or
+   another reverse proxy, add it.  Without it every client shares one throttle
+   bucket.
 ** Maintenance
 1. =just qa= no longer fails now and then when a scenario types a note right
    after picking a condition.  No action needed.

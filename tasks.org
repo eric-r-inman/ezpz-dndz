@@ -394,9 +394,9 @@ QA-FIGHT-05, QA-TURN-04 and QA-TURN-05.  Part of
 
 * TODO Harden sign-in and sessions
 
-Sessions live in memory.  The throttle trusts any forwarded address.  The form
-now shows the server's reasons.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
-QA-ACCT-09.  Part of [[*Work through the findings in the QA report]].
+Sessions live in memory.  A direct deployment's throttle still shares one bucket
+until the foundation hands on the peer address.  See QA-ACCT-05, QA-ACCT-06,
+QA-ACCT-08 and QA-ACCT-09.  Part of [[*Work through the findings in the QA report]].
 
 * TODO Keep random encounters inside their budget and scale
 

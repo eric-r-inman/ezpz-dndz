@@ -205,10 +205,6 @@ def test_a_throttled_dm_is_told_to_wait(app):
     expect(form.error()).to_contain_text(re.compile(r"Try again in \d+ seconds"))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-09: a made-up X-Forwarded-For header resets the sign-in throttle",
-)
 def test_a_forged_forwarded_for_header_does_not_dodge_the_throttle(app):
     signed_out(app)
     bad_logins(app.page, 10)

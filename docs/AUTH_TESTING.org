@@ -199,10 +199,9 @@ done
 Expected: the first ten attempts return 401, the eleventh returns 429 with a
 ~Retry-After~ header.  Wait 60 seconds and the bucket resets.
 
-Behind Caddy / nginx the bucket is keyed on ~X-Forwarded-For~'s first hop, so
-each tester gets their own quota.  In dev (no proxy) every attempt shares a
-single fallback bucket — annoying if you're hammering it during a test but
-exactly the intended signal that the limiter is active.
+With ~--trust-forwarded-for~ the bucket is keyed on the last ~X-Forwarded-For~
+entry.  Each tester behind the proxy then gets their own quota.  Without the
+flag every attempt shares one fallback bucket.  That is the dev default.
 
 * Inspect the on-disk shape
 
