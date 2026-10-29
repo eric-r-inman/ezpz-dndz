@@ -6,6 +6,9 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.37.0
+** Maintenance
 1. Bump cc from 1.5.1 to 1.10.0
 2. Bump combine from 4.6.8 to 4.6.9
 3. Bump defmt from 1.1.1 to 1.2.0
