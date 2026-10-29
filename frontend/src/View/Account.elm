@@ -50,6 +50,7 @@ import Html.Events exposing (onClick, onInput)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Ui.Account as Account exposing (AccountUi, PasswordDraft, ProfileDraft)
+import View.Landmark
 
 
 view : Model -> Html Msg
@@ -70,7 +71,7 @@ view model =
                 AuthAuthenticated user ->
                     accountBody user model.accountUi
     in
-    div [ class "workspace workspace--account" ]
+    View.Landmark.mainRegion [ class "workspace workspace--account" ]
         [ section [ class "panel panel--main account-page" ]
             [ div [ class "panel__header" ]
                 [ div [ class "panel__title" ] [ text "Account" ] ]

@@ -22,6 +22,7 @@ state or re-dispatch.
 
 import Browser
 import Browser.Navigation as Nav
+import Effects
 import Encounter exposing (Encounter)
 import Http
 import Model exposing (Model)
@@ -42,7 +43,18 @@ urlRequested : Nav.Key -> Browser.UrlRequest -> Model -> ( Model, Cmd Msg )
 urlRequested key req model =
     case req of
         Browser.Internal url ->
-            ( model, Nav.pushUrl key (Url.toString url) )
+            ( model
+            , -- The runtime takes the skip link before the browser can
+              -- move focus.  Focus moves here instead.
+              if url.fragment == Just Effects.mainRegionId then
+                Cmd.batch
+                    [ Nav.pushUrl key (Url.toString url)
+                    , Effects.focusField Effects.mainRegionId
+                    ]
+
+              else
+                Nav.pushUrl key (Url.toString url)
+            )
 
         Browser.External url ->
             ( model, Nav.load url )

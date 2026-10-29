@@ -1,5 +1,5 @@
 module Effects exposing
-    ( cardId, compendiumRowId, saveRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+    ( cardId, compendiumRowId, mainRegionId, saveRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
     , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
     , RollSpec, rollBatch, autoRollSpecsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
@@ -25,7 +25,7 @@ and `Model` for the small set of model-level helpers. Doesn't
 import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
-@docs cardId, compendiumRowId, saveRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+@docs cardId, compendiumRowId, mainRegionId, saveRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
 @docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
 @docs RollSpec, rollBatch, autoRollSpecsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
@@ -136,6 +136,13 @@ creature's compendium id.
 compendiumRowId : String -> String
 compendiumRowId id =
     "compendium-row-" ++ id
+
+
+{-| DOM id of the page's main landmark. The skip link targets it.
+-}
+mainRegionId : String
+mainRegionId =
+    "main"
 
 
 {-| Stable HTML id for one row of the saved-encounter list, keyed by

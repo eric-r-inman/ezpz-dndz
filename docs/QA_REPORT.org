@@ -47,7 +47,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 10. Sync new creatures to the encounter tab and bring the import confirmation
     forward.  See QA-COMP-06 and QA-COMP-11.  Done.
 11. Make the app work by keyboard and screen reader.  Start with QA-UI-05,
-    QA-UI-14, QA-TURN-08, QA-TURN-09 and QA-BUILD-14.
+    QA-UI-14, QA-TURN-08, QA-TURN-09 and QA-BUILD-14.  Done.
 12. Close the gaps against the 2024 rules.  See QA-FIGHT-04, QA-FIGHT-05,
     QA-TURN-04 and QA-TURN-05.
 13. Harden sign-in and sessions.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
@@ -268,6 +268,7 @@ The suite did not cover these:
 
 *** QA-UI-03: The skip link does nothing
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Focus "Skip to main content" and press Enter.
 - Expected :: Focus moves to the encounter.
@@ -275,8 +276,8 @@ The suite did not cover these:
   Focus stays put.  Only the encounter page renders a ~main#main~ target.
 - Evidence :: ~test_the_skip_link_shows_on_focus_and_jumps_to_the_encounter~ and
   ~test_the_skip_link_has_a_target_on_every_page~
-- Action :: Handle the link by focusing ~main~ with ~Browser.Dom.focus~.  Render
-  ~main#main~ on every route.
+- Action :: Fixed.  Every page renders ~main#main~.  The skip link moves focus
+  there.
 
 *** QA-UI-04: The Manage HP field takes focus on load
 
@@ -289,6 +290,7 @@ The suite did not cover these:
 
 *** QA-UI-05: axe finds serious faults in 11 of 15 page and theme pairs
 
+- Status :: fixed
 - Severity :: major
 - Actual :: The Accessible theme fails too.  The compendium fails in every
   theme.
@@ -305,8 +307,11 @@ The suite did not cover these:
     and a working skip link.
 - Evidence :: ~test_axe_finds_nothing_serious_or_critical~.  Its failure message
   lists every rule with a count and an example.
-- Action :: Raise the muted grey and the coloured labels to 4.5 to 1.  Start
-  with the Accessible theme.  Make compendium rows plain containers.
+- Action :: Fixed.  axe now finds nothing at any impact in any page and theme
+  pair.  The colours that failed moved to theme tokens that reach 4.5 to 1.
+  Each compendium row is a plain container with a button to pick it.  Every page
+  has a ~main~ landmark.  The encounter and compendium pages gained a level-one
+  heading.  Drawer panel titles are level-two headings.
 
 *** QA-UI-06: Impossible dice roll instead of failing
 

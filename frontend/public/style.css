@@ -38,7 +38,7 @@
 
   /* Text */
   --color-text: #18181b;
-  --color-text-muted: #71717a;
+  --color-text-muted: #62626b;
 
   /* Borders + dividers — hairline, low contrast */
   --color-border: #e4e4e7;
@@ -69,7 +69,7 @@
   /* Signal colours — slightly desaturated for the dev-tool look */
   --color-danger: #dc2626;
   --color-danger-soft: rgba(220, 38, 38, 0.1);
-  --color-success: #16a34a;
+  --color-success: #15803d;
   --color-success-soft: rgba(22, 163, 74, 0.1);
 
   /* An empty death-save pip's interior.  Deliberately black in every
@@ -183,7 +183,18 @@
      row and the buttons in the bar under a card. */
   --size-statblock-tool: 28px;
   /* The title in the bar of the stat block under a card. */
-  --color-neon-pink: #ff2d95;
+  --color-neon-pink: #be185d;
+  /* Text on a filled accent or blue control. */
+  --color-on-accent: #ffffff;
+  --color-on-blue: #ffffff;
+  /* The die buttons in the Dice Roller.  Each die has its own hue. */
+  --color-die-d4: #dc2626;
+  --color-die-d6: #c2410c;
+  --color-die-d8: #eab308;
+  --color-die-d10: #22c55e;
+  --color-die-d12: #2563eb;
+  --color-die-d20: #4f46e5;
+  --color-die-d100: #9333ea;
 
   /* How far the drawer reaches into the workspace's column gaps
      on each side, tightening both seams by the same amount —
@@ -192,7 +203,7 @@
 
   /* Accent / signal hues — muted and saturated together, not the
      classic Windows-y bright primaries. */
-  --color-yellow: #ca8a04;
+  --color-yellow: #965a05;
   --color-init-blue: #2563eb;
   --color-orange-dark: #c2410c;
   --color-temp-blue: #2563eb;
@@ -321,7 +332,7 @@
   --color-surface: #ffffff;
   --color-surface-2: #f4f4f5;
   --color-text: #18181b;
-  --color-text-muted: #71717a;
+  --color-text-muted: #62626b;
   --color-border: #e4e4e7;
 
   --color-input-border: #d4d4d8;
@@ -332,14 +343,14 @@
   --color-accent-soft: rgba(91, 91, 214, 0.1);
   --color-danger: #dc2626;
   --color-danger-soft: rgba(220, 38, 38, 0.1);
-  --color-success: #16a34a;
+  --color-success: #15803d;
   --color-success-soft: rgba(22, 163, 74, 0.1);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
-  --color-yellow: #ca8a04;
+  --color-yellow: #965a05;
   --color-init-blue: #2563eb;
   --color-orange-dark: #c2410c;
   --color-temp-blue: #2563eb;
@@ -435,6 +446,9 @@
   --color-target-ring: #ffffff;
   --color-accent: #8a6cff;
   --color-accent-hover: #9c81ff;
+  --color-on-accent: #0e1015;
+  --color-on-blue: #0e1015;
+  --color-neon-pink: #ff5aa8;
   --color-accent-soft: rgba(138, 108, 255, 0.18);
   --color-danger: #ff6a6a;
   --color-danger-soft: rgba(255, 106, 106, 0.16);
@@ -471,7 +485,7 @@
   --color-condition-chip: #b083f1;
   --color-btn-blue: #1976d2;
   --color-btn-green: #2f9e44;
-  --color-btn-red: #c62828;
+  --color-btn-red: #e5534b;
   --color-btn-orange: #d97706;
   --card-btn-fg: #000;
   --init-score-fg: #ffffff;
@@ -4457,7 +4471,7 @@ body {
 /* The caret makes three items of a header laid out
    space-between, which would otherwise centre the title. */
 .panel__title--drawer {
-  margin-right: auto;
+  margin: 0 auto 0 0;
   padding-left: var(--space-1);
 }
 
@@ -4478,7 +4492,7 @@ body {
   font-weight: 400;
   text-transform: none;
   letter-spacing: 0;
-  color: var(--color-orange);
+  color: var(--color-orange-dark);
 }
 
 .panel__count {
@@ -6189,25 +6203,21 @@ button.creature-card__lifecycle--dead:focus-visible {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
-  opacity: 0.7;
 }
 
 .status-toggle:hover {
   background: var(--color-surface-2);
   border-color: var(--color-border);
   color: var(--color-text);
-  opacity: 1;
 }
 
 .status-toggle--on {
   color: var(--color-text);
-  opacity: 1;
   font-weight: 700;
 }
 
 .status-toggle--off {
   color: var(--color-text-muted);
-  opacity: 0.7;
 }
 
 /* Leading state dot on every row-2 status toggle.  Rendered as
@@ -6484,7 +6494,7 @@ button.creature-card__lifecycle--dead:focus-visible {
    verbs sit side-by-side; teal reads as "boost" without
    competing with either of its neighbours. */
 .action-btn--max {
-  --btn-bg: #14b8a6;
+  --btn-bg: var(--color-maxhp);
   --btn-fg: var(--card-btn-fg);
   --btn-bd: transparent;
 }
@@ -8486,33 +8496,33 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .die-btn--d4 {
-  background: #ef4444;
+  background: var(--color-die-d4);
 }
 
 .die-btn--d6 {
-  background: #f97316;
+  background: var(--color-die-d6);
 }
 
 .die-btn--d8 {
-  background: #eab308;
+  background: var(--color-die-d8);
   color: #000000;
 }
 
 .die-btn--d10 {
-  background: #22c55e;
+  background: var(--color-die-d10);
   color: #000000;
 }
 
 .die-btn--d12 {
-  background: #3b82f6;
+  background: var(--color-die-d12);
 }
 
 .die-btn--d20 {
-  background: #6366f1;
+  background: var(--color-die-d20);
 }
 
 .die-btn--d100 {
-  background: #a855f7;
+  background: var(--color-die-d100);
 }
 
 .dice-special-row {
@@ -10131,7 +10141,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 .compendium__kind-filter--active {
   background: var(--color-blue);
   border-color: var(--color-blue);
-  color: white;
+  color: var(--color-on-blue);
 }
 
 .compendium__sort {
@@ -10218,7 +10228,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   text-align: left;
   padding: 10px 14px;
   border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -10231,9 +10240,9 @@ button.creature-card__lifecycle--dead:focus-visible {
   background: var(--color-surface-2);
 }
 
-.compendium__row:focus-visible {
+.compendium__row-pick:focus-visible {
   outline: 2px solid var(--color-accent);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .compendium__row--selected {
@@ -10287,6 +10296,21 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 2px;
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* The text of a row that can be picked is the row's button.  It
+   fills the row's height and drops the button chrome. */
+.compendium__row-pick {
+  align-self: stretch;
+  justify-content: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .compendium__row-name {

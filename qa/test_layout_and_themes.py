@@ -348,10 +348,6 @@ def test_the_first_tab_on_the_encounter_page_reaches_the_skip_link(app):
     expect(app.page.get_by_role("link", name="Skip to main content")).to_be_focused(timeout=2000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-03: the skip link only rewrites the address to /#main and leaves focus where it was",
-)
 @pytest.mark.cross_browser
 def test_the_skip_link_shows_on_focus_and_jumps_to_the_encounter(app):
     skip = app.page.get_by_role("link", name="Skip to main content")
@@ -370,10 +366,6 @@ def test_the_skip_link_shows_on_focus_and_jumps_to_the_encounter(app):
     expect(app.page.get_by_role("button", name="Compendium (new tab)")).to_be_focused()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-03: the skip link points at #main, which only the encounter page has",
-)
 @pytest.mark.parametrize("path", ["/about", "/donate", "/login", "/no-such-page"])
 def test_the_skip_link_has_a_target_on_every_page(app, path):
     app.goto(path)

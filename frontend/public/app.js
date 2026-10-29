@@ -442,6 +442,9 @@ if (app.ports && app.ports.openCompendiumTab) {
   var portal = document.createElement("div");
   portal.id = "tooltip-portal";
   portal.setAttribute("role", "tooltip");
+  // Nothing points a screen reader here.  The text a reader needs
+  // rides each control's own label instead.
+  portal.setAttribute("aria-hidden", "true");
   document.body.appendChild(portal);
 
   var showTimer = null;

@@ -376,11 +376,12 @@ import's confirmation sat behind its dialog.  Picking a file now closes the
 dialog.  See QA-COMP-06 and QA-COMP-11.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Make the app work by keyboard and screen reader
+* DONE Make the app work by keyboard and screen reader
 
-Contrast fails in every theme.  Many buttons share names.  Several editors open
-without focus.  Start with QA-UI-05, QA-UI-14, QA-TURN-08, QA-TURN-09 and
-QA-BUILD-14.  Each area in the report lists its own naming gaps.  Part of
+Contrast failed in every theme.  Many buttons shared names.  Several editors
+opened without focus.  QA-UI-05, QA-UI-14, QA-TURN-08, QA-TURN-09 and
+QA-BUILD-14 are fixed.  QA-UI-03 is fixed with them.  The naming gaps each area
+of the report lists are left to the sweep of minor entries.  Part of
 [[*Work through the findings in the QA report]].
 
 * TODO Close the gaps against the 2024 rules

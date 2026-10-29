@@ -48,6 +48,7 @@ import View.AuthGate as AuthGate
 import View.Compendium.EditPane
 import View.Compendium.GroupEditPane
 import View.Compendium.PastePane
+import View.Landmark
 import View.Modal
 import View.StatBlock
 import View.Tooltips as Tooltips
@@ -82,8 +83,9 @@ view :
     -> Maybe (Html Msg)
     -> Html Msg
 view auth ui userLoreGroups encounterIds openEditor =
-    div [ class "workspace workspace--compendium-page" ]
-        [ section [ class "panel panel--compendium-page" ]
+    View.Landmark.mainRegion [ class "workspace workspace--compendium-page" ]
+        [ View.Landmark.pageHeading "Compendium"
+        , section [ class "panel panel--compendium-page" ]
             [ div [ class "panel__body compendium-page__body" ]
                 (pageBody auth ui userLoreGroups encounterIds openEditor)
             ]
@@ -877,22 +879,11 @@ groupListItem ui group =
             Compendium.Group.totalCreatureCount group
 
         header =
-            div
-                [ class headerClass
-                , onClick (CompendiumGroupSelect group.id)
-                , attribute "role" "button"
-                , attribute "tabindex" "0"
-                ]
+            div [ class headerClass ]
                 [ button
                     [ class "compendium__group-disclosure"
-                    , onClickStopPropagation (CompendiumGroupExpandToggle group.id)
-                    , attribute "aria-expanded"
-                        (if isExpanded then
-                            "true"
-
-                         else
-                            "false"
-                        )
+                    , onClick (CompendiumGroupExpandToggle group.id)
+                    , ariaExpanded isExpanded
                     , attribute "aria-label" "Toggle group entries"
                     ]
                     [ text
@@ -903,7 +894,12 @@ groupListItem ui group =
                             "▶"
                         )
                     ]
-                , div [ class "compendium__row-text" ]
+                , button
+                    [ class "compendium__row-text compendium__row-pick"
+                    , type_ "button"
+                    , onClick (CompendiumGroupSelect group.id)
+                    , ariaPressed isSelected
+                    ]
                     [ span [ class "compendium__row-name" ]
                         [ text ("👥 " ++ group.name) ]
                     , span [ class "compendium__row-meta" ]
@@ -1051,14 +1047,28 @@ filterAndSortGroupEntries ui db entries =
                 |> List.map Tuple.first
 
 
-{-| Click handler that calls `Html.Events.stopPropagationOn` so
-the inner disclosure button doesn't also fire the row's
-`CompendiumGroupSelect` (which would shift the right pane).
+ariaExpanded : Bool -> Html.Attribute Msg
+ariaExpanded expanded =
+    attribute "aria-expanded"
+        (if expanded then
+            "true"
+
+         else
+            "false"
+        )
+
+
+{-| A row's select button carries its pick as a pressed state.
 -}
-onClickStopPropagation : Msg -> Html.Attribute Msg
-onClickStopPropagation msg =
-    Html.Events.stopPropagationOn "click"
-        (Decode.succeed ( msg, True ))
+ariaPressed : Bool -> Html.Attribute Msg
+ariaPressed pressed =
+    attribute "aria-pressed"
+        (if pressed then
+            "true"
+
+         else
+            "false"
+        )
 
 
 listItem : Maybe String -> Set String -> List String -> Compendium.Creature -> Html Msg
@@ -1090,21 +1100,16 @@ listItem selectedId selectedIds encounterIds c =
                 ++ (" compendium__row--" ++ CompendiumUi.kindToString c.kind)
     in
     div
-        [ class rowClass
+        [ class (rowClass ++ " compendium__row--creature")
         , Attr.id (Effects.compendiumRowId c.id)
-        , onClick (CompendiumSelect c.id)
-        , attribute "role" "button"
-        , attribute "tabindex" "0"
-        , attribute "aria-pressed"
-            (if isSelected then
-                "true"
-
-             else
-                "false"
-            )
         ]
         [ rowCheckbox c.id isChecked
-        , div [ class "compendium__row-text" ]
+        , button
+            [ class "compendium__row-text compendium__row-pick"
+            , type_ "button"
+            , onClick (CompendiumSelect c.id)
+            , ariaPressed isSelected
+            ]
             [ span [ class "compendium__row-name" ]
                 [ text c.name
                 , if inEncounter then
@@ -1124,11 +1129,9 @@ listItem selectedId selectedIds encounterIds c =
         ]
 
 
-{-| Bulk-selection checkbox at the leading edge of each row.
-Clicks here are stopped from bubbling so the surrounding row
-button doesn't also fire `CompendiumSelect` (which would shift
-the right-pane stat block) — the GM expects checkbox clicks to
-ONLY toggle bulk selection.
+{-| Bulk-selection checkbox at the leading edge of each row. It
+sits beside the row's select button. A click here only toggles
+bulk selection.
 
 The custom event decoder reads `event.shiftKey` so we can
 implement the shift+click select-all / clear-all semantics in
@@ -1143,12 +1146,9 @@ rowCheckbox creatureId isChecked =
         , Attr.checked isChecked
         , attribute "aria-label" "Select for bulk action"
         , Tooltips.attr Tooltips.compendiumRowSelect
-        , Html.Events.stopPropagationOn "click"
+        , Html.Events.on "click"
             (Decode.field "shiftKey" Decode.bool
-                |> Decode.map
-                    (\shift ->
-                        ( CompendiumRowToggle creatureId shift, True )
-                    )
+                |> Decode.map (CompendiumRowToggle creatureId)
             )
         ]
         []
@@ -1697,22 +1697,11 @@ loreSection ui userLoreGroups =
 
 loreSectionHeader : CompendiumUi -> Int -> Html Msg
 loreSectionHeader ui totalCount =
-    div
-        [ class "compendium__row compendium__row--lore-section"
-        , onClick CompendiumLoreSectionToggle
-        , attribute "role" "button"
-        , attribute "tabindex" "0"
-        ]
+    div [ class "compendium__row compendium__row--lore-section" ]
         [ button
             [ class "compendium__group-disclosure"
-            , onClickStopPropagation CompendiumLoreSectionToggle
-            , attribute "aria-expanded"
-                (if ui.loreGroupsExpanded then
-                    "true"
-
-                 else
-                    "false"
-                )
+            , onClick CompendiumLoreSectionToggle
+            , ariaExpanded ui.loreGroupsExpanded
             , attribute "aria-label" "Toggle Lore groupings"
             ]
             [ text
@@ -1723,7 +1712,12 @@ loreSectionHeader ui totalCount =
                     "▶"
                 )
             ]
-        , div [ class "compendium__row-text" ]
+        , button
+            [ class "compendium__row-text compendium__row-pick"
+            , type_ "button"
+            , onClick CompendiumLoreSectionToggle
+            , ariaExpanded ui.loreGroupsExpanded
+            ]
             [ span [ class "compendium__row-name" ]
                 [ text "📖 Lore groupings" ]
             , span [ class "compendium__row-meta" ]
@@ -1731,7 +1725,7 @@ loreSectionHeader ui totalCount =
             ]
         , button
             [ class "action-btn action-btn--condition compendium__lore-new"
-            , onClickStopPropagation LoreEditOpenNew
+            , onClick LoreEditOpenNew
             , Tooltips.attr "Create a new Lore grouping"
             , attribute "aria-label" "Create a new Lore grouping"
             ]
@@ -1770,22 +1764,11 @@ loreRow ui group =
             List.length group.members
     in
     div [ class "compendium__lore-row-wrap" ]
-        [ div
-            [ class rowClass
-            , onClick (CompendiumLoreSelect group.id)
-            , attribute "role" "button"
-            , attribute "tabindex" "0"
-            ]
+        [ div [ class rowClass ]
             [ button
                 [ class "compendium__group-disclosure"
-                , onClickStopPropagation (CompendiumLoreExpandToggle group.id)
-                , attribute "aria-expanded"
-                    (if isExpanded then
-                        "true"
-
-                     else
-                        "false"
-                    )
+                , onClick (CompendiumLoreExpandToggle group.id)
+                , ariaExpanded isExpanded
                 , attribute "aria-label" "Toggle lore group members"
                 ]
                 [ text
@@ -1796,7 +1779,12 @@ loreRow ui group =
                         "▶"
                     )
                 ]
-            , div [ class "compendium__row-text" ]
+            , button
+                [ class "compendium__row-text compendium__row-pick"
+                , type_ "button"
+                , onClick (CompendiumLoreSelect group.id)
+                , ariaPressed isSelected
+                ]
                 [ span [ class "compendium__row-name" ]
                     [ text
                         ((if bundled then

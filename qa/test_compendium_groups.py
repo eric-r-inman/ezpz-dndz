@@ -197,9 +197,8 @@ def test_signed_in_group_lives_on_the_server(app, signed_in_tab):
 
 
 def lore_row(tab, name):
-    return tab.page.get_by_role(
-        "button",
-        name=re.compile("^Toggle lore group members (?:📖|🔒) " + re.escape(name) + " "),
+    return tab.page.locator(".compendium__row--lore").filter(
+        has=tab.page.get_by_role("button", name=re.compile("^(?:📖|🔒) " + re.escape(name) + " "))
     )
 
 
@@ -322,9 +321,7 @@ def test_two_lore_groupings_with_one_name_both_survive(tab):
 
 def test_bundled_lore_grouping_is_read_only_but_adds(app, tab):
     lore_section(tab)
-    bundled = tab.page.get_by_role(
-        "button", name=re.compile("^Toggle lore group members 🔒 ")
-    ).first
+    bundled = tab.page.get_by_role("button", name=re.compile("^🔒 ")).first
     bundled.click()
     expect(tab.page.locator(".compendium__detail")).to_contain_text("Bundled")
     expect(
