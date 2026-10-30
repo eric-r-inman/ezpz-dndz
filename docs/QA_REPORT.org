@@ -55,7 +55,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
     rust-template.  QA-ACCT-05 is a question.
 14. Keep random encounters inside their budget and scale.  See QA-BUILD-04,
     QA-BUILD-05 and QA-BUILD-06.  Done.
-15. Fit the phone layout.  See QA-UI-01.
+15. Fit the phone layout.  See QA-UI-01.  Done.
 16. Decide each open question.  Every entry marked question needs a decision
     before it can be fixed or closed.
 17. Sweep the remaining minor and cosmetic entries.
@@ -250,6 +250,7 @@ The suite did not cover these:
 
 *** QA-UI-01: The phone layout scrolls sideways
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Run a fight with six creatures at 390 by 844.
 - Expected :: No sideways scroll.  Every control is in reach.
@@ -258,7 +259,7 @@ The suite did not cover these:
   and a half cards.  Tablet and laptop sizes are fine.
 - Evidence :: ~test_a_six_creature_fight_never_scrolls_sideways~ and
   ~test_the_controls_a_dm_needs_are_reachable_at_every_size~ at phone size.
-- Action :: Wrap or collapse the app bar below about 500 pixels.
+- Action :: Fixed.  Below 520 pixels the brand and the nav take a row each.
 
 *** QA-UI-02: The Contact address has no domain ending
 
@@ -391,11 +392,12 @@ The suite did not cover these:
 
 *** QA-UI-13: Toasts cover the app bar
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A sign-up raises three stacked toasts.  They hide About, Donate, the
   account link and ⚙ until they fade.
 - Evidence :: ~test_a_toast_leaves_the_app_bar_usable~
-- Action :: Anchor toasts below the app bar.
+- Action :: Fixed.  Toasts sit below the app bar.
 
 *** QA-UI-14: Many buttons have names that do not say what they act on
 
@@ -710,9 +712,12 @@ The suite did not cover these:
 
 *** QA-ACCT-21: Sign-in toasts cover the app bar
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: This is QA-UI-13 at sign-in.  The "Imported 0 creatures" toast is
   noise.  "1 creatures" is a grammar slip.
+- Action :: Fixed.  Toasts sit below the app bar.  Sign-in no longer reports an
+  empty import.  One creature reads as one.
 
 *** QA-ACCT-22: Each device's boot writes the treasure table back
 

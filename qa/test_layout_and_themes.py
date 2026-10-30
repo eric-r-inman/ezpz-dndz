@@ -70,13 +70,7 @@ def at_size(app, size):
 @pytest.mark.parametrize(
     "size",
     [
-        pytest.param(
-            "phone",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason="QA-UI-01: the app bar is wider than a phone, so the page scrolls sideways",
-            ),
-        ),
+        "phone",
         "tablet",
         "laptop",
     ],
@@ -92,13 +86,7 @@ def test_a_six_creature_fight_never_scrolls_sideways(app, size):
 @pytest.mark.parametrize(
     "size",
     [
-        pytest.param(
-            "phone",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason="QA-UI-01: Donate and the settings button sit off a phone's screen",
-            ),
-        ),
+        "phone",
         "tablet",
         "laptop",
     ],
@@ -237,10 +225,6 @@ def test_a_fresh_sign_up_does_not_announce_importing_nothing(app):
     expect(app.page.get_by_text("Imported 0 creatures")).to_have_count(0, timeout=1000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-13: toasts sit on top of the app bar and hide its links and settings",
-)
 def test_a_toast_leaves_the_app_bar_usable(app):
     app.add("Goblin Warrior")
     app.sign_up()

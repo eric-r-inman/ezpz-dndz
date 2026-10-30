@@ -54,6 +54,9 @@
     their difficulty band.  No action needed.
 28. Include minions is unavailable for a One roll and always adds minions to Few
     and Many.  No action needed.
+29. On a phone the app bar takes two rows and keeps every link and the settings
+    button on the screen.  No action needed.
+30. Toasts appear below the app bar instead of over it.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 2. The sign-in throttle reads =X-Forwarded-For= only with

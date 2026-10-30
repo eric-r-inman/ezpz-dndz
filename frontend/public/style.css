@@ -4125,6 +4125,23 @@ body {
   text-decoration: underline;
 }
 
+/* At phone width the brand and the nav take a row each.  One row
+   would push Donate and settings off the screen. */
+@media (max-width: 520px) {
+  :root {
+    --header-height: 96px;
+  }
+  .app-bar {
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: var(--space-1);
+    padding: 0 var(--space-3);
+  }
+  .app-bar__nav {
+    gap: var(--space-1);
+  }
+}
+
 @media (max-width: 720px) {
   :root {
     --app-footer-height: 56px;
@@ -10711,7 +10728,8 @@ button.creature-card__lifecycle--dead:focus-visible {
    variants only differ in border color + icon. */
 .toast-stack {
   position: fixed;
-  top: 16px;
+  /* The stack sits below the app bar so a toast never covers its links. */
+  top: calc(var(--header-height) + var(--space-3));
   right: 16px;
   display: flex;
   flex-direction: column;
