@@ -975,10 +975,13 @@ The suite did not cover these:
 
 *** QA-BUILD-18: The Quick Add search matches more than names
 
+- Status :: fixed
 - Severity :: question
 - Actual :: The box says it filters by name.  Searching "dragon" also lists
   Kobold Warrior.  Its type is Dragon.
-- Action :: Relabel the box or match names only.
+- Evidence :: ~test_quick_add_search_matches_names_and_not_creature_types~
+- Action :: Fixed.  Quick Add matches names only.  The compendium's own search
+  still matches type, alignment, source and CR.
 
 *** QA-BUILD-19: Loading from a file replaces the fight without asking
 

@@ -22,6 +22,7 @@
    action needed.
 10. A dice formula that ends in a word naming no damage type is refused.  No
     action needed.
+11. Quick Add's search matches creature names only.  No action needed.
 ** Breaking
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.
