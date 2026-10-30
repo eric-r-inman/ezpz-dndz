@@ -110,6 +110,7 @@ presetSaveControl ui =
                     , type_ "text"
                     , value typed
                     , placeholder "Name this preset"
+                    , attribute "aria-label" "Preset name"
                     , autofocus True
                     , onInput TimerPresetSaveNameChanged
                     , on "keydown" (enterKeyDecoder TimerPresetSaveSubmit)

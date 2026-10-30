@@ -84,7 +84,13 @@ spare.
 -}
 row : String -> List (Html Msg) -> Html Msg
 row lead buttons =
-    div [ class "note-edit__buttons note-edit__buttons--start apply-row" ]
+    -- The lead names the group.  Two rows in one editor share their
+    -- button names, so the group is all that tells them apart.
+    div
+        [ class "note-edit__buttons note-edit__buttons--start apply-row"
+        , attribute "role" "group"
+        , attribute "aria-label" (String.replace ":" "" lead)
+        ]
         [ span [ class "apply-row__lead" ] [ text lead ]
         , div [ class "apply-row__scopes" ] buttons
         ]

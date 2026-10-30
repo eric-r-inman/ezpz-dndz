@@ -671,32 +671,9 @@ categoryRolled category fresh model =
 
         Just existing ->
             let
-                nextRoll =
-                    case category of
-                        Treasure.CoinsCategory ->
-                            { existing | coins = fresh.coins }
-
-                        Treasure.GemsCategory ->
-                            { existing | gems = fresh.gems }
-
-                        Treasure.ArtCategory ->
-                            { existing | art = fresh.art }
-
-                        Treasure.MagicCategory ->
-                            { existing | magic = fresh.magic }
-
-                        Treasure.MundaneCategory ->
-                            { existing | mundane = fresh.mundane }
-
-                        Treasure.WeaponsCategory ->
-                            { existing | weapons = fresh.weapons }
-
-                        Treasure.ArmorCategory ->
-                            { existing | armor = fresh.armor }
-
                 encounter =
                     model.encounter
             in
-            ( { model | encounter = { encounter | treasure = Just nextRoll } }
+            ( { model | encounter = { encounter | treasure = Just (Treasure.withCategoryFrom category fresh existing) } }
             , Cmd.none
             )

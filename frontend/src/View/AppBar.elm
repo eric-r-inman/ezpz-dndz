@@ -17,6 +17,7 @@ Theme row when those preferences land.
 -- self-explanatory.
 
 import Auth
+import Effects
 import Html
     exposing
         ( Html
@@ -53,12 +54,12 @@ view cfg =
     header [ class "app-bar" ]
         [ -- Skip-to-main link: visually hidden until focused; lets
           -- keyboard users jump past the ~half-dozen tab stops in
-          -- the AppBar nav.  Target is `#main`, which `Workspace`
-          -- now sets on its `<main>` element.  CSS in style.css
-          -- handles the focus-visible reveal.
+          -- the AppBar nav.  `View.Landmark.mainRegion` gives every
+          -- page's `<main>` the target.  CSS in style.css handles the
+          -- focus-visible reveal.
           a
             [ class "app-bar__skip-link"
-            , href "#main"
+            , href ("#" ++ Effects.mainRegionId)
             ]
             [ text "Skip to main content" ]
         , div [ class "app-bar__brand" ]

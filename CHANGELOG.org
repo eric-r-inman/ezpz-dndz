@@ -31,8 +31,127 @@
 15. A saved encounter can be picked from the keyboard.  No action needed.
 16. The memo, note and timer editors open with the cursor in their field.  No
     action needed.
+17. The turn controls work with a keyboard and a screen reader.  No action
+    needed.
+18. A screen reader names the creature or panel each button acts on.  No action
+    needed.
+19. Text and button labels reach 4.5 to 1 contrast in every theme.  No action
+    needed.
+20. The skip link jumps to the page's main content on every page.  No action
+    needed.
+21. A readied action lapses at the start of its creature's next turn.  No action
+    needed.
+22. Damage at 0 hit points fails a death save and massive damage kills outright.
+    No action needed.
+23. Concentration ends at 0 hit points, and damage prompts its save DC.  No
+    action needed.
+24. The sign-in form shows the server's reason for a refusal.  No action needed.
+25. A forged =X-Forwarded-For= header no longer resets the sign-in throttle.
+    See Breaking for the flag a proxied deployment needs.
+26. A save refused after a server restart says to sign in again and keeps the
+    fight in this browser.  No action needed.
+27. Random encounters bring the creature count their scale promises and land in
+    their difficulty band.  No action needed.
+28. Include minions is unavailable for a One roll and always adds minions to Few
+    and Many.  No action needed.
+29. On a phone the app bar takes two rows and keeps every link and the settings
+    button on the screen.  No action needed.
+30. Toasts appear below the app bar instead of over it.  No action needed.
+31. Removing the creature whose turn it is passes the turn on as Next turn does.
+    No action needed.
+32. Numbered copies of a creature keep their numbered order in the queue.  No
+    action needed.
+33. Natural-20 revivals and split pudding halves show Bloodied when they are.
+    No action needed.
+34. The bundled Black Pudding shows its Split reaction badge.  No action needed.
+35. An area Save Chain resolves without first being saved as a preset.  No
+    action needed.
+36. A half-built Save Chain survives Next turn.  No action needed.
+37. The card's AC field takes typing straight after a click.  No action needed.
+38. Screen readers hear names for the fight's fields, buttons and Bloodied.  No
+    action needed.
+39. A dead creature no longer offers Death Saves.  No action needed.
+40. The first Tab on the encounter page reaches the skip link.  No action
+    needed.
+41. Manage HP and a placeholder's rename field take the cursor when they open.
+    No action needed.
+42. The dice roller refuses a die with no count or fewer than two faces.  No
+    action needed.
+43. The re-roll menu closes on Esc, on a click elsewhere and when a roll lands.
+    No action needed.
+44. Esc on a popover or menu closes only that popover or menu.  No action
+    needed.
+45. A new compendium tab answers "/" and Esc at once.  No action needed.
+46. A modal resizes from its visible corner and stays open when a resize ends
+    outside it.  No action needed.
+47. Closing a modal puts focus back on the control that opened it.  No action
+    needed.
+48. Every panel title is one size in the Accessible theme.  No action needed.
+49. The app bar's title link shows a focus ring.  No action needed.
+50. Screen readers announce sign-in and account errors.  No action needed.
+51. The settings button's tooltip says Settings.  No action needed.
+52. Quick Add, Random Encounter pins and lore member pickers answer Enter and
+    Space.  No action needed.
+53. The Encounter XP scope and the Replace picker work from the keyboard.  No
+    action needed.
+54. Screen readers hear what each treasure and compendium control belongs to.
+    No action needed.
+55. A wrong current password on the account page says "Current password is
+    incorrect."  No action needed.
+56. A request without a session hears "Sign in required" instead of a password
+    complaint.  No action needed.
+57. Named saves and treasure profiles refuse a body of the wrong shape.  No
+    action needed.
+58. =users reset-password= names an email that has no account.  No action
+    needed.
+59. Importing the same file of drafts twice no longer adds copies.  No action
+    needed.
+60. The compendium's save and load dialogs offer a Sign in link to a signed-out
+    DM.  No action needed.
+61. A fresh data dir no longer logs a warning about lost edits.  No action
+    needed.
+62. The By creature breakdown follows removed and re-rolled treasure.  No action
+    needed.
+63. A signed-out DM's Tune your rolls profiles survive a reload.  No action
+    needed.
+64. Loading a file that is not an encounter shows one short message.  No action
+    needed.
+65. A refused save or rename says why.  No action needed.
+66. A compendium link to a creature scrolls its row into view.  No action
+    needed.
+67. Toasts and banners say "1 creature" for one creature.  No action needed.
+68. Newest first puts a creature made while signed out on top.  No action
+    needed.
+69. The creature editor refuses a Max HP below 1.  No action needed.
+70. The creature editor names an entry it cannot save instead of dropping it.
+    No action needed.
+71. Deleting from the creature editor, a group or a lore grouping asks first.
+    No action needed.
+72. The Reset dialog no longer promises "the original 5 creatures".  No action
+    needed.
+73. Group initiative adds each creature's initiative bonus.  No action needed.
+74. Two lore groupings may share a name.  No action needed.
+75. A pasted stat block with no Initiative line takes its DEX modifier.  No
+    action needed.
+76. Lore groupings stay listed when no creature matches the search.  No action
+    needed.
+77. The compendium's detail pane opens at the top and its sticky bars hide the
+    text behind them.  No action needed.
+78. A straight d20 roll reads on a light stat block.  No action needed.
+79. A tooltip no longer sticks in the corner after its button goes away.  No
+    action needed.
+80. Hover text on the compendium's add and import buttons says what they do.  No
+    action needed.
+81. Random Encounter names no longer run under the CR and XP.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
+2. The sign-in throttle reads =X-Forwarded-For= only with
+   =--trust-forwarded-for= or =trust_forwarded_for = true=.  Behind Caddy or
+   another reverse proxy, add it.  Without it every client shares one throttle
+   bucket.
+3. The CLI's list, count, show and tail subcommands refuse a data dir with no
+   database instead of creating an empty one.  Point =--data-dir= or
+   =--database-url= at the server's data before running them.
 ** Maintenance
 1. =just qa= no longer fails now and then when a scenario types a note right
    after picking a condition.  No action needed.

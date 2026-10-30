@@ -26,6 +26,7 @@ import Encounter.RandomEncounter.Lore as Lore
 import Html exposing (Html, button, div, h3, input, label, option, p, section, span, text)
 import Html.Attributes as Attr exposing (attribute, class, disabled, id, placeholder, selected, type_, value)
 import Html.Events exposing (onClick, onInput)
+import Html.Keyed
 import Json.Decode as Decode
 import Model exposing (Model)
 import Msg
@@ -44,10 +45,12 @@ import Ui.Compendium as CompendiumUi
         )
 import Ui.ModalChrome
 import Update.Compendium.Browser
+import Util.Number
 import View.AuthGate as AuthGate
 import View.Compendium.EditPane
 import View.Compendium.GroupEditPane
 import View.Compendium.PastePane
+import View.Landmark
 import View.Modal
 import View.StatBlock
 import View.Tooltips as Tooltips
@@ -82,8 +85,9 @@ view :
     -> Maybe (Html Msg)
     -> Html Msg
 view auth ui userLoreGroups encounterIds openEditor =
-    div [ class "workspace workspace--compendium-page" ]
-        [ section [ class "panel panel--compendium-page" ]
+    View.Landmark.mainRegion [ class "workspace workspace--compendium-page" ]
+        [ View.Landmark.pageHeading "Compendium"
+        , section [ class "panel panel--compendium-page" ]
             [ div [ class "panel__body compendium-page__body" ]
                 (pageBody auth ui userLoreGroups encounterIds openEditor)
             ]
@@ -134,7 +138,7 @@ bulkBanner ui =
                 { title = "Reset Compendium"
                 , message =
                     "Reset to bundled? Every custom creature will be discarded "
-                        ++ "and the library returned to the original 5 creatures."
+                        ++ "and the library returned to the bundled SRD creatures."
                 , confirmLabel = "Reset"
                 , busy = ui.bulkBusy
                 }
@@ -152,20 +156,16 @@ bulkBanner ui =
                         n ->
                             " (plus "
                                 ++ String.fromInt n
-                                ++ " group"
-                                ++ (if n == 1 then
-                                        ""
-
-                                    else
-                                        "s"
-                                   )
+                                ++ " "
+                                ++ Util.Number.pluralize "group" "groups" n
                                 ++ ")"
             in
             confirmBanner
                 { message =
                     "Import "
                         ++ String.fromInt count
-                        ++ " creatures"
+                        ++ " "
+                        ++ Util.Number.pluralize "creature" "creatures" count
                         ++ groupNote
                         ++ "? This REPLACES the entire current library."
                 , confirmLabel = "Replace library"
@@ -206,6 +206,24 @@ bulkBanner ui =
                 , danger = True
                 , busy = ui.bulkBusy
                 , extra = extra
+                }
+
+        ( Just (PendingGroupDelete _ displayName), _ ) ->
+            confirmBanner
+                { message = "Delete the group \"" ++ displayName ++ "\"? This cannot be undone."
+                , confirmLabel = "Delete"
+                , danger = True
+                , busy = ui.bulkBusy
+                , extra = Nothing
+                }
+
+        ( Just (PendingLoreDelete _ displayName), _ ) ->
+            confirmBanner
+                { message = "Delete the lore grouping \"" ++ displayName ++ "\"? This cannot be undone."
+                , confirmLabel = "Delete"
+                , danger = True
+                , busy = ui.bulkBusy
+                , extra = Nothing
                 }
 
         ( Nothing, Just err ) ->
@@ -773,9 +791,14 @@ twoColumn auth ui userLoreGroups encounterIds openEditor =
                 _ ->
                     0
     in
-    div [ class "compendium__columns" ]
-        [ list auth ui totalCount visible userLoreGroups encounterIds ui.selectedIds
-        , detail ui visible userLoreGroups encounterIds openEditor
+    -- A new key gives the pane a fresh element when the editor opens or
+    -- closes.  The fresh element starts with a fresh scroll.
+    Html.Keyed.node "div"
+        [ class "compendium__columns" ]
+        [ ( "list", list auth ui totalCount visible userLoreGroups encounterIds ui.selectedIds )
+        , ( Maybe.withDefault "detail" (Maybe.map (\_ -> "editor") openEditor)
+          , detail ui visible userLoreGroups encounterIds openEditor
+          )
         ]
 
 
@@ -801,47 +824,63 @@ list auth ui totalCount visible userLoreGroups encounterIds selectedIds =
 
         creatureRows =
             List.map (listItem ui.selectedId selectedIds encounterIds) visible
-    in
-    if List.isEmpty visible && List.isEmpty groups then
-        if totalCount == 0 then
-            div [ class "compendium__list compendium__list--empty" ]
-                [ p [] [ text "Your compendium is empty." ]
-                , p [ class "compendium__empty-hint" ]
-                    [ text "Try "
-                    , button
-                        [ class "compendium__empty-link"
-                        , onClick CompendiumEditNew
-                        ]
-                        [ text "creating one" ]
-                    , text ", "
-                    , button
-                        [ class "compendium__empty-link"
-                        , onClick CompendiumPasteOpen
-                        ]
-                        [ text "pasting a stat block" ]
-                    , text ", or "
-                    , button
-                        [ class "compendium__empty-link"
-                        , onClick CompendiumImportClick
-                        ]
-                        [ text "importing a JSON file" ]
-                    , text "."
-                    ]
-                ]
 
-        else
-            div [ class "compendium__list compendium__list--empty" ]
-                [ p [] [ text "No creatures match the current filters." ]
-                , p [ class "compendium__empty-hint" ]
-                    [ text (String.fromInt totalCount ++ " creatures hidden — try clearing the search or kind filters.") ]
+        rows =
+            if List.isEmpty visible && List.isEmpty groups then
+                [ emptyMessage totalCount ]
+
+            else
+                groupRows ++ creatureRows
+    in
+    -- The lore groupings stay above an empty message.  Their "+ New"
+    -- is how a DM starts one.
+    div [ class "compendium__list", Attr.id Effects.compendiumListId ]
+        (div [ class "compendium__lore-pane" ] loreRows :: rows)
+
+
+{-| Why no creature row is listed: the library is empty, or the
+filters hide every creature.
+-}
+emptyMessage : Int -> Html Msg
+emptyMessage totalCount =
+    if totalCount == 0 then
+        div [ class "compendium__empty" ]
+            [ p [ class "compendium__empty-line" ] [ text "Your compendium is empty." ]
+            , p [ class "compendium__empty-hint" ]
+                [ text "Try "
+                , button
+                    [ class "compendium__empty-link"
+                    , onClick CompendiumEditNew
+                    ]
+                    [ text "creating one" ]
+                , text ", "
+                , button
+                    [ class "compendium__empty-link"
+                    , onClick CompendiumPasteOpen
+                    ]
+                    [ text "pasting a stat block" ]
+                , text ", or "
+                , button
+                    [ class "compendium__empty-link"
+                    , onClick CompendiumImportClick
+                    ]
+                    [ text "importing a JSON file" ]
+                , text "."
                 ]
+            ]
 
     else
-        div [ class "compendium__list" ]
-            (div [ class "compendium__lore-pane" ] loreRows
-                :: groupRows
-                ++ creatureRows
-            )
+        div [ class "compendium__empty" ]
+            [ p [ class "compendium__empty-line" ] [ text "No creatures match the current filters." ]
+            , p [ class "compendium__empty-hint" ]
+                [ text
+                    (String.fromInt totalCount
+                        ++ " "
+                        ++ Util.Number.pluralize "creature" "creatures" totalCount
+                        ++ " hidden — try clearing the search or kind filters."
+                    )
+                ]
+            ]
 
 
 {-| Render a group as a header row + (optional) expansion of its
@@ -877,22 +916,11 @@ groupListItem ui group =
             Compendium.Group.totalCreatureCount group
 
         header =
-            div
-                [ class headerClass
-                , onClick (CompendiumGroupSelect group.id)
-                , attribute "role" "button"
-                , attribute "tabindex" "0"
-                ]
+            div [ class headerClass ]
                 [ button
                     [ class "compendium__group-disclosure"
-                    , onClickStopPropagation (CompendiumGroupExpandToggle group.id)
-                    , attribute "aria-expanded"
-                        (if isExpanded then
-                            "true"
-
-                         else
-                            "false"
-                        )
+                    , onClick (CompendiumGroupExpandToggle group.id)
+                    , ariaExpanded isExpanded
                     , attribute "aria-label" "Toggle group entries"
                     ]
                     [ text
@@ -903,19 +931,19 @@ groupListItem ui group =
                             "▶"
                         )
                     ]
-                , div [ class "compendium__row-text" ]
+                , button
+                    [ class "compendium__row-text compendium__row-pick"
+                    , type_ "button"
+                    , onClick (CompendiumGroupSelect group.id)
+                    , ariaPressed isSelected
+                    ]
                     [ span [ class "compendium__row-name" ]
                         [ text ("👥 " ++ group.name) ]
                     , span [ class "compendium__row-meta" ]
                         [ text
                             (String.fromInt totalCount
-                                ++ " creature"
-                                ++ (if totalCount == 1 then
-                                        ""
-
-                                    else
-                                        "s"
-                                   )
+                                ++ " "
+                                ++ Util.Number.pluralize "creature" "creatures" totalCount
                                 ++ " · "
                                 ++ Compendium.Group.initiativeModeLabel
                                     group.initiativeMode
@@ -1051,14 +1079,28 @@ filterAndSortGroupEntries ui db entries =
                 |> List.map Tuple.first
 
 
-{-| Click handler that calls `Html.Events.stopPropagationOn` so
-the inner disclosure button doesn't also fire the row's
-`CompendiumGroupSelect` (which would shift the right pane).
+ariaExpanded : Bool -> Html.Attribute Msg
+ariaExpanded expanded =
+    attribute "aria-expanded"
+        (if expanded then
+            "true"
+
+         else
+            "false"
+        )
+
+
+{-| A row's select button carries its pick as a pressed state.
 -}
-onClickStopPropagation : Msg -> Html.Attribute Msg
-onClickStopPropagation msg =
-    Html.Events.stopPropagationOn "click"
-        (Decode.succeed ( msg, True ))
+ariaPressed : Bool -> Html.Attribute Msg
+ariaPressed pressed =
+    attribute "aria-pressed"
+        (if pressed then
+            "true"
+
+         else
+            "false"
+        )
 
 
 listItem : Maybe String -> Set String -> List String -> Compendium.Creature -> Html Msg
@@ -1090,21 +1132,16 @@ listItem selectedId selectedIds encounterIds c =
                 ++ (" compendium__row--" ++ CompendiumUi.kindToString c.kind)
     in
     div
-        [ class rowClass
+        [ class (rowClass ++ " compendium__row--creature")
         , Attr.id (Effects.compendiumRowId c.id)
-        , onClick (CompendiumSelect c.id)
-        , attribute "role" "button"
-        , attribute "tabindex" "0"
-        , attribute "aria-pressed"
-            (if isSelected then
-                "true"
-
-             else
-                "false"
-            )
         ]
-        [ rowCheckbox c.id isChecked
-        , div [ class "compendium__row-text" ]
+        [ rowCheckbox c isChecked
+        , button
+            [ class "compendium__row-text compendium__row-pick"
+            , type_ "button"
+            , onClick (CompendiumSelect c.id)
+            , ariaPressed isSelected
+            ]
             [ span [ class "compendium__row-name" ]
                 [ text c.name
                 , if inEncounter then
@@ -1124,31 +1161,26 @@ listItem selectedId selectedIds encounterIds c =
         ]
 
 
-{-| Bulk-selection checkbox at the leading edge of each row.
-Clicks here are stopped from bubbling so the surrounding row
-button doesn't also fire `CompendiumSelect` (which would shift
-the right-pane stat block) — the GM expects checkbox clicks to
-ONLY toggle bulk selection.
+{-| Bulk-selection checkbox at the leading edge of each row. It
+sits beside the row's select button. A click here only toggles
+bulk selection.
 
 The custom event decoder reads `event.shiftKey` so we can
 implement the shift+click select-all / clear-all semantics in
 `Update.Compendium.Browser.rowToggle`.
 
 -}
-rowCheckbox : String -> Bool -> Html Msg
-rowCheckbox creatureId isChecked =
+rowCheckbox : Compendium.Creature -> Bool -> Html Msg
+rowCheckbox c isChecked =
     Html.input
         [ type_ "checkbox"
         , class "compendium__row-check"
         , Attr.checked isChecked
-        , attribute "aria-label" "Select for bulk action"
+        , attribute "aria-label" ("Select " ++ c.name ++ " for bulk action")
         , Tooltips.attr Tooltips.compendiumRowSelect
-        , Html.Events.stopPropagationOn "click"
+        , Html.Events.on "click"
             (Decode.field "shiftKey" Decode.bool
-                |> Decode.map
-                    (\shift ->
-                        ( CompendiumRowToggle creatureId shift, True )
-                    )
+                |> Decode.map (CompendiumRowToggle c.id)
             )
         ]
         []
@@ -1257,7 +1289,9 @@ groupActionBar group =
         [ span [ class "compendium__in-encounter" ]
             [ text
                 (String.fromInt (Compendium.Group.totalCreatureCount group)
-                    ++ " creatures · "
+                    ++ " "
+                    ++ Util.Number.pluralize "creature" "creatures" (Compendium.Group.totalCreatureCount group)
+                    ++ " · "
                     ++ Compendium.Group.initiativeModeLabel group.initiativeMode
                 )
             ]
@@ -1697,22 +1731,11 @@ loreSection ui userLoreGroups =
 
 loreSectionHeader : CompendiumUi -> Int -> Html Msg
 loreSectionHeader ui totalCount =
-    div
-        [ class "compendium__row compendium__row--lore-section"
-        , onClick CompendiumLoreSectionToggle
-        , attribute "role" "button"
-        , attribute "tabindex" "0"
-        ]
+    div [ class "compendium__row compendium__row--lore-section" ]
         [ button
             [ class "compendium__group-disclosure"
-            , onClickStopPropagation CompendiumLoreSectionToggle
-            , attribute "aria-expanded"
-                (if ui.loreGroupsExpanded then
-                    "true"
-
-                 else
-                    "false"
-                )
+            , onClick CompendiumLoreSectionToggle
+            , ariaExpanded ui.loreGroupsExpanded
             , attribute "aria-label" "Toggle Lore groupings"
             ]
             [ text
@@ -1723,7 +1746,12 @@ loreSectionHeader ui totalCount =
                     "▶"
                 )
             ]
-        , div [ class "compendium__row-text" ]
+        , button
+            [ class "compendium__row-text compendium__row-pick"
+            , type_ "button"
+            , onClick CompendiumLoreSectionToggle
+            , ariaExpanded ui.loreGroupsExpanded
+            ]
             [ span [ class "compendium__row-name" ]
                 [ text "📖 Lore groupings" ]
             , span [ class "compendium__row-meta" ]
@@ -1731,7 +1759,7 @@ loreSectionHeader ui totalCount =
             ]
         , button
             [ class "action-btn action-btn--condition compendium__lore-new"
-            , onClickStopPropagation LoreEditOpenNew
+            , onClick LoreEditOpenNew
             , Tooltips.attr "Create a new Lore grouping"
             , attribute "aria-label" "Create a new Lore grouping"
             ]
@@ -1770,22 +1798,11 @@ loreRow ui group =
             List.length group.members
     in
     div [ class "compendium__lore-row-wrap" ]
-        [ div
-            [ class rowClass
-            , onClick (CompendiumLoreSelect group.id)
-            , attribute "role" "button"
-            , attribute "tabindex" "0"
-            ]
+        [ div [ class rowClass ]
             [ button
                 [ class "compendium__group-disclosure"
-                , onClickStopPropagation (CompendiumLoreExpandToggle group.id)
-                , attribute "aria-expanded"
-                    (if isExpanded then
-                        "true"
-
-                     else
-                        "false"
-                    )
+                , onClick (CompendiumLoreExpandToggle group.id)
+                , ariaExpanded isExpanded
                 , attribute "aria-label" "Toggle lore group members"
                 ]
                 [ text
@@ -1796,7 +1813,12 @@ loreRow ui group =
                         "▶"
                     )
                 ]
-            , div [ class "compendium__row-text" ]
+            , button
+                [ class "compendium__row-text compendium__row-pick"
+                , type_ "button"
+                , onClick (CompendiumLoreSelect group.id)
+                , ariaPressed isSelected
+                ]
                 [ span [ class "compendium__row-name" ]
                     [ text
                         ((if bundled then
@@ -1811,13 +1833,8 @@ loreRow ui group =
                 , span [ class "compendium__row-meta" ]
                     [ text
                         (String.fromInt memberCount
-                            ++ " member"
-                            ++ (if memberCount == 1 then
-                                    ""
-
-                                else
-                                    "s"
-                               )
+                            ++ " "
+                            ++ Util.Number.pluralize "member" "members" memberCount
                             ++ " · weight "
                             ++ String.fromInt group.weight
                         )

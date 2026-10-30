@@ -1,4 +1,4 @@
-module View.Modal exposing (view, closeBtnId, focusInitial)
+module View.Modal exposing (view, closeBtnId, focusInitial, signInLink)
 
 {-| Shared modal chrome.
 
@@ -36,13 +36,13 @@ are imported directly from `Msg` rather than threaded through
 the config record because every modal needs the same handlers —
 threading them through every call site would be pure noise.
 
-@docs view, closeBtnId, focusInitial
+@docs view, closeBtnId, focusInitial, signInLink
 
 -}
 
 import Browser.Dom
-import Html exposing (Html, button, div, h2, text)
-import Html.Attributes exposing (attribute, class, id, style, tabindex)
+import Html exposing (Html, a, button, div, h2, text)
+import Html.Attributes exposing (attribute, class, href, id, style, tabindex)
 import Html.Events exposing (onClick, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (ModalChromeEdge(..), Msg(..))
@@ -59,6 +59,14 @@ past the last focusable element in the modal body.
 closeBtnId : String
 closeBtnId =
     "modal-close-btn"
+
+
+{-| The way an anonymous DM gets an account, for a modal that
+offers what only an account can keep.
+-}
+signInLink : Html msg
+signInLink =
+    a [ class "action-btn action-btn--blue", href "/login" ] [ text "Sign in" ]
 
 
 {-| Cmd that focuses the modal close button. Fires
@@ -85,7 +93,7 @@ and accidentally close the dialog.
     no-Cmd-needed side effect from the caller's POV; see the
     sentinel decoder below for details).
   - `title` — heading text shown in the modal header.
-  - `extraClass` — extra class on the inner `.surface` div, used
+  - `extraClass` — extra class on the inner `.modal` div, used
     for per-modal sizing (`"modal--group-edit"`,
     `"modal--compendium-edit"`, etc.).
   - `body` — the per-modal content placed inside `.modal__body`.
@@ -118,37 +126,34 @@ view config =
              ]
                 ++ chromeStyle config.chrome
             )
-            (List.concat
-                [ [ div
-                        [ class "modal__header modal__drag-handle"
-                        , preventDefaultOn "mousedown" (dragStartDecoder ModalChromeDragStart)
+            (div [ class "modal__frame" ]
+                [ div
+                    [ class "modal__header modal__drag-handle"
+                    , preventDefaultOn "mousedown" (dragStartDecoder ModalChromeDragStart)
+                    ]
+                    [ h2
+                        [ class "modal__title"
+                        , id "modal-title"
                         ]
-                        ([ h2
-                            [ class "modal__title"
-                            , id "modal-title"
-                            ]
-                            [ text config.title ]
-                         ]
-                            ++ [ button
-                                    [ class "modal__close"
-                                    , id closeBtnId
-                                    , onClick config.close
-                                    , Tooltips.attr Tooltips.modalClose
-                                    , attribute "aria-label" "Close"
-                                    ]
-                                    [ text "×" ]
-                               ]
-                        )
-                  , div [ class "modal__body" ] config.body
-                  , div
-                        [ class "modal__focus-sentinel"
-                        , tabindex 0
-                        , attribute "aria-hidden" "true"
+                        [ text config.title ]
+                    , button
+                        [ class "modal__close"
+                        , id closeBtnId
+                        , onClick config.close
+                        , Tooltips.attr Tooltips.modalClose
+                        , attribute "aria-label" "Close"
                         ]
-                        []
-                  ]
-                , resizeHandles config.chrome
+                        [ text "×" ]
+                    ]
+                , div [ class "modal__body" ] config.body
+                , div
+                    [ class "modal__focus-sentinel"
+                    , tabindex 0
+                    , attribute "aria-hidden" "true"
+                    ]
+                    []
                 ]
+                :: resizeHandles config.chrome
             )
         ]
 
@@ -194,7 +199,7 @@ and cursors live in CSS (`.modal__resize-*`).
 
 The handle's mousedown decoder reads `currentTarget.parentElement.
 offsetWidth / offsetHeight` to capture the LIVE rendered size of
-the parent `.surface` element. Doing it this way (instead of
+the parent `.modal` element. Doing it this way (instead of
 passing a guess from the Elm side) is what keeps the modal from
 snapping to a fallback size the moment the user clicks a handle
 on a freshly-opened modal — `chrome.size` is `Nothing` until the
@@ -241,10 +246,11 @@ position, and the modal's LIVE rendered size (read from the DOM
 via `currentTarget.parentElement.offsetWidth / offsetHeight`).
 
 The parent-element walk depends on the markup contract that
-each `.modal__resize` handle is a direct child of the `.surface`
-div (see `resizeHandles`). `offsetWidth / offsetHeight` give the
-rounded integer pixel size including padding+border, which is
-what the resize math wants.
+each `.modal__resize` handle is a direct child of the `.modal`
+div (see `resizeHandles`). The handles sit beside the frame
+that clips the rounded corners, so the corner itself answers.
+`offsetWidth / offsetHeight` give the rounded integer pixel size
+including padding+border, which is what the resize math wants.
 
 `preventDefault = True` so the drag doesn't initiate a text
 selection or scroll.

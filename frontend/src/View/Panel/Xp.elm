@@ -8,14 +8,16 @@ choice is visible while it's being made.
 
 -}
 
+import Effects
 import Encounter exposing (Encounter)
 import Encounter.Xp as Xp exposing (XpScope(..))
 import Html exposing (Html, button, div, li, span, text, ul)
-import Html.Attributes exposing (attribute, class, type_)
-import Html.Events exposing (onClick)
+import Html.Attributes exposing (attribute, class, id, tabindex, type_)
+import Html.Events exposing (onClick, preventDefaultOn)
 import Msg exposing (Msg(..))
 import Set exposing (Set)
 import Ui.Compendium exposing (CompendiumDb(..))
+import Util.Keyboard
 import View.Inline.Field as Field
 import View.Panel
 import View.Tooltips as Tooltips
@@ -35,12 +37,9 @@ view header enc db current calc =
             , ul
                 [ class "xp-filter__menu"
                 , attribute "role" "listbox"
+                , attribute "aria-label" "Count XP for"
                 ]
-                [ item current ScopeXpEnemiesOnly "Enemies Only"
-                , item current ScopeXpEnemiesAndNpcs "Enemies & NPCs"
-                , item current ScopeXpNpcsOnly "NPCs Only"
-                , item current ScopeXpSelectedOnly "Selected Only"
-                ]
+                (Util.Keyboard.neighbours scopes |> List.map (item current))
             , calculations enc db current calc
             ]
         }
@@ -167,10 +166,36 @@ label enc db scope =
             "— XP"
 
 
-item : XpScope -> XpScope -> String -> Html Msg
-item current scope name =
+scopes : List ( XpScope, String )
+scopes =
+    [ ( ScopeXpEnemiesOnly, "Enemies Only" )
+    , ( ScopeXpEnemiesAndNpcs, "Enemies & NPCs" )
+    , ( ScopeXpNpcsOnly, "NPCs Only" )
+    , ( ScopeXpSelectedOnly, "Selected Only" )
+    ]
+
+
+{-| One scope. The picked one is the list's only tab stop.
+-}
+item : XpScope -> { previous : Maybe ( XpScope, String ), option : ( XpScope, String ), next : Maybe ( XpScope, String ) } -> Html Msg
+item current { previous, option, next } =
+    let
+        ( scope, name ) =
+            option
+
+        setTo =
+            Tuple.first >> XpScopeSet
+    in
     li
         [ class "xp-filter__item"
+        , id (Effects.xpScopeOptionId scope)
+        , tabindex
+            (if current == scope then
+                0
+
+             else
+                -1
+            )
         , attribute "role" "option"
         , attribute "aria-selected"
             (if current == scope then
@@ -180,5 +205,12 @@ item current scope name =
                 "false"
             )
         , onClick (XpScopeSet scope)
+        , preventDefaultOn "keydown"
+            (Util.Keyboard.listboxOptionKeys
+                { pick = XpScopeSet scope
+                , previous = Maybe.map setTo previous
+                , next = Maybe.map setTo next
+                }
+            )
         ]
         [ text name ]

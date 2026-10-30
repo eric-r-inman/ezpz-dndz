@@ -12,11 +12,12 @@ layout and theming.
 
 import Html exposing (Html, div, p, section, text)
 import Html.Attributes exposing (class)
+import View.Landmark
 
 
 view : Html msg
 view =
-    div [ class "workspace" ]
+    View.Landmark.mainRegion [ class "workspace" ]
         [ section [ class "panel panel--main panel--solo" ]
             [ div [ class "panel__header" ]
                 [ div [ class "panel__title" ] [ text "Donate" ] ]

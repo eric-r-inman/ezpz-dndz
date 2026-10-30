@@ -24,7 +24,7 @@ import Dict exposing (Dict)
 import Effects
 import Encounter exposing (Creature)
 import Html exposing (Html, article, button, div, input, p, span, text)
-import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, maxlength, type_, value)
+import Html.Attributes as Attr exposing (attribute, checked, class, id, maxlength, type_, value)
 import Html.Events exposing (on, onBlur, onClick, onInput, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode
 import Model exposing (Surface(..))
@@ -220,7 +220,7 @@ view ctx index creature =
                     [ class "icon-btn icon-btn--danger"
                     , onClick (RemoveCreature creature.name)
                     , Tooltips.attr Tooltips.queueRemove
-                    , attribute "aria-label" "Remove"
+                    , attribute "aria-label" ("Remove " ++ creature.name)
                     ]
                     [ text "×" ]
                 ]
@@ -243,7 +243,7 @@ view ctx index creature =
                          else
                             Tooltips.queueInactive
                         )
-                    , attribute "aria-label" "Toggle inactive"
+                    , attribute "aria-label" (forCreature creature.name "Toggle inactive")
                     , attribute "aria-pressed"
                         (if creature.inactive then
                             "true"
@@ -534,7 +534,12 @@ initBadge creature =
         , onClick (InitiativeOpenFor creature.name)
         , Tooltips.attr Tooltips.initiativeManager
         , attribute "aria-label"
-            ("Initiative " ++ String.fromInt creature.initiative ++ " — open initiative manager")
+            ("Initiative "
+                ++ String.fromInt creature.initiative
+                ++ " for "
+                ++ creature.name
+                ++ " — open initiative manager"
+            )
         ]
         [ text ("(" ++ String.fromInt creature.initiative ++ ")") ]
 
@@ -572,7 +577,7 @@ creatureName statBlockOpen creature renameState =
                 , type_ "button"
                 , onClick (StatBlockToggle creature.name)
                 , Tooltips.attr label
-                , attribute "aria-label" label
+                , attribute "aria-label" (forCreature creature.name label)
                 , attribute "aria-expanded"
                     (if statBlockOpen then
                         "true"
@@ -602,10 +607,10 @@ placeholderName creature renameState =
         Just state ->
             if state.target == creature.name then
                 input
-                    [ class "creature-name creature-name--rename-input"
+                    [ id Rename.inputId
+                    , class "creature-name creature-name--rename-input"
                     , value state.draft
                     , Attr.maxlength Rename.maxNameLength
-                    , autofocus True
                     , attribute "aria-label" "Rename placeholder"
                     , onInput PlaceholderRenameChange
                     , onBlur PlaceholderRenameCommit
@@ -690,7 +695,7 @@ noteOrPencil creature surface =
                  else
                     Tooltips.noteAdd
                 )
-            , attribute "aria-label" "Add note"
+            , attribute "aria-label" (forCreature creature.name "Add note")
             , ariaExpanded editing
             ]
             [ text "✏️" ]
@@ -1077,7 +1082,7 @@ conditionChip flashConditions creature cond =
             , stopPropagationOn "click"
                 (Decode.succeed ( ConditionRemoveChip target cond.id, True ))
             , Tooltips.attr Tooltips.chipRemoveModalRow
-            , attribute "aria-label" "Remove condition"
+            , attribute "aria-label" ("Remove " ++ cond.name ++ " from " ++ target)
             ]
             [ text "×" ]
         ]
@@ -1267,6 +1272,13 @@ hpDisplay creature =
                 "hp-display__current"
             )
             ("Current HP for " ++ creature.name)
+
+        -- Bloodied otherwise shows only as the number's colour.
+        , if creature.bloodied then
+            span [ class "visually-hidden" ] [ text "Bloodied" ]
+
+          else
+            text ""
         , span [ class "hp-display__sep" ] [ text "/" ]
         , hpOpener creature (String.fromInt creature.maxHp) "hp-display__max" ("Max HP for " ++ creature.name)
         , maxHpOriginal creature
@@ -1365,16 +1377,18 @@ hpEditable creature hpEdit field current cls =
     in
     if isEditing then
         input
-            [ class "hp-display__edit"
+            [ id Ui.HpChange.editInputId
+            , class "hp-display__edit"
             , type_ "number"
             , Attr.min "0"
             , Attr.max "9999"
             , value (Maybe.withDefault "" (Maybe.map .text hpEdit))
+            , Attr.placeholder (String.fromInt current)
             , onInput HpEditChange
             , Html.Events.onBlur HpEditCommit
             , Html.Events.on "keydown" hpEditKeyDecoder
             , keepMouseDownInside
-            , autofocus True
+            , attribute "aria-label" ("Armor Class for " ++ creature.name)
             ]
             []
 
@@ -1387,7 +1401,7 @@ hpEditable creature hpEdit field current cls =
         button
             [ class (cls ++ " hp-display__editable")
             , type_ "button"
-            , onClick (HpEditStart creature.name field current)
+            , onClick (HpEditStart creature.name field)
             , Tooltips.attr Tooltips.clickToEdit
             , attribute "aria-label"
                 (acFieldAriaLabel creature.name current)
@@ -1564,7 +1578,13 @@ turnArrow isActive name =
             )
         , onClick (SetActive name)
         , Tooltips.attr tip
-        , attribute "aria-label" tip
+        , attribute "aria-label"
+            (if isActive then
+                "It is " ++ name ++ "'s turn"
+
+             else
+                "Make " ++ name ++ " the active creature"
+            )
         ]
         [ text "→" ]
 
@@ -1572,11 +1592,10 @@ turnArrow isActive name =
 {-| The 5e death-save tracker, laid out along the card's top
 border beside the lifecycle badge.
 
-Visibility is keyed off `currentHp == 0` exclusively — the moment
-the creature is back above 0 HP they're conscious, and the tracker
-shouldn't be on screen at all. The HP-change engine already resets
-the counts on heal-to-positive, so a re-appearing strip starts
-fresh.
+Visibility is keyed off `currentHp == 0`. A creature back above 0
+HP is conscious and shows no tracker. The HP-change engine resets
+the counts on a heal to positive. A strip that reappears starts
+fresh. A creature already marked dead shows no row.
 
 Resolution is not final: clearing a pip back below three
 returns the roll, so a misread save costs nothing.
@@ -1585,6 +1604,10 @@ returns the roll, so a misread save costs nothing.
 deathSaveRow : Creature -> Maybe (Html Msg)
 deathSaveRow creature =
     if creature.currentHp /= 0 then
+        Nothing
+
+    else if Encounter.isDeathSaveDead creature.deathSaves && not creature.acceptingDeathSaves then
+        -- A creature already marked dead has no saves left to begin.
         Nothing
 
     else if not creature.acceptingDeathSaves then
@@ -1624,7 +1647,7 @@ deathSaveRow creature =
                         [ class "death-saves__roll"
                         , onClick (DeathSaveRoll creature.name)
                         , Tooltips.attr Tooltips.deathRoll
-                        , attribute "aria-label" "Roll death save"
+                        , attribute "aria-label" ("Roll death save for " ++ creature.name)
                         ]
                         [ text "🎲" ]
                     ]
@@ -1638,7 +1661,7 @@ deathSaveRow creature =
             (div
                 [ class "death-saves"
                 , attribute "role" "group"
-                , attribute "aria-label" "Death saving throws"
+                , attribute "aria-label" ("Death saving throws for " ++ creature.name)
                 ]
                 (roll
                     ++ span [ class "death-saves__mark death-saves__mark--success" ] [ text "✓" ]
@@ -1769,6 +1792,14 @@ legendaryReadout cfg =
             )
 
 
+{-| Every card carries the same buttons, so the action alone cannot
+tell one card's from another's.
+-}
+forCreature : String -> String -> String
+forCreature name action =
+    action ++ " for " ++ name
+
+
 {-| Append the open-editor highlight to a trigger's class list
 while its own editor is expanded, so the GM can spot which
 editor is open even after scrolling away and back.
@@ -1814,7 +1845,7 @@ memoSlot creature surface =
                  else
                     Tooltips.memoAdd
                 )
-            , attribute "aria-label" "Add memo"
+            , attribute "aria-label" (forCreature creature.name "Add memo")
             , ariaExpanded editing
             ]
             [ span [ class "action-btn__icon" ] [ text "📝" ]
@@ -1848,7 +1879,7 @@ memoPill creature editing =
             [ class "memo-pill__dismiss"
             , onClick (MemoClear creature.name)
             , Tooltips.attr Tooltips.memoClear
-            , attribute "aria-label" "Clear memo"
+            , attribute "aria-label" (forCreature creature.name "Clear memo")
             ]
             [ text "×" ]
         ]
@@ -1886,7 +1917,7 @@ timerSlot creature surface =
                      else
                         Tooltips.timerSet
                     )
-                , attribute "aria-label" "Set timer"
+                , attribute "aria-label" (forCreature creature.name "Set timer")
                 , ariaExpanded editing
                 ]
                 [ span [ class "action-btn__icon" ] [ text "⏱️" ]
@@ -1895,17 +1926,31 @@ timerSlot creature surface =
 
         Just t ->
             span
-                [ class
+                ([ class
                     (if t.ringing then
                         "timer-pill timer-pill--ringing"
 
                      else
                         "timer-pill"
                     )
-                , Tooltips.attr (timerTooltip t)
-                ]
+                 , Tooltips.attr (timerTooltip t)
+                 ]
+                    -- The flash and the ping are all a ringing timer
+                    -- otherwise shows.
+                    ++ (if t.ringing then
+                            [ attribute "role" "status" ]
+
+                        else
+                            []
+                       )
+                )
                 [ span [ class "timer-pill__count" ]
                     [ text (String.fromInt t.remaining) ]
+                , if t.ringing then
+                    span [ class "visually-hidden" ] [ text "Timer rang." ]
+
+                  else
+                    text ""
                 , if String.isEmpty t.note then
                     text ""
 
@@ -1915,7 +1960,7 @@ timerSlot creature surface =
                     [ class "timer-pill__dismiss"
                     , onClick (TimerDismiss creature.name)
                     , Tooltips.attr Tooltips.timerCancel
-                    , attribute "aria-label" "Cancel timer"
+                    , attribute "aria-label" (forCreature creature.name "Cancel timer")
                     ]
                     [ text "×" ]
                 ]
@@ -1958,7 +2003,7 @@ readiedToggle creature =
         [ class cls
         , onClick (ToggleReadied creature.name)
         , Tooltips.attr tooltip
-        , attribute "aria-label" tooltip
+        , attribute "aria-label" (forCreature creature.name tooltip)
         , attribute "aria-pressed"
             (if creature.readied then
                 "true"
@@ -1981,22 +2026,24 @@ reactionPip creature =
         -- Deliberately identical for every creature — special
         -- reaction mechanics are announced by the banner strip
         -- above the queue, not by restyling this toggle.
-        ( cls, tooltip ) =
+        ( cls, tooltip, state ) =
             if creature.reactionUsed then
                 ( "action-btn action-btn--icon action-btn--reaction action-btn--reaction-spent"
                 , Tooltips.reactionSpent
+                , "Reaction spent"
                 )
 
             else
                 ( "action-btn action-btn--icon action-btn--reaction action-btn--reaction-ready"
                 , Tooltips.reactionReady
+                , "Reaction available"
                 )
     in
     button
         [ class cls
         , onClick (ToggleReaction creature.name)
         , Tooltips.attr tooltip
-        , attribute "aria-label" tooltip
+        , attribute "aria-label" (forCreature creature.name state)
         , attribute "aria-pressed"
             (if creature.reactionUsed then
                 "true"

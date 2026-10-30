@@ -330,7 +330,7 @@ passwordChanged result model =
                         | password =
                             { pw
                                 | busy = False
-                                , error = Just (Util.Http.errorToString err)
+                                , error = Just (passwordRefusal err)
                                 , success = Nothing
                             }
                     }
@@ -338,6 +338,19 @@ passwordChanged result model =
                 model
             , Cmd.none
             )
+
+
+{-| The server answers a wrong current password with a 403. A 401
+would mean the session is gone.
+-}
+passwordRefusal : Http.Error -> String
+passwordRefusal err =
+    case err of
+        Http.BadStatus 403 ->
+            "Current password is incorrect."
+
+        _ ->
+            Util.Http.errorToString err
 
 
 

@@ -23,6 +23,7 @@ import View.Card.StatBlock
 import View.EncounterBar
 import View.Inline.QueueReference
 import View.Inline.SpellList
+import View.Landmark
 import View.PanelDrawer
 import View.QueueEntry
 import View.QuickView
@@ -31,7 +32,7 @@ import View.Tooltips as Tooltips
 
 view : Model -> Html Msg
 view model =
-    main_
+    View.Landmark.mainRegion
         [ class
             (if model.quickView.open then
                 "workspace workspace--drawer workspace--quick-view"
@@ -39,10 +40,9 @@ view model =
              else
                 "workspace workspace--drawer"
             )
-        , id "main"
-        , attribute "tabindex" "-1"
         ]
-        [ View.PanelDrawer.view model
+        [ View.Landmark.pageHeading "Encounter"
+        , View.PanelDrawer.view model
         , panelMain model
         , if model.quickView.open then
             View.QuickView.view model.quickView model.encounter

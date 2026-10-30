@@ -36,9 +36,9 @@ class Initiative:
         settle(self.app.page)
 
     def row(self, lead):
-        # The roll and apply rows repeat the same button names.  Only their
-        # lead text tells them apart.  See QA-TURN-08.
-        return self.root.locator(".apply-row").filter(has_text=lead)
+        # The roll and apply rows repeat the same button names.  Each row is
+        # a group named for its lead text.
+        return self.root.get_by_role("group", name=lead.replace(":", ""), exact=True)
 
     def scope_button(self, lead, scope):
         name = re.compile("^Selected ") if scope == "Selected" else scope
@@ -126,9 +126,8 @@ def fill_timer(form, turns, phase, label):
     """Fills a timer form.  Without a phase it keeps the default."""
     form.get_by_role("spinbutton", name="Timer lasts").fill(str(turns))
     if phase:
-        # The phase radios are hidden from the accessibility tree.  See
-        # QA-TURN-08.
-        form.get_by_text(phase, exact=True).click()
+        # The radio is hidden from sight.  A pointer clicks its label.
+        form.locator(".cond-phase").filter(has_text=phase).click()
     form.get_by_role("textbox", name="Label").fill(label)
 
 
@@ -169,7 +168,10 @@ def initiatives(app):
 
 def turn_arrow(app, name):
     return app.card(name).root.get_by_role(
-        "button", name=re.compile(f"^(Set as active creature|{re.escape(ACTIVE_MARKER)})$")
+        "button",
+        name=re.compile(
+            f"^(Make {re.escape(name)} the active creature|It is {re.escape(name)}'s turn)$"
+        ),
     )
 
 
@@ -193,7 +195,9 @@ def change_hp(app, name, verb, amount):
 
 
 def knock_down(app, name):
-    change_hp(app, name, "Damage", 999)
+    # Damage left over past 0 that meets the maximum would kill outright.
+    current = int(hp_button(app.card(name), "Current").inner_text())
+    change_hp(app, name, "Damage", current)
     expect(hp_button(app.card(name), "Current")).to_have_text("0")
 
 
@@ -213,7 +217,7 @@ def reaction(app, name):
 
 def readied(app, name):
     return app.card(name).root.get_by_role(
-        "button", name=re.compile("^(Ready an Action|Action Readied)$")
+        "button", name=re.compile(f"^(Ready an Action|Action Readied) for {re.escape(name)}$")
     )
 
 
@@ -244,8 +248,7 @@ def strip(app, label):
 
 
 def quick_view(app):
-    # The quick view has no accessible name.  See QA-TURN-08.
-    return app.page.locator("section.panel--quick-view")
+    return app.page.get_by_role("region", name="Quick view")
 
 
 def encounter_body(app):
