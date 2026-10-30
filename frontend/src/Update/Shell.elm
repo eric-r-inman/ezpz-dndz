@@ -3,7 +3,6 @@ module Update.Shell exposing
     , encounterMenuClose
     , encounterMenuToggle
     , encounterPersisted
-    , gotMe
     , noOp
     , settingsClose
     , settingsToggle
@@ -11,8 +10,8 @@ module Update.Shell exposing
     , urlRequested
     )
 
-{-| Application-shell Msg handlers: URL routing, identity (`/me`),
-encounter load + persist response, and the `NoOp` fallback.
+{-| Application-shell Msg handlers: URL routing, encounter load +
+persist response, and the `NoOp` fallback.
 
 These branches sit at the boundary between the Elm runtime and the
 domain modules — they receive Cmds the runtime fired off (HTTP
@@ -27,7 +26,7 @@ import Effects
 import Encounter exposing (Encounter)
 import Http
 import Model exposing (Model)
-import Msg exposing (MeInfo, MeStatus(..), Msg)
+import Msg exposing (Msg)
 import Route
 import Ui.Toast exposing (ToastKind(..))
 import Update.Account
@@ -44,15 +43,25 @@ urlRequested : Nav.Key -> Browser.UrlRequest -> Model -> ( Model, Cmd Msg )
 urlRequested key req model =
     case req of
         Browser.Internal url ->
-            ( model, Nav.pushUrl key (Url.toString url) )
+            ( model
+            , -- The runtime takes the skip link before the browser can
+              -- move focus.  Focus moves here instead.
+              if url.fragment == Just Effects.mainRegionId then
+                Cmd.batch
+                    [ Nav.pushUrl key (Url.toString url)
+                    , Effects.focusField Effects.mainRegionId
+                    ]
+
+              else
+                Nav.pushUrl key (Url.toString url)
+            )
 
         Browser.External url ->
             ( model, Nav.load url )
 
 
-{-| URL changed — re-derive the route, reset the identity badge to
-loading (the new page may need to refetch), and ask `Effects` what
-Cmd to fire for the route.
+{-| URL changed. Re-derive the route and run the one-shot step a
+route needs on entry.
 -}
 urlChanged : Url -> Model -> ( Model, Cmd Msg )
 urlChanged url model =
@@ -61,37 +70,18 @@ urlChanged url model =
             Route.fromUrl url
 
         withRoute =
-            { model | url = url, route = route, me = Loading }
-
-        -- Some routes need a one-shot side-effect on entry — the
-        -- Account page seeds its display-name input from the
-        -- authenticated user, for instance.  Keep this list flat
-        -- and route-shaped rather than scattering Cmd-emitting
-        -- effects across handlers.
-        ( finalModel, sideCmd ) =
-            case route of
-                Route.Me ->
-                    Update.Account.open withRoute
-
-                _ ->
-                    ( withRoute, Cmd.none )
+            { model | url = url, route = route }
     in
-    ( finalModel
-    , Cmd.batch [ Effects.cmdForRoute route, sideCmd ]
-    )
+    -- Some routes need a one-shot step on entry.  The Account page
+    -- seeds its display-name field from the signed-in user.  Keep
+    -- this list flat and route-shaped rather than scattering such
+    -- steps across handlers.
+    case route of
+        Route.Account ->
+            Update.Account.open withRoute
 
-
-{-| `/me` response landed. Success populates the badge; failure
-flips to `Failed` so the view can show "Sign in" or similar.
--}
-gotMe : Result Http.Error MeInfo -> Model -> ( Model, Cmd Msg )
-gotMe result model =
-    case result of
-        Ok info ->
-            ( { model | me = Loaded info }, Cmd.none )
-
-        Err _ ->
-            ( { model | me = Failed }, Cmd.none )
+        _ ->
+            ( withRoute, Cmd.none )
 
 
 {-| Initial encounter fetch landed. `Just` adopts the persisted
@@ -115,12 +105,31 @@ encounterLoaded result model =
 {-| Persist response. Success is silent (the user's edit just
 flowed through); failure raises a toast so they know the change
 won't survive a reload.
+
+A 401 means the server forgot the session. A restart does that. The
+fight is copied into the browser's own slot. A reload then shows it.
+The next sign-in keeps it as the live fight.
+
 -}
 encounterPersisted : Result Http.Error () -> Model -> ( Model, Cmd Msg )
 encounterPersisted result model =
     case result of
         Ok () ->
             ( model, Cmd.none )
+
+        Err (Http.BadStatus 401) ->
+            let
+                keep =
+                    Effects.persistLocalEncounter model.encounter
+            in
+            if model.sessionLost then
+                ( model, keep )
+
+            else
+                Update.Toast.pushWith ToastError
+                    "Save failed: you were signed out.  Sign in again to save this fight.  It stays in this browser until then."
+                    keep
+                    { model | sessionLost = True }
 
         Err err ->
             Update.Toast.push ToastError

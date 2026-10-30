@@ -21,6 +21,7 @@ applies the 5e rules and threads the roll into the dice history.
 import Dice
 import Effects
 import Encounter exposing (Creature)
+import HpChange
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 
@@ -252,11 +253,11 @@ applyResult d20 c =
         c
 
     else if d20 == 20 then
-        { c
-            | currentHp = Basics.max 1 c.currentHp
-            , deathSaves = Encounter.emptyDeathSaves
-            , acceptingDeathSaves = False
-        }
+        HpChange.setCurrentHp (Basics.max 1 c.currentHp)
+            { c
+                | deathSaves = Encounter.emptyDeathSaves
+                , acceptingDeathSaves = False
+            }
 
     else if d20 == 1 then
         { c | deathSaves = Encounter.addDeathSaveFailures 2 c.deathSaves }

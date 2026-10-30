@@ -31,7 +31,8 @@
 //! collection.  The frontend's `Update.UserSync` migration pipeline
 //! depends on that distinction.  `PUT` is a full transactional swap:
 //! delete the presence row (children cascade), insert the decoded
-//! replacement.
+//! replacement.  The treasure table alone also takes a `DELETE`, which
+//! puts its `GET` back to `null`.
 //!
 //! Anonymous users persist to localStorage instead; on sign-in the
 //! migration pipeline in the frontend's `Update.UserSync` PUTs the
@@ -40,12 +41,13 @@
 
 use aide::{
   axum::{
-    routing::{get_with, put_with},
+    routing::{delete_with, get_with, put_with, ApiMethodRouter},
     ApiRouter,
   },
   transform::TransformOperation,
 };
 use axum::{
+  http::StatusCode,
   response::{IntoResponse, Response},
   Extension, Json,
 };
@@ -66,9 +68,9 @@ use crate::web_base::AppState;
 
 /// One per-user preset feature: the wire codec (mirroring the Elm
 /// `*.Wire` module) plus the SQL that maps the decoded value onto the
-/// feature's tables.  Implementations are stateless unit structs; the
-/// generic [`read_payload`] / [`replace_payload`] pair and the shared
-/// router are the only callers besides the one-shot JSON import.
+/// feature's tables.  Implementations are stateless unit structs.  The
+/// generic [`read_payload`], [`replace_payload`] and [`delete_payload`],
+/// the shared router and the one-shot JSON import are the only callers.
 pub trait PerUserFeature: 'static {
   /// Feature name for errors and logs ("save-chain-presets payload
   /// does not match …").
@@ -125,6 +127,12 @@ pub enum PerUserStoreError {
 
   #[error("Failed to replace the {label} store contents: {source}")]
   Replace {
+    label: &'static str,
+    source: sqlx::Error,
+  },
+
+  #[error("Failed to delete the {label} store contents: {source}")]
+  Delete {
     label: &'static str,
     source: sqlx::Error,
   },
@@ -193,19 +201,14 @@ pub async fn replace_payload<F: PerUserFeature>(
     }
   })?;
 
-  // Interpolating `F::PARENT_TABLE` is safe because it is a compile-time
-  // constant.  sqlx's Any driver has no placeholder for identifiers.
-  sqlx::query(AssertSqlSafe(format!(
-    "DELETE FROM {} WHERE user_id = $1",
-    F::PARENT_TABLE
-  )))
-  .bind(user_id.as_str())
-  .execute(&mut *tx)
-  .await
-  .map_err(|source| PerUserStoreError::Replace {
-    label: F::LABEL,
-    source,
-  })?;
+  sqlx::query(presence_delete::<F>())
+    .bind(user_id.as_str())
+    .execute(&mut *tx)
+    .await
+    .map_err(|source| PerUserStoreError::Replace {
+      label: F::LABEL,
+      source,
+    })?;
 
   F::insert(&mut tx, user_id, &data).await.map_err(|source| {
     PerUserStoreError::Replace {
@@ -222,6 +225,30 @@ pub async fn replace_payload<F: PerUserFeature>(
     })?;
 
   Ok(F::encode(&data))
+}
+
+/// Forget the user's persisted structure, so `GET` answers `null`
+/// again.
+pub async fn delete_payload<F: PerUserFeature>(
+  db: &Db,
+  user_id: &UserId,
+) -> Result<(), PerUserStoreError> {
+  sqlx::query(presence_delete::<F>())
+    .bind(user_id.as_str())
+    .execute(db.pool())
+    .await
+    .map(|_| ())
+    .map_err(|source| PerUserStoreError::Delete {
+      label: F::LABEL,
+      source,
+    })
+}
+
+/// Drops the user's presence row.  Every child row cascades with it.
+fn presence_delete<F: PerUserFeature>() -> AssertSqlSafe<String> {
+  // Interpolating `F::PARENT_TABLE` is safe because it is a compile-time
+  // constant.  sqlx's Any driver has no placeholder for identifiers.
+  AssertSqlSafe(format!("DELETE FROM {} WHERE user_id = $1", F::PARENT_TABLE))
 }
 
 // ── routers ──────────────────────────────────────────────────────────────────
@@ -270,6 +297,26 @@ fn router<F: PerUserFeature>(
     )
 }
 
+/// The authenticated DELETE for one feature.  It answers 204 once the
+/// user's payload is gone.
+fn delete_route<F: PerUserFeature>(
+  db: Db,
+  description: &'static str,
+) -> ApiMethodRouter<AppState> {
+  delete_with(
+    move |Extension(CurrentUser(user)): Extension<CurrentUser>| {
+      let db = db.clone();
+      async move {
+        match delete_payload::<F>(&db, &user.id).await {
+          Ok(()) => StatusCode::NO_CONTENT.into_response(),
+          Err(e) => e.into_response(),
+        }
+      }
+    },
+    move |op: TransformOperation| op.description(description),
+  )
+}
+
 /// Every per-user preset route, in one place.  Adding a sixth store
 /// is one `.merge` here plus a `PerUserFeature` impl in
 /// [`crate::presets`].
@@ -302,15 +349,27 @@ pub fn routers(state: &AppState) -> ApiRouter<AppState> {
       "Replace the caller's saved Save Chain presets with the \
        supplied JSON.",
     ))
-    .merge(router::<TreasureTable>(
-      "/api/treasure-table",
-      state.db.clone(),
-      "Return the caller's saved singular treasure table.  Returns \
-       `null` when the user hasn't saved one yet — the frontend then \
-       falls back to the bundled SRD default.",
-      "Replace the caller's saved treasure table with the supplied \
-       JSON.",
-    ))
+    .merge(
+      router::<TreasureTable>(
+        "/api/treasure-table",
+        state.db.clone(),
+        "Return the caller's saved singular treasure table.  Returns \
+         `null` when the user hasn't saved one yet — the frontend then \
+         falls back to the bundled SRD default.",
+        "Replace the caller's saved treasure table with the supplied \
+         JSON.",
+      )
+      // Revert to bundled is the only way back to `null` among the
+      // five features.
+      .api_route(
+        "/api/treasure-table",
+        delete_route::<TreasureTable>(
+          state.db.clone(),
+          "Forget the caller's saved treasure table, so the bundled SRD \
+           default applies again.",
+        ),
+      ),
+    )
     .merge(router::<TreasureProfiles>(
       "/api/treasure-profiles",
       state.db.clone(),

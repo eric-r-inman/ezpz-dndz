@@ -521,9 +521,19 @@ queueDragEnd model =
     ( { model | queueDrag = Nothing }, Cmd.none )
 
 
+{-| Removing the creature whose turn it is runs Next turn first. The
+successor's turn-start rules run. An inactive successor is passed
+over. A removal at the bottom of the queue starts the next round.
+-}
 removeCreature : String -> Model -> ( Model, Cmd Msg )
 removeCreature name model =
-    ( withEncounter (Encounter.Roster.removeCreature name) model, Cmd.none )
+    (if name == model.encounter.activeName then
+        nextTurn model
+
+     else
+        ( model, Cmd.none )
+    )
+        |> Tuple.mapFirst (withEncounter (Encounter.Roster.removeCreature name))
 
 
 {-| Drop a "Placeholder N" stub at the bottom of the queue. No

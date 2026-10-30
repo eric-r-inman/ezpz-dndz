@@ -6,7 +6,7 @@ module Update.Account exposing
     , submitPassword, passwordChanged
     )
 
-{-| Update branches for the `/me` Account page.
+{-| Update branches for the `/account` page.
 
 Profile and Password are two independent forms on the same
 page; each has its own `submit*` dispatcher and response
@@ -39,7 +39,7 @@ import Util.Http
 {-| Sync the editable display-name field to the user's current
 display name when the page first renders (or after a `Sign out
 → Sign in` cycle). Cheap and idempotent; called from
-`Update.Shell.urlChanged` whenever the route resolves to `Me`.
+`Update.Shell.urlChanged` whenever the route resolves to `Account`.
 -}
 open : Model -> ( Model, Cmd Msg )
 open model =
@@ -330,7 +330,7 @@ passwordChanged result model =
                         | password =
                             { pw
                                 | busy = False
-                                , error = Just (Util.Http.errorToString err)
+                                , error = Just (passwordRefusal err)
                                 , success = Nothing
                             }
                     }
@@ -338,6 +338,19 @@ passwordChanged result model =
                 model
             , Cmd.none
             )
+
+
+{-| The server answers a wrong current password with a 403. A 401
+would mean the session is gone.
+-}
+passwordRefusal : Http.Error -> String
+passwordRefusal err =
+    case err of
+        Http.BadStatus 403 ->
+            "Current password is incorrect."
+
+        _ ->
+            Util.Http.errorToString err
 
 
 

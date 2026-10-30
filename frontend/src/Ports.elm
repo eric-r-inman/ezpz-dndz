@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastDiceRoll, broadcastEncounter, clearLocalCompendium, clearLocalEncounter, incomingDiceRoll, incomingEncounter, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
+    , broadcastCompendium, broadcastDiceRoll, broadcastEncounter, clearLocalCompendium, clearLocalEncounter, clearLocalUserTreasureTable, incomingCompendium, incomingDiceRoll, incomingEncounter, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalTreasureProfiles, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -150,6 +150,19 @@ Fires on every edit in the Treasure Table editor.
 port persistLocalUserTreasureTable : E.Value -> Cmd msg
 
 
+{-| Persist the named Tune your rolls profiles to
+`localStorage.treasureProfiles`. Body is the dict encoded by
+[`Encounter.Treasure.ProfileWire`](Encounter-Treasure-ProfileWire).
+-}
+port persistLocalTreasureProfiles : E.Value -> Cmd msg
+
+
+{-| Drop `localStorage.userTreasureTable` once the GM reverts to the
+bundled table.
+-}
+port clearLocalUserTreasureTable : () -> Cmd msg
+
+
 {-| Broadcast a freshly-landed `Dice.Roll` to every other tab of
 this app open in the same browser profile. JS bridges the value
 through a `BroadcastChannel("ezpz-dndz-dice")`; peer tabs receive
@@ -195,6 +208,18 @@ tab decodes the payload and replaces its own
 `model.encounter` — no persist, no re-broadcast.
 -}
 port incomingEncounter : (D.Value -> msg) -> Sub msg
+
+
+{-| Post the user's creatures and groups to every other tab.
+`Compendium.Wire.encodeTabSync` gives the shape.
+-}
+port broadcastCompendium : E.Value -> Cmd msg
+
+
+{-| Creatures and groups another tab posted through
+[`broadcastCompendium`](#broadcastCompendium).
+-}
+port incomingCompendium : (D.Value -> msg) -> Sub msg
 
 
 {-| Ask the JS host to open the standalone `/compendium` route

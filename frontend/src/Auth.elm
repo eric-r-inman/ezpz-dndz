@@ -1,8 +1,10 @@
 module Auth exposing
     ( AuthState(..)
     , LoginMode(..)
+    , SubmitError(..)
     , User
     , isAuthenticated
+    , owner
     , userDecoder
     )
 
@@ -45,6 +47,17 @@ type LoginMode
     | Register
 
 
+{-| Why a sign-in or registration did not go through. A refusal
+carries the server's own reason when it gave one. A throttled one
+also carries the seconds to wait.
+-}
+type SubmitError
+    = Refused { status : Int, reason : Maybe String, retryAfterSecs : Maybe Int }
+    | Unreachable
+    | TimedOut
+    | Unreadable
+
+
 {-| Public user projection. Mirrors the server's
 `UserPublic` record — the password hash never crosses the wire.
 -}
@@ -64,6 +77,23 @@ isAuthenticated state =
 
         _ ->
             False
+
+
+{-| Whose data a tab holds: the signed-in user's id, or an empty
+string for every signed-out tab. A tab still asking has no owner.
+No user id is empty, so the two cannot meet.
+-}
+owner : AuthState -> Maybe String
+owner state =
+    case state of
+        AuthLoading ->
+            Nothing
+
+        AuthAnonymous ->
+            Just ""
+
+        AuthAuthenticated user ->
+            Just user.id
 
 
 userDecoder : Decoder User
