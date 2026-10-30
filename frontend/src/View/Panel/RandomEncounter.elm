@@ -53,11 +53,12 @@ import Html.Attributes as Attr
         , type_
         , value
         )
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, preventDefaultOn)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.RandomEncounter exposing (RandomEncounterUi, RollState(..))
+import Util.Keyboard
 import View.Inline.Field as Field
 import View.Panel
 import View.Tooltips as Tooltips
@@ -730,6 +731,7 @@ excludeResultRow c =
     li
         [ class "random-encounter__pin-result"
         , onClick (RandomEncounterExcludeAdd c.id)
+        , preventDefaultOn "keydown" (Util.Keyboard.buttonKeys (RandomEncounterExcludeAdd c.id))
         , attribute "role" "button"
         , attribute "tabindex" "0"
         ]
@@ -744,6 +746,7 @@ pinResultRow c =
     li
         [ class "random-encounter__pin-result"
         , onClick (RandomEncounterPinAdd c.id)
+        , preventDefaultOn "keydown" (Util.Keyboard.buttonKeys (RandomEncounterPinAdd c.id))
         , attribute "role" "button"
         , attribute "tabindex" "0"
         ]

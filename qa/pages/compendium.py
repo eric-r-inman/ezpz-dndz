@@ -79,7 +79,7 @@ def create_group(tab, name, entries, initiative="Each rolls", manual=None):
     pane = tab.editor()
     expect(pane.get_by_role("heading", name="👥 Create Group")).to_be_visible()
     pane.get_by_label("Name").fill(name)
-    pane.get_by_role("radio", name=initiative).check()
+    pane.get_by_role("radiogroup", name="Initiative").get_by_role("radio", name=initiative).check()
     if manual is not None:
         pane.get_by_role("spinbutton", name="Manual initiative value").fill(str(manual))
     for entry in entries:
@@ -188,7 +188,7 @@ class Compendium:
         return self
 
     def check(self, name):
-        self.row(name).get_by_role("checkbox", name="Select for bulk action").check()
+        self.row(name).get_by_role("checkbox", name=f"Select {name} for bulk action").check()
         self.settle()
 
     # The detail pane.

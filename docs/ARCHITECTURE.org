@@ -509,7 +509,10 @@ verification, self-service" model lives at ~/api/auth/*~ and is ours.
 
 The credential-error variants (no such email, wrong password) collapse to a
 single 401 ~"Invalid email or password"~ response so timing / error-text
-differences don't leak account-existence information.
+differences don't leak account-existence information.  A request with no session
+gets its own 401, ~"Sign in required"~.  A wrong current password on ~POST
+/api/auth/password~ gets a 403, so the frontend does not read it as a lost
+session.
 
 ** Session and middleware
 
@@ -718,7 +721,7 @@ The AppBar nav adapts to auth state:
   to itself).
 
 Text-labelled nav items (Encounter / About / Donate / Sign in) omit hover
-tooltips; the icon-only ⚙ trigger keeps a tooltip ("Set Theme").
+tooltips; the icon-only ⚙ trigger keeps a tooltip ("Settings").
 
 The ⚙ settings popover holds the theme picker (Modern / Dark / Auto /
 Accessible) and is enabled in all sessions, anonymous or not — theme persists
@@ -1324,24 +1327,13 @@ panel's "Add Creature" button with "Quick Add", opens =Ui.QuickAdd= via the
 ~ModalQuickAdd~ Modal case, and shows a single sort toggle (alpha ↔ CR) over a
 scrollable list of every compendium creature with its name + CR.
 
-Click a row → ~Update.QuickAdd.pick~ allocates a unique display name, builds a
-single-instance roll spec, and fires ~Dice.batchRollCmd
-(CompendiumInitiativeRolled creatureId)~.  The roll lands through the existing
-~Update.Compendium.Add.initiativeRolled~ handler — same
-~Compendium.draftToInstance~ → ~Encounter.Roster.appendCreatures~ → toast
-pipeline as the full browser, just with a count of one and a different opener
-UI.  Esc folds the panel.
+Click a row → ~Update.QuickAdd.pick~ appends one instance at initiative 0
+through ~Compendium.draftToInstance~ and ~Encounter.Roster.appendCreatures~.
+The panel stays open for the next pick.  Esc folds the panel.
 
-The Quick Add panel has two extra surfaces beyond compendium picks:
-
-- A pinned "Placeholder" entry at the top of the list (styled italic, sticky) —
-  ~Update.QuickAdd.pickPlaceholder~ → ~Encounter.Roster.appendPlaceholder~.  See
-  [[*Placeholder combatants][Placeholder combatants]].
-- Replace mode — ~Ui.QuickAdd.freshForReplace oldName~ flips the panel title to
-  ~"Replace <old> with…"~ and routes the pick through
-  ~Encounter.Roster.replaceCreature~ instead of appending, preserving the old
-  initiative value but using the new creature's HP / AC.  See
-  [[*Placeholder combatants][Placeholder combatants]] for the swap surface.
+A pinned "Placeholder" entry sits at the top of the list, styled italic and
+sticky.  It goes through ~Update.QuickAdd.pickPlaceholder~ to
+~Encounter.Roster.appendPlaceholder~.  See [[*Placeholder combatants][Placeholder combatants]].
 
 * Placeholder combatants
 
@@ -1363,7 +1355,7 @@ The domain pieces:
 - ~Encounter.Roster.replaceCreature : String -> Creature -> Encounter ->
   Encounter~ — swaps a creature for a new one in place, preserving the *old*
   initiative value but adopting the new creature's HP / AC / conditions / kind.
-  Used by both Quick Add replace mode and the placeholder "fill in" flow.
+  Used by the Replace editor.
 
 UI surfaces:
 
@@ -1374,8 +1366,7 @@ UI surfaces:
   list goes through ~Update.QuickAdd.pickPlaceholder~ (same domain call).
 - *Inline rename* — =Ui.PlaceholderRename= + =Update.PlaceholderRename= drive
   click-to-rename on placeholder cards.  ~isPlaceholder~ is the gate: once a
-  card is renamed it stays a placeholder until it's *replaced* via Quick Add's ⇄
-  icon (right rail, between ∅ and ⧉) → ~Ui.QuickAdd.freshForReplace~.
+  card is renamed it stays a placeholder until the Replace editor swaps it out.
 
 ** Minion naming
 
