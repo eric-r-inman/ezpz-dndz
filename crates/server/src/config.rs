@@ -65,6 +65,13 @@ pub struct ExtraCliFields {
   /// deployments need no configuration at all.
   #[arg(long, env = "ezpz_dndz_database_url")]
   pub database_url: Option<String>,
+
+  /// Key the sign-in throttle on the `X-Forwarded-For` address a
+  /// reverse proxy writes.  Set this only behind a proxy like Caddy
+  /// that writes it.  Without one, any client could forge the
+  /// header.
+  #[arg(long, env = "ezpz_dndz_trust_forwarded_for")]
+  pub trust_forwarded_for: bool,
 }
 
 /// Companion to `ExtraCliFields` flattened into `ConfigFileRaw`.
@@ -76,6 +83,7 @@ pub struct ExtraFileFields {
   pub base_url: Option<String>,
   pub compendium_claim_user: Option<String>,
   pub database_url: Option<String>,
+  pub trust_forwarded_for: Option<bool>,
 }
 
 /// Concrete on-disk locations of the **legacy** JSON stores.  All
@@ -177,6 +185,11 @@ pub struct Config {
   /// suppresses re-runs regardless of this value).
   #[merge_config(skip)]
   pub compendium_claim_user: Option<String>,
+
+  /// Whether a reverse proxy writes `X-Forwarded-For`.  Either the
+  /// CLI flag or the config file can turn it on.
+  #[merge_config(skip)]
+  pub trust_forwarded_for: bool,
 }
 
 impl Config {
@@ -234,6 +247,16 @@ impl Config {
         .compendium_claim_user
         .clone()
         .or_else(|| file.extra.compendium_claim_user.clone()),
+    )
+  }
+
+  fn resolve_trust_forwarded_for(
+    cli: &CliRaw,
+    file: &ConfigFileRaw,
+  ) -> Result<bool, ConfigError> {
+    Ok(
+      cli.extra.trust_forwarded_for
+        || file.extra.trust_forwarded_for.unwrap_or(false),
     )
   }
 

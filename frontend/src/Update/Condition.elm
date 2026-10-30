@@ -1172,11 +1172,7 @@ damageTriggered msg before ( after, cmd ) =
 
 tookDamage : Encounter.Encounter -> Encounter.Creature -> Bool
 tookDamage before c =
-    before.creatures
-        |> List.filter (\b -> b.name == c.name)
-        |> List.head
-        |> Maybe.map (\b -> c.currentHp + c.tempHp < b.currentHp + b.tempHp)
-        |> Maybe.withDefault False
+    Encounter.damageTaken before c > 0
 
 
 canTriggerSaves : Msg -> Bool
@@ -1188,38 +1184,8 @@ canTriggerSaves msg =
         ConditionFailDamageLanded _ _ ->
             False
 
-        EncounterLoaded _ ->
-            False
-
-        EncounterFromOtherTab _ ->
-            False
-
-        AuthMeReceived _ ->
-            False
-
-        LocalEncounterMigrated _ _ ->
-            False
-
-        SaveLoadLoadRequested _ ->
-            False
-
-        SaveLoadServerResponse _ _ ->
-            False
-
-        SaveLoadDeviceFileRead _ ->
-            False
-
-        EncounterReset ->
-            False
-
-        EncounterClear ->
-            False
-
-        HpChangeUndoLatest ->
-            False
-
         _ ->
-            True
+            Effects.couldDealDamage msg
 
 
 nonBlank : String -> Maybe String

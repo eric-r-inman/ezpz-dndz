@@ -1,10 +1,10 @@
 module Effects exposing
-    ( cardId, compendiumRowId, mainRegionId, saveRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+    ( cardId, compendiumRowId, mainRegionId, replaceRowId, saveRowId, xpScopeOptionId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
     , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
     , RollSpec, rollBatch, autoRollSpecsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-    , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
-    , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
+    , persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+    , compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
     , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, deleteTreasureTable, diceInputId, editorFieldFocus, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
@@ -25,12 +25,12 @@ and `Model` for the small set of model-level helpers. Doesn't
 import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
-@docs cardId, compendiumRowId, mainRegionId, saveRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+@docs cardId, compendiumRowId, mainRegionId, replaceRowId, saveRowId, xpScopeOptionId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
 @docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
 @docs RollSpec, rollBatch, autoRollSpecsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-@docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
-@docs compendiumChanged, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
+@docs persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+@docs compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
 @docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
 @docs importCompendiumBundle, clearCompendiumCreatures, resetCompendium
 
@@ -52,6 +52,7 @@ import Encounter.SaveChain.Wire
 import Encounter.Treasure exposing (TreasureTable)
 import Encounter.Treasure.TableWire
 import Encounter.Wire
+import Encounter.Xp exposing (XpScope(..))
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -151,6 +152,35 @@ the save's name.
 saveRowId : String -> String
 saveRowId name =
     "save-row-" ++ name
+
+
+{-| Stable HTML id for one row of the Replace editor's picker,
+keyed by the creature's compendium id.
+-}
+replaceRowId : String -> String
+replaceRowId creatureId =
+    "replace-row-" ++ creatureId
+
+
+{-| Stable HTML id for one of the Encounter XP panel's scope
+options.
+-}
+xpScopeOptionId : XpScope -> String
+xpScopeOptionId scope =
+    "xp-scope-"
+        ++ (case scope of
+                ScopeXpEnemiesAndNpcs ->
+                    "enemies-and-npcs"
+
+                ScopeXpEnemiesOnly ->
+                    "enemies"
+
+                ScopeXpNpcsOnly ->
+                    "npcs"
+
+                ScopeXpSelectedOnly ->
+                    "selected"
+           )
 
 
 {-| DOM id of the editor column's scroll container. The stack
@@ -732,6 +762,10 @@ pushIncomingDiceRoll roll model =
                 -- triple-roll's own handler re-sets it after its own
                 -- three pushes clear it here.
                 , rollBadgeOverride = Nothing
+
+                -- The menu is keyed by row, and a new roll shifts
+                -- every row down one.
+                , rerunMenuOpenFor = Nothing
             }
       }
     , Cmd.none
@@ -998,8 +1032,38 @@ submitLogin { email, password } =
                     , ( "password", Encode.string password )
                     ]
                 )
-        , expect = Http.expectJson AuthLoginResponse Auth.userDecoder
+        , expect = Http.expectStringResponse AuthLoginResponse submitResult
         }
+
+
+{-| The sign-in and registration reply. A refusal keeps its body
+because the body holds the server's reason. `Http.expectJson` would
+drop it.
+-}
+submitResult : Http.Response String -> Result Auth.SubmitError Auth.User
+submitResult response =
+    case response of
+        Http.GoodStatus_ _ body ->
+            Decode.decodeString Auth.userDecoder body
+                |> Result.mapError (\_ -> Auth.Unreadable)
+
+        Http.BadStatus_ metadata body ->
+            Err
+                (Auth.Refused
+                    { status = metadata.statusCode
+                    , reason = Result.toMaybe (Decode.decodeString (Decode.field "error" Decode.string) body)
+                    , retryAfterSecs = Result.toMaybe (Decode.decodeString (Decode.field "retry_after_secs" Decode.int) body)
+                    }
+                )
+
+        Http.Timeout_ ->
+            Err Auth.TimedOut
+
+        Http.NetworkError_ ->
+            Err Auth.Unreachable
+
+        Http.BadUrl_ _ ->
+            Err Auth.Unreachable
 
 
 submitRegister :
@@ -1016,7 +1080,7 @@ submitRegister { email, password, displayName } =
                     , ( "display_name", Encode.string displayName )
                     ]
                 )
-        , expect = Http.expectJson AuthLoginResponse Auth.userDecoder
+        , expect = Http.expectStringResponse AuthLoginResponse submitResult
         }
 
 
@@ -1193,10 +1257,17 @@ persistEncounterFor auth encounter =
             Encounter.Wire.persistEncounterCmd EncounterPersisted encounter
 
         Auth.AuthAnonymous ->
-            Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
+            persistLocalEncounter encounter
 
         Auth.AuthLoading ->
             Cmd.none
+
+
+{-| Write the encounter to the browser's own slot.
+-}
+persistLocalEncounter : Encounter.Encounter -> Cmd Msg
+persistLocalEncounter encounter =
+    Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
 
 
 {-| Persist the full dice-history list to `localStorage` when
@@ -1318,6 +1389,47 @@ shouldPersistAfter msg =
             False
 
         CompendiumFromOtherTab _ ->
+            False
+
+        _ ->
+            True
+
+
+{-| Whether hit points that fell during this Msg were a hit. A Msg
+that swaps in a whole encounter from storage or another tab, resets
+one, or undoes a change moves the numbers without dealing damage.
+-}
+couldDealDamage : Msg -> Bool
+couldDealDamage msg =
+    case msg of
+        EncounterLoaded _ ->
+            False
+
+        EncounterFromOtherTab _ ->
+            False
+
+        AuthMeReceived _ ->
+            False
+
+        LocalEncounterMigrated _ _ ->
+            False
+
+        SaveLoadLoadRequested _ ->
+            False
+
+        SaveLoadServerResponse _ _ ->
+            False
+
+        SaveLoadDeviceFileRead _ ->
+            False
+
+        EncounterReset ->
+            False
+
+        EncounterClear ->
+            False
+
+        HpChangeUndoLatest ->
             False
 
         _ ->

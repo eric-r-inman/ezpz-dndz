@@ -154,7 +154,7 @@ submitRow ui =
             [ text "Cancel" ]
         , case ui.error of
             Just message ->
-                p [ class "auth-login__error" ] [ text message ]
+                p [ class "auth-login__error", attribute "role" "alert" ] [ text message ]
 
             Nothing ->
                 text ""

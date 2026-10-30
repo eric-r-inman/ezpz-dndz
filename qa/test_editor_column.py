@@ -235,10 +235,6 @@ def test_escape_folds_the_lowest_open_panel_first(app):
     assert drawer_titles(app.page) == BOOT_ORDER
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-09: Esc that closes the settings popover also folds an editor",
-)
 @pytest.mark.cross_browser
 def test_escape_on_the_settings_popover_closes_only_the_popover(app):
     trigger = app.page.get_by_role("button", name="Open settings")
@@ -249,10 +245,6 @@ def test_escape_on_the_settings_popover_closes_only_the_popover(app):
     assert app.panel("Manage HP").is_open()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-09: Esc that closes the Encounter menu also folds an editor",
-)
 @pytest.mark.cross_browser
 def test_escape_on_the_encounter_menu_closes_only_the_menu(app):
     trigger = app.page.get_by_role("button", name=re.compile("^Encounter"))

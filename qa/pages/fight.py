@@ -244,18 +244,16 @@ class ConditionEditor:
         return self
 
     def custom(self, name):
-        # The Custom: label is not tied to its field.
-        self.root.get_by_placeholder("e.g. Burning").fill(name)
+        self.root.get_by_label("Custom:").fill(name)
         return self
 
     def note(self, text):
-        # The Note: label is not tied to its field.
-        self.root.get_by_placeholder("e.g. from Lyra").fill(text)
+        self.root.get_by_label("Note:").fill(text)
         return self
 
     def duration(self, kind):
         """`kind` is Manual, Next turn, Countdown or 1 Minute."""
-        row = self.root.locator(".cond-row").filter(has_text="Duration:")
+        row = self.root.get_by_role("group", name="Duration", exact=True)
         row.get_by_role("radio", name=kind, exact=True).click()
         return self
 
@@ -266,9 +264,9 @@ class ConditionEditor:
         return self
 
     def turns_of(self, name):
-        # The creature picker sits between plain-text labels and has no
-        # accessible name.
-        self.root.locator(".cond-subsection select.cond-select").select_option(name)
+        self.root.get_by_role(
+            "combobox", name="Creature whose turns time the duration"
+        ).select_option(name)
         return self
 
     def countdown(self, turns):
@@ -287,9 +285,7 @@ class ConditionEditor:
         return self
 
     def auto_roll(self, label):
-        # Two radio groups here share the name Manual.  Neither has a group
-        # label.  The row is found by its text.
-        row = self.root.locator(".cond-row").filter(has_text="Auto-roll:")
+        row = self.root.get_by_role("group", name="Auto-roll", exact=True)
         row.get_by_role("radio", name=label, exact=True).click()
         return self
 
@@ -345,11 +341,10 @@ class SaveChain:
         return self.root.locator(".cond-row").filter(has_text=label)
 
     def preset_picker(self):
-        # The preset picker's label is not tied to it.
-        return self.root.get_by_role("combobox").first
+        return self.root.get_by_label("Preset:")
 
     def name(self, text):
-        self.root.get_by_placeholder("e.g. Hold Person").fill(text)
+        self.root.get_by_label("Name:").fill(text)
         return self
 
     def ability(self, label):
@@ -357,8 +352,7 @@ class SaveChain:
         return self
 
     def dc(self, value):
-        # The DC field has no accessible name.
-        self.row("DC:").locator("input").fill(str(value))
+        self.root.get_by_label("DC:").fill(str(value))
         return self
 
     def area(self, label):
