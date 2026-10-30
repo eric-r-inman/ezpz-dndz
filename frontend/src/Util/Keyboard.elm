@@ -1,12 +1,13 @@
-module Util.Keyboard exposing (enterKey, escKey, listboxOptionKeys)
+module Util.Keyboard exposing (buttonKeys, enterKey, escKey, listboxOptionKeys, neighbours)
 
 {-| Tiny keyboard-decoder helpers shared across modal forms.
 `enterKey` and `escKey` produce a `Decoder msg` for
 `Html.Events.on "keydown"` or `Browser.Events.onKeyDown`.
-`listboxOptionKeys` produces a `Decoder ( msg, Bool )` for
-`Html.Events.preventDefaultOn "keydown"`.
+`buttonKeys` and `listboxOptionKeys` produce a
+`Decoder ( msg, Bool )` for `Html.Events.preventDefaultOn
+"keydown"`.
 
-@docs enterKey, escKey, listboxOptionKeys
+@docs buttonKeys, enterKey, escKey, listboxOptionKeys, neighbours
 
 -}
 
@@ -44,6 +45,14 @@ escKey msg =
             )
 
 
+{-| This decodes the keys a native button answers. An element
+with `role="button"` gets none of them from the browser.
+-}
+buttonKeys : msg -> Decode.Decoder ( msg, Bool )
+buttonKeys msg =
+    listboxOptionKeys { pick = msg, previous = Nothing, next = Nothing }
+
+
 {-| This decodes the keys one listbox option handles. Enter and
 Space pick the option. The arrow keys pick a neighbour when there
 is one. A handled key never also scrolls the page.
@@ -77,3 +86,18 @@ listboxOptionKeys { pick, previous, next } =
                     _ ->
                         Decode.fail "ignore"
             )
+
+
+{-| Pairs each listbox option with the options above and below it,
+for the arrow keys.
+-}
+neighbours : List a -> List { previous : Maybe a, option : a, next : Maybe a }
+neighbours options =
+    let
+        present =
+            List.map Just options
+    in
+    List.map3 (\previous option next -> { previous = previous, option = option, next = next })
+        (Nothing :: present)
+        options
+        (List.drop 1 present ++ [ Nothing ])

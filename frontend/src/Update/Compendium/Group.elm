@@ -553,7 +553,7 @@ loreDraftTest model =
         Just ui ->
             case ui.lore.editing of
                 Just draft ->
-                    case GroupEdit.validateLoreDraft draft of
+                    case GroupEdit.validateLoreDraft model.userLoreGroups draft of
                         Ok group ->
                             let
                                 pool =
@@ -672,7 +672,7 @@ loreDraftSubmit model =
         Just ui ->
             case ui.lore.editing of
                 Just draft ->
-                    case GroupEdit.validateLoreDraft draft of
+                    case GroupEdit.validateLoreDraft model.userLoreGroups draft of
                         Ok newGroup ->
                             let
                                 replaced =
