@@ -530,7 +530,9 @@ if (app.ports && app.ports.openCompendiumTab) {
     portal.style.top = "0";
     portal.style.left = "0";
     requestAnimationFrame(function () {
-      if (currentTarget !== target) return;
+      // A trigger gone from the page measures as an empty box at the
+      // top-left corner.
+      if (currentTarget !== target || !target.isConnected) return;
       place(target);
       portal.style.visibility = "visible";
       portal.style.opacity = "1";
@@ -571,6 +573,14 @@ if (app.ports && app.ports.openCompendiumTab) {
     if (related && trigger.contains(related)) return;
     hide();
   });
+
+  // Removing the hovered trigger fires no mouseout.  The tooltip goes
+  // with it instead.
+  try {
+    new MutationObserver(function () {
+      if (currentTarget && !currentTarget.isConnected) hide();
+    }).observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
 
   document.addEventListener("focusin", function (e) {
     var trigger = findTrigger(e.target);

@@ -40,6 +40,7 @@ import Ui.SaveCompendium as SaveCompendiumUi
         , SaveListState(..)
         )
 import Util.Keyboard
+import View.Inline.ApplyButton as ApplyButton
 import View.Modal
 import View.Tooltips as Tooltips
 
@@ -281,13 +282,13 @@ submitRow auth ui =
                         "Save the compendium to a file on this device"
     in
     div [ class "save-modal__buttons" ]
-        [ button
-            [ class "action-btn action-btn--green"
-            , onClick SaveCompendiumSubmit
-            , disabled blocked
-            , Tooltips.attr tooltip
-            ]
-            [ text "Save" ]
+        [ ApplyButton.view
+            { enabled = not blocked
+            , cls = "action-btn action-btn--green"
+            , msg = SaveCompendiumSubmit
+            , tip = tooltip
+            , label = "Save"
+            }
         , button
             [ class "action-btn"
             , onClick SaveCompendiumClose

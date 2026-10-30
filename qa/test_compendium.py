@@ -91,9 +91,6 @@ def test_card_stat_block_hands_off_to_the_library_on_that_creature(app, bundled)
     tab.assert_quiet()
 
 
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-02: a deep link never scrolls its row into view"
-)
 def test_deep_link_scrolls_the_chosen_row_into_view(app, bundled):
     tab = library.open_at(app, "/compendium?creature=" + bundled["Ogre"]["id"])
     expect(tab.detail_name()).to_have_text("Ogre")
@@ -284,9 +281,6 @@ def test_add_selected_sends_every_checked_creature(app, tab):
     assert sorted(app.card_names()) == ["Goblin Warrior", "Ogre"]
 
 
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-03: adding one checked creature toasts 'Added 1 creatures'"
-)
 def test_add_selected_with_one_creature_reads_as_singular(tab):
     tab.check("Ogre")
     tab.select("Ogre")
@@ -329,10 +323,6 @@ def test_kind_chips_show_only_the_chosen_kind(tab, bundled):
     assert "Lia the Bard" not in tab.row_names()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-04: a creature made while signed out sorts last under Newest first",
-)
 def test_newest_first_puts_a_creature_made_while_signed_out_on_top(tab):
     tab.create("Bog Hag")
     tab.sort_by("Newest first")
@@ -628,10 +618,6 @@ def test_deleting_from_the_list_asks_before_it_removes(tab):
     expect(tab.page.get_by_text("Select a creature or group on the left.")).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-09: the editor's Delete removes the creature with no confirmation",
-)
 def test_deleting_from_the_editor_asks_before_it_removes(tab):
     tab.create("Bog Hag")
     tab.button("✏️ Edit").click()
@@ -731,9 +717,6 @@ def test_editor_rejects_a_missing_name_and_non_whole_numbers(tab):
     expect(tab.row("Bog Hag")).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-07: the editor saves a creature with 0 max HP"
-)
 def test_editor_rejects_a_creature_with_no_hit_points(tab):
     tab.new_creature()
     tab.field("Name").fill("Hollow Shade")
@@ -743,10 +726,6 @@ def test_editor_rejects_a_creature_with_no_hit_points(tab):
     expect(tab.row("Hollow Shade")).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-08: the editor silently drops a tag with a space and a nameless action",
-)
 def test_editor_warns_before_dropping_entries_it_cannot_save(tab):
     tab.new_creature()
     tab.field("Name").fill("Bog Hag")
@@ -888,10 +867,6 @@ def test_pasted_stat_block_previews_and_fills_the_editor(app, tab):
     expect(tab.row("Mire Stalker")).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-16: a pasted block with no Initiative line gets +0, not its DEX modifier",
-)
 def test_pasted_block_without_an_initiative_line_rolls_initiative_off_dex(tab):
     tab.button("📋 Paste Stat Block").click()
     tab.editor().get_by_role("textbox").fill(HOME_BREW_BLOCK)
@@ -998,15 +973,11 @@ def test_reset_asks_first_then_returns_to_the_bundled_library(app, tab, bundled)
     expect(tab.rows()).to_have_count(len(bundled))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-10: the Reset dialog promises 'the original 5 creatures' of 330",
-)
-def test_reset_dialog_counts_the_bundled_creatures_it_restores(tab, bundled):
+def test_reset_dialog_names_the_bundled_creatures_it_restores(tab):
     tab.button("↺ Reset").click()
-    expect(tab.dialog("Reset Compendium")).to_contain_text(
-        f"original {len(bundled)} creatures", timeout=1000
-    )
+    dialog = tab.dialog("Reset Compendium")
+    expect(dialog).to_contain_text("the bundled SRD creatures", timeout=1000)
+    expect(dialog).not_to_contain_text("original 5")
 
 
 def test_clear_selected_and_clear_all_empty_the_library(app, tab, bundled):

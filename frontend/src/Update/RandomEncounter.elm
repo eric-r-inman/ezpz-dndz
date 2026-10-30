@@ -34,6 +34,7 @@ import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.RandomEncounter exposing (RollState(..))
 import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
+import Util.Number
 
 
 {-| The editor's own drawer entry, in the `Maybe Surface`
@@ -596,7 +597,7 @@ addToEncounter model =
                                 ("Rolled an encounter: "
                                     ++ String.fromInt count
                                     ++ " "
-                                    ++ pluralize "creature" "creatures" count
+                                    ++ Util.Number.pluralize "creature" "creatures" count
                                     ++ " added"
                                 )
 
@@ -647,12 +648,3 @@ spawnGroup ( source, count ) ( acc0, taken0 ) =
                 ( inst :: acc, name :: taken )
             )
             ( acc0, taken0 )
-
-
-pluralize : String -> String -> Int -> String
-pluralize singular plural n =
-    if n == 1 then
-        singular
-
-    else
-        plural
