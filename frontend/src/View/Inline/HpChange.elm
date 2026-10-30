@@ -18,11 +18,11 @@ the dice roller's log shows only the ones a roll produced.
 import Dice
 import HpChange
 import Html exposing (Html, button, div, input, span, text)
-import Html.Attributes as Attr exposing (attribute, autofocus, class, disabled, for, id, placeholder, type_, value)
+import Html.Attributes as Attr exposing (attribute, class, disabled, for, id, placeholder, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Msg exposing (HpField(..), HpKind(..), Msg(..))
 import Set exposing (Set)
-import Ui.HpChange exposing (HpChangeEntry, HpChangeUi)
+import Ui.HpChange as HpChangeUi exposing (HpChangeEntry, HpChangeUi)
 import Util.Keyboard
 import View.HpLog
 import View.Inline.ApplyButton as ApplyButton
@@ -238,7 +238,7 @@ amount selectedCount targetTempHp ui =
     div [ class "cond-row" ]
         [ fieldPair (holdsText ui.amountRollText)
             ""
-            "hp-amount"
+            HpChangeUi.amountInputId
             "HP:"
             [ class "cond-input cond-input--pool"
             , type_ "number"
@@ -246,7 +246,6 @@ amount selectedCount targetTempHp ui =
             , Attr.max "999"
             , placeholder "12"
             , value ui.amountText
-            , autofocus True
             , onInput HpChangeAmountChanged
             , Html.Events.on "keydown" (Util.Keyboard.enterKey (HpChangeApplyAs DamageKind))
             ]

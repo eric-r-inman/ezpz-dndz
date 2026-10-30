@@ -19,11 +19,12 @@ Renders nothing when the panel isn't open.
 import Compendium
 import Html exposing (Html, button, div, input, li, p, span, text, ul)
 import Html.Attributes exposing (attribute, class, placeholder, type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, preventDefaultOn)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QuickAdd as QuickAddUi exposing (QuickAddSort(..), QuickAddUi)
+import Util.Keyboard
 import View.Panel
 import View.Tooltips as Tooltips
 
@@ -32,17 +33,8 @@ view : View.Panel.Header -> Model -> Html Msg
 view header model =
     case Model.drawerGet Model.quickAddLens model of
         Just ui ->
-            let
-                title =
-                    case ui.replaceTarget of
-                        Just oldName ->
-                            "Replace " ++ oldName ++ " with…"
-
-                        Nothing ->
-                            "Quick Add"
-            in
             View.Panel.view
-                { title = title
+                { title = "Quick Add"
                 , titleTrail = Nothing
                 , subtitle = Nothing
                 , header = header
@@ -165,6 +157,7 @@ placeholderRow =
     li
         [ class "quick-add__row quick-add__row--placeholder"
         , onClick QuickAddPickPlaceholder
+        , preventDefaultOn "keydown" (Util.Keyboard.buttonKeys QuickAddPickPlaceholder)
         , Tooltips.attr "Add a Placeholder N stub (Initiative 0, HP 1/1, AC 10)"
         , attribute "role" "button"
         , attribute "tabindex" "0"
@@ -180,6 +173,7 @@ row c =
     li
         [ class "quick-add__row"
         , onClick (QuickAddPick c.id)
+        , preventDefaultOn "keydown" (Util.Keyboard.buttonKeys (QuickAddPick c.id))
         , Tooltips.attr (Tooltips.quickAddCreatureRow c.name)
         , attribute "role" "button"
         , attribute "tabindex" "0"

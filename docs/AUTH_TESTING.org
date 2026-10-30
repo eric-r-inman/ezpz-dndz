@@ -106,7 +106,7 @@ Without the cookie:
 curl -i "$BASE/api/encounter"
 #+end_src
 
-Expected: 401 + ~{"error":"Invalid email or password"}~.
+Expected: 401 + ~{"error":"Sign in required"}~.
 
 ** Save and read back
 

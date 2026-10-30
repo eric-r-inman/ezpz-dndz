@@ -117,10 +117,6 @@ def test_a_natural_twenty_wakes_the_creature_at_one_hit_point(app):
     app.shot("revived")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-03: a creature a natural 20 revives at 1 HP is not marked Bloodied",
-)
 def test_a_creature_revived_by_a_natural_twenty_is_bloodied(app):
     app.add("Goblin Warrior")
     card = downed(app, "Goblin Warrior")
@@ -373,10 +369,6 @@ def test_a_special_reaction_badge_spends_and_refreshes_at_its_turn(app):
     expect(badge).to_have_attribute("aria-pressed", "false")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-07: the bundled Black Pudding names its Split reaction Parry, so no badge shows",
-)
 def test_the_black_pudding_shows_its_split_reaction(app):
     app.add("Black Pudding")
 
@@ -456,10 +448,6 @@ def test_a_pudding_split_divides_its_hit_points_between_two_new_puddings(app):
     app.shot("pudding")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-08: the halves of a Bloodied pudding are not marked Bloodied",
-)
 def test_the_halves_of_a_bloodied_pudding_are_bloodied(app):
     app.add("Black Pudding")
     ManageHp(app).open_for("Black Pudding").damage(35)
