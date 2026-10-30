@@ -1176,19 +1176,25 @@ The suite did not cover these:
 
 *** QA-FIGHT-15: Roll saves applies a formula's average damage
 
+- Status :: fixed
 - Severity :: question
 - Actual :: Fail and Pass roll a damage formula.  A failed rolled save against
   ~2d4~ always deals 5.  The code says so but the button's tooltip does not.
-- Evidence :: ~test_rolled_saves_damage_is_the_formulas_average~
-- Action :: Roll once for the batch and halve it for passes.  Otherwise label
-  the button as using average damage.
+- Evidence :: ~test_rolled_saves_deal_one_damage_roll_to_every_failed_save~ and
+  ~test_rolled_saves_halve_that_roll_for_every_pass~
+- Action :: Fixed.  Roll saves rolls each side's formula once for the batch.  A
+  pass for half takes half of the fail roll.  The SRD 5.2.1 rolls damage once
+  for every target that saves at the same time.
 
 *** QA-FIGHT-16: Pass halves a separate roll
 
+- Status :: fixed
 - Severity :: question
 - Actual :: Under the rules, savers take half of the same roll that hit the
   others.  ~Encounter.SaveChain~ documents a separate roll on purpose.
-- Action :: Halve the latest Fail roll when there is one.
+- Evidence :: ~test_a_pass_halves_the_fail_roll_that_hit_the_others~
+- Action :: Fixed.  Pass halves the latest Fail roll while the fail formula is
+  unchanged.  It rolls its own only when no Fail roll exists.
 
 *** QA-FIGHT-17: One creature that already has a condition blocks the selection
 
