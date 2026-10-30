@@ -20,6 +20,7 @@ pub mod groups;
 // back the legacy shared compendium below, which in turn only
 // feeds the one-shot split migration.
 pub mod json_file_store;
+pub mod merge;
 pub mod migrate;
 pub mod save_body;
 pub mod saves;
@@ -316,6 +317,47 @@ async fn import_compendium(
   .into_response()
 }
 
+/// Body of `POST /api/compendium/merge`: a signed-out session's
+/// creatures and groups.
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct MergeBody {
+  creatures: Vec<Creature>,
+  #[serde(default)]
+  groups: Vec<Group>,
+}
+
+/// Add creatures and groups to the caller's compendium.  Nothing already
+/// there changes.  Sign-in uses it to carry a signed-out session's work into
+/// the account.  Import replaces the whole library instead.
+async fn merge_compendium(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+  Json(body): Json<MergeBody>,
+) -> Response {
+  let merged = merge::rekeyed(
+    body.creatures,
+    body.groups,
+    |id| state.bundled_compendium.contains(id),
+    || uuid::Uuid::new_v4().to_string(),
+  );
+  let count = merged.creatures.len();
+  let appended: Result<(), CompendiumStoreError> = async {
+    state
+      .user_compendium
+      .append_for_user(&user.id, merged.creatures)
+      .await?;
+    state
+      .compendium_groups
+      .append_for_user(&user.id, merged.groups)
+      .await
+  }
+  .await;
+  match appended {
+    Ok(()) => Json(serde_json::json!({ "imported": count })).into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
 fn import_bad_body() -> Response {
   (
     StatusCode::BAD_REQUEST,
@@ -416,7 +458,9 @@ async fn put_compendium_save(
   Query(query): Query<PutCompendiumSaveQuery>,
   Json(body): Json<Value>,
 ) -> Response {
-  let name = match saves::validate_save_name(&raw_name) {
+  let name = match saves::validate_save_name(&raw_name)
+    .and_then(|name| saves::validate_save_body(&body).map(|()| name))
+  {
     Ok(n) => n,
     Err(e) => return e.into_response(),
   };
@@ -604,6 +648,15 @@ pub fn router() -> ApiRouter<AppState> {
         op.description(
           "Replace the entire compendium with the supplied list. \
            Body: Vec<Creature> (full records, with ids).",
+        )
+      }),
+    )
+    .api_route(
+      "/api/compendium/merge",
+      post_with(merge_compendium, |op: TransformOperation| {
+        op.description(
+          "Add creatures and groups to the compendium under fresh ids. \
+           Body: { creatures, groups }.  Existing entries are kept.",
         )
       }),
     )

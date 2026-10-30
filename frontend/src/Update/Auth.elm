@@ -87,10 +87,12 @@ meReceived result model =
                             -- active" matches what they see.  Skips
                             -- the GET that would otherwise overwrite
                             -- their work with the previous device's
-                            -- last save.
+                            -- last save.  The account's own live fight
+                            -- is saved under a name first.
                             ( enc
-                            , Encounter.Wire.persistEncounterCmd
+                            , Encounter.Wire.persistEncounterArchivingCmd
                                 EncounterPersisted
+                                ("Account — " ++ model.migrationDateLabel)
                                 enc
                             )
 
@@ -364,34 +366,23 @@ migrateLocalEncounterCmd raw dateLabel =
             Cmd.none
 
 
-{-| Replace the user's server compendium with the locally-stored
-list when the anonymous session had any changes. Uses the bare-
-array `POST /api/compendium/import` body so the server keeps the
-caller's groups intact — groups migration is handled separately
-in Round 7's flow.
-
-For brand-new accounts (just signed up after an anonymous trial)
-this populates the user's compendium with whatever they were
-working with anonymously. For pre-existing accounts who happened
-to use anonymous mode on this device first, this DOES replace
-their server compendium with the local one — that's the
-documented behavior of the import endpoint; users who want both
-can Export their server data first.
-
+{-| Add the signed-out session's creatures and groups to the account.
+The merge keeps what the account already holds. A snapshot with
+nothing in it is only cleared, so a sign-in that brings no work along
+changes nothing and announces nothing.
 -}
 migrateLocalCompendiumCmd : Maybe Decode.Value -> Cmd Msg
 migrateLocalCompendiumCmd raw =
-    case raw of
-        Just value ->
-            case Decode.decodeValue Compendium.Wire.decodeLocalCompendiumSnapshot value of
-                Ok snap ->
-                    Compendium.Wire.importCmd
-                        (LocalCompendiumMigrated (List.length snap.creatures))
-                        snap.creatures
-                        snap.groups
+    case Maybe.andThen (Decode.decodeValue Compendium.Wire.decodeLocalCompendiumSnapshot >> Result.toMaybe) raw of
+        Just snap ->
+            if List.isEmpty snap.creatures && List.isEmpty snap.groups then
+                Ports.clearLocalCompendium ()
 
-                Err _ ->
-                    Cmd.none
+            else
+                Compendium.Wire.mergeCmd
+                    (LocalCompendiumMigrated (List.length snap.creatures))
+                    snap.creatures
+                    snap.groups
 
         Nothing ->
             Cmd.none
@@ -462,7 +453,7 @@ matters since the user submitted from `/login`, which we don't
 want them to land back on after the auth probe flips them to
 authenticated.
 -}
-response : Result Http.Error Auth.User -> Model -> ( Model, Cmd Msg )
+response : Result Auth.SubmitError Auth.User -> Model -> ( Model, Cmd Msg )
 response result model =
     case result of
         Ok _ ->
@@ -519,19 +510,14 @@ localCompendiumMigrated count result model =
         Ok () ->
             let
                 ( withToast, toastCmd ) =
-                    Update.Toast.push
-                        ToastSuccess
-                        ("Imported "
-                            ++ String.fromInt count
-                            ++ " creatures from your pre-sign-in session."
-                        )
-                        model
+                    Update.Toast.push ToastSuccess (migratedMessage count) model
             in
             ( withToast
             , Cmd.batch
                 [ toastCmd
                 , Ports.clearLocalCompendium ()
                 , Compendium.Wire.fetchAll CompendiumLoaded
+                , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
                 ]
             )
 
@@ -540,6 +526,19 @@ localCompendiumMigrated count result model =
                 ToastError
                 "Couldn't import your pre-sign-in compendium changes. They're still in this browser."
                 model
+
+
+migratedMessage : Int -> String
+migratedMessage count =
+    case count of
+        0 ->
+            "Imported your pre-sign-in creature groups."
+
+        1 ->
+            "Imported 1 creature from your pre-sign-in session."
+
+        _ ->
+            "Imported " ++ String.fromInt count ++ " creatures from your pre-sign-in session."
 
 
 logout : Model -> ( Model, Cmd Msg )
@@ -553,7 +552,7 @@ logoutDone _ model =
     -- pressed logout, the cookie is now stale or about to be, and a
     -- fresh boot at the root URL gives us the consistent post-logout
     -- state. Going to `/` (instead of just reloading the current URL)
-    -- means a sign-out from `/me` doesn't leave the URL bar pointing
+    -- means a sign-out from `/account` doesn't leave the URL bar pointing
     -- at the now-inaccessible account page.
     --
     -- `localStorage.encounter` is deliberately NOT cleared here: a
@@ -568,32 +567,60 @@ logoutDone _ model =
     )
 
 
-{-| Translate an `Http.Error` from a login / register submission
-into a one-line message the form can show. 401 / 409 / 400 each
-get a tailored line; everything else is a generic fallback.
+{-| The one line the form shows for a failed login or registration.
+The server's own reason wins. A throttled attempt also says how long
+to wait. The tailored lines below cover a reply that gave no reason.
 -}
-humanize : Http.Error -> LoginMode -> String
+humanize : Auth.SubmitError -> LoginMode -> String
 humanize err mode =
     case err of
-        Http.BadStatus 401 ->
-            "Invalid email or password."
+        Auth.Refused refusal ->
+            case refusal.reason of
+                Just reason ->
+                    sentence reason
+                        ++ (refusal.retryAfterSecs
+                                |> Maybe.map (\secs -> "  Try again in " ++ String.fromInt secs ++ " seconds.")
+                                |> Maybe.withDefault ""
+                           )
 
-        Http.BadStatus 409 ->
-            "That email is already registered."
+                Nothing ->
+                    statusLine refusal.status mode
 
-        Http.BadStatus 400 ->
-            case mode of
-                Register ->
-                    "Check your email shape, password length (≥8), and display name."
-
-                Login ->
-                    "Bad request."
-
-        Http.NetworkError ->
+        Auth.Unreachable ->
             "Couldn't reach the server.  Try again."
 
-        Http.Timeout ->
+        Auth.TimedOut ->
             "Request timed out.  Try again."
+
+        Auth.Unreadable ->
+            "Something went wrong.  Try again."
+
+
+statusLine : Int -> LoginMode -> String
+statusLine status mode =
+    case ( status, mode ) of
+        ( 401, _ ) ->
+            "Invalid email or password."
+
+        ( 409, _ ) ->
+            "That email is already registered."
+
+        ( 400, Register ) ->
+            "Check your email shape, password length (≥8), and display name."
+
+        ( 400, Login ) ->
+            "Bad request."
 
         _ ->
             "Something went wrong.  Try again."
+
+
+{-| The server words its reasons without a closing stop.
+-}
+sentence : String -> String
+sentence reason =
+    if String.endsWith "." reason then
+        reason
+
+    else
+        reason ++ "."

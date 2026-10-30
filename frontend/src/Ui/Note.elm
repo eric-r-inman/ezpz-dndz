@@ -1,4 +1,4 @@
-module Ui.Note exposing (NoteEditUi, maxNoteLength, fresh)
+module Ui.Note exposing (NoteEditUi, maxNoteLength, fresh, inputId)
 
 {-| Per-creature note-edit modal state. Triggered by the row 1
 pencil button. `target` identifies the creature; `text` mirrors
@@ -6,7 +6,7 @@ the `<input>` value so re-renders don't clobber transient
 typing. The input is hard-capped at `maxNoteLength` so we never
 have to truncate on commit.
 
-@docs NoteEditUi, maxNoteLength, fresh
+@docs NoteEditUi, maxNoteLength, fresh, inputId
 
 -}
 
@@ -27,6 +27,14 @@ sticky.
 maxNoteLength : Int
 maxNoteLength =
     20
+
+
+{-| DOM id of the note field. Only one card editor is open at a
+time, so one id serves every card.
+-}
+inputId : String
+inputId =
+    "note-input"
 
 
 {-| Build the initial state for opening the note editor against a

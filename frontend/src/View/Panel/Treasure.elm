@@ -328,8 +328,7 @@ presetChip preset label tooltip =
 {-| Save / load / delete row for user-named profiles. Lives at
 the bottom of the settings body so the GM tunes the settings
 above it before saving. Profiles persist server-side when
-authed; anonymous sessions get an empty dict (a follow-up could
-mirror userTreasureTable's localStorage path).
+authed and in localStorage otherwise.
 -}
 profileRow : Dict String Treasure.TreasureSettings -> String -> Html Msg
 profileRow profiles draft =
@@ -383,6 +382,7 @@ profileChip name =
             [ class "treasure__settings-profile-chip-delete"
             , type_ "button"
             , Tooltips.attr ("Delete profile '" ++ name ++ "'")
+            , attribute "aria-label" ("Delete profile " ++ name)
             , onClick (TreasureProfileDelete name)
             ]
             [ text "🚫" ]
@@ -422,8 +422,6 @@ scrollChanceRow current magicNone =
                 []
             , span [ class "treasure__settings-scroll-unit" ] [ text "%" ]
             ]
-        , span [ class "treasure__settings-row-spacer" ] []
-        , span [ class "treasure__settings-row-spacer" ] []
         ]
 
 
@@ -438,25 +436,19 @@ settingsRow :
 settingsRow kind label_ itemClass maybeCount maybeValue noneOn =
     div [ class "treasure__settings-row" ]
         [ span [ class "treasure__settings-row-label" ] [ text label_ ]
-        , case maybeCount of
-            Just countValue ->
-                countSegmented itemClass countValue noneOn
-
-            Nothing ->
-                span [ class "treasure__settings-row-spacer" ] []
-        , case maybeValue of
-            Just valueValue ->
-                valueSegmented itemClass valueValue noneOn
-
-            Nothing ->
-                span [ class "treasure__settings-row-spacer" ] []
-        , noneToggle kind itemClass noneOn
+        , maybeCount
+            |> Maybe.map (\countValue -> countSegmented label_ itemClass countValue noneOn)
+            |> Maybe.withDefault (text "")
+        , maybeValue
+            |> Maybe.map (\valueValue -> valueSegmented label_ itemClass valueValue noneOn)
+            |> Maybe.withDefault (text "")
+        , noneToggle kind label_ itemClass noneOn
         ]
 
 
-{-| Right-edge toggle that suppresses the whole category at
-roll time. Stays at the far right of every row regardless of
-whether the row has Count, Value, or both knobs to its left.
+{-| Toggle that suppresses the whole category at roll time. It
+sits at the right end of the row's label line. The Count and
+Value knobs sit on lines beneath it.
 
 Rendered as a button (not a native `<input type=checkbox>`)
 with a glyph indicator, so the new value is decided explicitly
@@ -464,8 +456,8 @@ from `current` rather than read back off the browser's own
 checkbox state.
 
 -}
-noneToggle : Treasure.Kind -> String -> Bool -> Html Msg
-noneToggle kind itemClass current =
+noneToggle : Treasure.Kind -> String -> String -> Bool -> Html Msg
+noneToggle kind rowLabel itemClass current =
     button
         [ class
             ("treasure__settings-none"
@@ -479,6 +471,7 @@ noneToggle kind itemClass current =
         , type_ "button"
         , onClick (TreasureSettingsNoneSet kind itemClass (not current))
         , attribute "role" "switch"
+        , attribute "aria-label" (rowLabel ++ " none")
         , attribute "aria-checked"
             (if current then
                 "true"
@@ -507,8 +500,8 @@ noneToggle kind itemClass current =
         ]
 
 
-countSegmented : String -> Treasure.CountAdjust -> Bool -> Html Msg
-countSegmented itemClass current disabled =
+countSegmented : String -> String -> Treasure.CountAdjust -> Bool -> Html Msg
+countSegmented rowLabel itemClass current disabled =
     let
         countLabel =
             if itemClass == "coins" then
@@ -527,22 +520,21 @@ countSegmented itemClass current disabled =
                         ""
                    )
             )
+        , attribute "role" "group"
+        , attribute "aria-label" (rowLabel ++ " " ++ String.toLower countLabel)
         ]
-        [ span [ class "treasure__settings-axis" ] [ text countLabel ]
-        , segmentedButton itemClass
-            current
+        [ span [ class "treasure__settings-axis", attribute "aria-hidden" "true" ] [ text countLabel ]
+        , segmentedButton current
             Treasure.CountFewer
             "Fewer"
             (TreasureSettingsCountSet itemClass "fewer")
             disabled
-        , segmentedButton itemClass
-            current
+        , segmentedButton current
             Treasure.CountNormal
             "Normal"
             (TreasureSettingsCountSet itemClass "normal")
             disabled
-        , segmentedButton itemClass
-            current
+        , segmentedButton current
             Treasure.CountMore
             "More"
             (TreasureSettingsCountSet itemClass "more")
@@ -550,8 +542,8 @@ countSegmented itemClass current disabled =
         ]
 
 
-valueSegmented : String -> Treasure.ValueAdjust -> Bool -> Html Msg
-valueSegmented itemClass current disabled =
+valueSegmented : String -> String -> Treasure.ValueAdjust -> Bool -> Html Msg
+valueSegmented rowLabel itemClass current disabled =
     let
         valueLabel =
             if itemClass == "magic" then
@@ -570,22 +562,21 @@ valueSegmented itemClass current disabled =
                         ""
                    )
             )
+        , attribute "role" "group"
+        , attribute "aria-label" (rowLabel ++ " " ++ String.toLower valueLabel)
         ]
-        [ span [ class "treasure__settings-axis" ] [ text valueLabel ]
-        , segmentedButton itemClass
-            current
+        [ span [ class "treasure__settings-axis", attribute "aria-hidden" "true" ] [ text valueLabel ]
+        , segmentedButton current
             Treasure.ValueLower
             "Lower"
             (TreasureSettingsValueSet itemClass "lower")
             disabled
-        , segmentedButton itemClass
-            current
+        , segmentedButton current
             Treasure.ValueNormal
             "Normal"
             (TreasureSettingsValueSet itemClass "normal")
             disabled
-        , segmentedButton itemClass
-            current
+        , segmentedButton current
             Treasure.ValueHigher
             "Higher"
             (TreasureSettingsValueSet itemClass "higher")
@@ -597,8 +588,8 @@ valueSegmented itemClass current disabled =
 == target`. Stays type-agnostic via Elm's structural typing —
 the call sites supply tagged CountAdjust or ValueAdjust values.
 -}
-segmentedButton : String -> a -> a -> String -> Msg -> Bool -> Html Msg
-segmentedButton _ current target text_ msg disabled =
+segmentedButton : a -> a -> String -> Msg -> Bool -> Html Msg
+segmentedButton current target text_ msg disabled =
     button
         [ class
             ("treasure__settings-segment"
@@ -612,6 +603,13 @@ segmentedButton _ current target text_ msg disabled =
         , type_ "button"
         , onClick msg
         , Attr.disabled disabled
+        , attribute "aria-pressed"
+            (if current == target then
+                "true"
+
+             else
+                "false"
+            )
         ]
         [ text text_ ]
 
@@ -1033,7 +1031,7 @@ coinLines c =
                             [ class ("treasure__coin treasure__coin--" ++ name) ]
                             [ span [ class "treasure__coin-text" ]
                                 [ text (formatNumber amount ++ " " ++ abbrev) ]
-                            , rowRemoveButton (TreasureCoinRemove name)
+                            , rowRemoveButton (formatNumber amount ++ " " ++ abbrev) (TreasureCoinRemove name)
                             ]
                         )
 
@@ -1047,13 +1045,13 @@ coinLines c =
 treasure row. The msg parameter routes the click to the right
 per-section remove handler.
 -}
-rowRemoveButton : Msg -> Html Msg
-rowRemoveButton msg =
+rowRemoveButton : String -> Msg -> Html Msg
+rowRemoveButton item msg =
     button
         [ class "treasure__row-remove"
         , type_ "button"
         , onClick msg
-        , attribute "aria-label" "Remove this item"
+        , attribute "aria-label" ("Remove " ++ item)
         , Tooltips.attr "Remove"
         ]
         [ text "✕" ]
@@ -1116,7 +1114,7 @@ valuedSection title category items project removeMsg =
                             ]
                         , span [ class "treasure__row-value" ]
                             [ text (String.fromInt g.valueGp ++ " gp") ]
-                        , rowRemoveButton (removeMsg g.firstIndex)
+                        , rowRemoveButton g.name (removeMsg g.firstIndex)
                         ]
                 )
                 groups
@@ -1267,7 +1265,7 @@ magicGroupRow g =
                 )
             ]
             [ text (Tables.rarityLabel g.rarity) ]
-        , rowRemoveButton (TreasureMagicRemove g.firstIndex)
+        , rowRemoveButton g.name (TreasureMagicRemove g.firstIndex)
         ]
 
 

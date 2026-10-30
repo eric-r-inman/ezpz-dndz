@@ -1,4 +1,7 @@
-module Encounter.Lifecycle exposing (nextTurn, applyBeginOfTurn, applyEndOfTurn)
+module Encounter.Lifecycle exposing
+    ( nextTurn, applyBeginOfTurn, applyEndOfTurn
+    , begin
+    )
 
 {-| Turn-progression machinery for the encounter manager.
 
@@ -69,6 +72,20 @@ nextTurn enc =
         |> applyEndOfTurn enc.activeName
         |> skipUnplayable (List.length enc.creatures)
         |> applyBeginOfTurnHook
+
+
+{-| Combat's first turn. The first creature in the queue that can act
+takes it. Its turn-start rules run as on any other turn. A queue where
+nobody can act starts on its head.
+-}
+begin : Encounter -> Encounter
+begin enc =
+    case List.filter (not << isUnplayable) enc.creatures ++ enc.creatures of
+        first :: _ ->
+            applyBeginOfTurn first.name { enc | activeName = first.name }
+
+        [] ->
+            enc
 
 
 skipUnplayable : Int -> Encounter -> Encounter
@@ -166,6 +183,8 @@ tickTimerFor name phase enc =
     Legendary resistances do NOT reset (per long rest).
   - **Reaction reset** — `reactionUsed` flips back to False so
     the creature has a fresh reaction for the new round.
+  - **Readied action lapses.** A readied action unused by the
+    creature's next turn is lost.
 
 -}
 applyBeginOfTurn : String -> Encounter -> Encounter
@@ -177,6 +196,7 @@ applyBeginOfTurn name enc =
         |> Encounter.pruneOrphanedLinks
         |> resetLegendaryActionsFor name
         |> resetReactionFor name
+        |> lapseReadiedFor name
         |> resetSpecialReactionsFor name
         |> markSpentRechargesPendingFor name
 
@@ -192,6 +212,13 @@ resetReactionFor : String -> Encounter -> Encounter
 resetReactionFor name enc =
     Encounter.mapCreature name
         (\c -> { c | reactionUsed = False })
+        enc
+
+
+lapseReadiedFor : String -> Encounter -> Encounter
+lapseReadiedFor name enc =
+    Encounter.mapCreature name
+        (\c -> { c | readied = False })
         enc
 
 

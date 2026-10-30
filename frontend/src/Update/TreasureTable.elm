@@ -77,14 +77,15 @@ UI state is discarded along with the editor itself; the live
 Treasure roller opens immediately after — the GM almost always
 edits the table because they're about to roll from it, so
 chaining the two saves a click and keeps focus on the task.
+Save and Revert close through here once they have set the table.
 -}
 close : Model -> ( Model, Cmd Msg )
 close model =
-    Update.Treasure.open model
+    Update.Treasure.open { model | surface = Nothing }
 
 
 {-| Commit the in-flight draft to `model.userTreasureTable` and
-hand off to the Treasure roller modal — only available to signed-
+close into the Treasure panel — only available to signed-
 in users, since custom tables are stored server-side under the
 user's account. Anonymous Save clicks fire an explanatory error
 toast and leave the draft untouched so the GM can sign in and
@@ -94,8 +95,7 @@ save : Model -> ( Model, Cmd Msg )
 save model =
     case ( model.surface, model.auth ) of
         ( Just (Model.SurfaceTreasureTable ui), Auth.AuthAuthenticated _ ) ->
-            Update.Treasure.open
-                { model | userTreasureTable = Just ui.draft }
+            close { model | userTreasureTable = Just ui.draft }
 
         ( Just (Model.SurfaceTreasureTable _), _ ) ->
             Update.Toast.push ToastError
@@ -396,14 +396,14 @@ revertCancel =
 
 
 {-| Drop `model.userTreasureTable` back to `Nothing` so the app
-falls through to `Treasure.bundledTable`, then hand off to the
-roller modal like Save does. The standard persistence hook in
+falls through to `Treasure.bundledTable`, then close into the
+Treasure panel like Save does. The standard persistence hook in
 `Main.update` writes the `Nothing` through, deleting the user's
 custom table on the server / in localStorage.
 -}
 revertConfirm : Model -> ( Model, Cmd Msg )
 revertConfirm model =
-    Update.Treasure.open { model | userTreasureTable = Nothing }
+    close { model | userTreasureTable = Nothing }
 
 
 setConfirmRevert : Bool -> Model -> ( Model, Cmd Msg )

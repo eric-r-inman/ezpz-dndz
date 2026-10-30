@@ -112,23 +112,39 @@ fn test_basic_execution() {
 
 #[test]
 fn test_compendium_count_against_tempfile() {
-  // Point the command at a scratch data dir so it opens (and
-  // migrates) a fresh SQLite database there — the same resolution
-  // rule the server applies to `--data-dir`.  An empty database
+  // `count` only reads.  It refuses a data dir with no database and
+  // creates nothing there.  Once the database exists, an empty one
   // holds no user-owned creatures, so the count is 0.
-  let dir = std::env::temp_dir().join("ezpz-dndz-cli-test");
-  std::fs::create_dir_all(&dir).expect("create temp dir");
+  let dir = std::env::temp_dir()
+    .join(format!("ezpz-dndz-cli-test-{}", uuid::Uuid::new_v4()));
+  let count = || {
+    Command::new(get_binary_path())
+      .args([
+        "compendium",
+        "count",
+        "--data-dir",
+        dir.to_str().expect("path utf8"),
+      ])
+      .output()
+      .expect("run cli")
+  };
 
-  let output = Command::new(get_binary_path())
-    .args([
-      "compendium",
-      "count",
-      "--data-dir",
-      dir.to_str().expect("path utf8"),
-    ])
-    .output()
-    .expect("run cli");
+  assert!(
+    !count().status.success(),
+    "count should refuse a data dir with no database"
+  );
+  assert!(!dir.exists(), "count should create nothing");
 
+  tokio::runtime::Builder::new_current_thread()
+    .enable_all()
+    .build()
+    .expect("build a runtime")
+    .block_on(ezpz_dndz_lib::db::Db::connect(
+      &ezpz_dndz_lib::db::default_sqlite_url(&dir),
+    ))
+    .expect("create the database");
+
+  let output = count();
   assert!(
     output.status.success(),
     "compendium count failed: stderr={}",
@@ -136,4 +152,5 @@ fn test_compendium_count_against_tempfile() {
   );
   let stdout = String::from_utf8_lossy(&output.stdout);
   assert!(stdout.contains("0"), "expected count 0 in stdout, got: {stdout}");
+  std::fs::remove_dir_all(&dir).expect("remove the scratch data dir");
 }

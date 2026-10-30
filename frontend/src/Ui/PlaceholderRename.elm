@@ -1,4 +1,4 @@
-module Ui.PlaceholderRename exposing (PlaceholderRenameState, fresh, maxNameLength)
+module Ui.PlaceholderRename exposing (PlaceholderRenameState, fresh, inputId, maxNameLength)
 
 {-| Inline rename state for the queue's placeholder cards.
 
@@ -8,9 +8,16 @@ name matches `state.target`. Only one rename is in flight at a
 time, so this is a single `Maybe PlaceholderRenameState` on
 `Model` rather than a per-card field.
 
-@docs PlaceholderRenameState, fresh, maxNameLength
+@docs PlaceholderRenameState, fresh, inputId, maxNameLength
 
 -}
+
+
+{-| DOM id of the rename field. Only one rename is open at a time.
+-}
+inputId : String
+inputId =
+    "placeholder-rename-input"
 
 
 {-| In-progress rename. `target` is the current creature name in

@@ -278,7 +278,7 @@ abilityField labelText field current =
             String.toInt current |> Maybe.withDefault 10
 
         modValue =
-            (score - 10) // 2
+            Compendium.abilityModifier score
     in
     label [ class "edit-field edit-field--ability" ]
         [ span [ class "edit-field__label" ] [ text labelText ]
@@ -436,6 +436,7 @@ savingThrowRow idx ( ability, bonus ) =
         [ Html.select
             [ class "edit-field__input edit-field--narrow"
             , onInput (abilityFromString >> CompendiumEditSavingThrowAbilitySet idx)
+            , attribute "aria-label" "Save ability"
             ]
             (List.map
                 (\a ->
@@ -458,15 +459,10 @@ savingThrowRow idx ( ability, bonus ) =
             , value bonus
             , onInput (CompendiumEditSavingThrowBonusChanged idx)
             , class "edit-field__input edit-field--narrow"
-            , attribute "aria-label" "Bonus"
+            , attribute "aria-label" (abilityShort ability ++ " save bonus")
             ]
             []
-        , button
-            [ class "edit-row__remove"
-            , onClick (CompendiumEditSavingThrowRemove idx)
-            , Tooltips.attr Tooltips.compendiumEditRemoveSave
-            ]
-            [ text "×" ]
+        , removeButton (removeLabel "save" (abilityShort ability)) (CompendiumEditSavingThrowRemove idx)
         ]
 
 
@@ -556,6 +552,7 @@ skillRow idx ( name_, bonus ) =
             , Attr.placeholder "Skill name (e.g. Perception)"
             , onInput (CompendiumEditSkillNameChanged idx)
             , class "edit-field__input"
+            , attribute "aria-label" "Skill name"
             ]
             []
         , input
@@ -566,12 +563,7 @@ skillRow idx ( name_, bonus ) =
             , attribute "aria-label" "Bonus"
             ]
             []
-        , button
-            [ class "edit-row__remove"
-            , onClick (CompendiumEditSkillRemove idx)
-            , Tooltips.attr Tooltips.compendiumEditRemoveSkill
-            ]
-            [ text "×" ]
+        , removeButton (removeLabel "skill" name_) (CompendiumEditSkillRemove idx)
         ]
 
 
@@ -621,12 +613,7 @@ featureRow group idx draft =
                 , class "edit-field__input"
                 ]
                 []
-            , button
-                [ class "edit-row__remove"
-                , onClick (CompendiumEditFeatureRemove group idx)
-                , Tooltips.attr Tooltips.compendiumEditRemoveEntry
-                ]
-                [ text "×" ]
+            , removeButton (removeLabel "entry" draft.name) (CompendiumEditFeatureRemove group idx)
             ]
         , Html.textarea
             [ value draft.description
@@ -828,12 +815,7 @@ customSectionRow idx ( name_, body_ ) =
                 , class "edit-field__input"
                 ]
                 []
-            , button
-                [ class "edit-row__remove"
-                , onClick (CompendiumEditCustomSectionRemove idx)
-                , Tooltips.attr Tooltips.compendiumEditRemoveSection
-                ]
-                [ text "×" ]
+            , removeButton (removeLabel "section" name_) (CompendiumEditCustomSectionRemove idx)
             ]
         , Html.textarea
             [ value body_
@@ -872,12 +854,7 @@ tagRow idx tag =
             , class "edit-field__input"
             ]
             []
-        , button
-            [ class "edit-row__remove"
-            , onClick (CompendiumEditTagRemove idx)
-            , Tooltips.attr Tooltips.compendiumEditRemoveTag
-            ]
-            [ text "×" ]
+        , removeButton (removeLabel "tag" tag) (CompendiumEditTagRemove idx)
         ]
 
 
@@ -908,11 +885,7 @@ lootRow idx item =
             , class "edit-field__input"
             ]
             []
-        , button
-            [ class "edit-row__remove"
-            , onClick (CompendiumEditLootRemove idx)
-            ]
-            [ text "×" ]
+        , removeButton (removeLabel "loot" item) (CompendiumEditLootRemove idx)
         ]
 
 
@@ -980,11 +953,7 @@ habitatPicker labelText options selected =
                 ]
                 [ text (Compendium.habitatLabel h) ]
     in
-    div [ class "edit-field edit-field--picker" ]
-        [ span [ class "edit-field__label" ] [ text labelText ]
-        , div [ class "edit-chip-picker" ]
-            (List.map chip options)
-        ]
+    pickerField labelText (List.map chip options)
 
 
 {-| Typed multi-select for treasure tags. Same shape as
@@ -1067,10 +1036,21 @@ chipPicker cfg =
                 ]
                 [ text option ]
     in
-    div [ class "edit-field edit-field--picker" ]
-        [ span [ class "edit-field__label" ] [ text cfg.label ]
-        , div [ class "edit-chip-picker" ]
-            (List.map chip cfg.options)
+    pickerField cfg.label (List.map chip cfg.options)
+
+
+{-| One labelled cluster of chips. The group's name tells apart the
+chips that several pickers share, such as each damage list's Fire.
+-}
+pickerField : String -> List (Html Msg) -> Html Msg
+pickerField labelText chips =
+    div
+        [ class "edit-field edit-field--picker"
+        , attribute "role" "group"
+        , attribute "aria-label" labelText
+        ]
+        [ span [ class "edit-field__label" ] [ text labelText ]
+        , div [ class "edit-chip-picker" ] chips
         ]
 
 
@@ -1155,7 +1135,7 @@ legendaryOptionRow idx opt =
             [ rawTextField "Name"
                 (CompendiumEditLegendaryOptionNameChanged idx)
                 opt.name
-            , removeButton (CompendiumEditLegendaryOptionRemove idx)
+            , removeButton (removeLabel "option" opt.name) (CompendiumEditLegendaryOptionRemove idx)
             ]
         , div [ class "edit-legendary-option__body" ]
             [ rawTextarea "Description"
@@ -1209,7 +1189,7 @@ lairOptionRow idx feat =
         , rawTextField "Description"
             (CompendiumEditLairOptionDescriptionChanged idx)
             feat.description
-        , removeButton (CompendiumEditLairOptionRemove idx)
+        , removeButton (removeLabel "lair action" feat.name) (CompendiumEditLairOptionRemove idx)
         ]
 
 
@@ -1254,7 +1234,7 @@ regionalEffectRow idx feat =
         , rawTextField "Description"
             (CompendiumEditRegionalEffectDescriptionChanged idx)
             feat.description
-        , removeButton (CompendiumEditRegionalEffectRemove idx)
+        , removeButton (removeLabel "regional effect" feat.name) (CompendiumEditRegionalEffectRemove idx)
         ]
 
 
@@ -1328,7 +1308,7 @@ spellcastingSlotRow idx slot =
         , rawTextField "Spells (comma-separated)"
             (CompendiumEditSpellcastingSlotSpellsChanged idx)
             (String.join ", " slot.spells)
-        , removeButton (CompendiumEditSpellcastingSlotRemove idx)
+        , removeButton (removeLabel "slot level" (String.fromInt slot.level)) (CompendiumEditSpellcastingSlotRemove idx)
         ]
 
 
@@ -1341,7 +1321,7 @@ spellcastingInnateRow idx i =
         , rawTextField "Spells (comma-separated)"
             (CompendiumEditSpellcastingInnateSpellsChanged idx)
             (String.join ", " i.spells)
-        , removeButton (CompendiumEditSpellcastingInnateRemove idx)
+        , removeButton (removeLabel "innate group" (String.fromInt i.uses ++ "/day")) (CompendiumEditSpellcastingInnateRemove idx)
         ]
 
 
@@ -1360,7 +1340,11 @@ spellcastingAbilityRadio current =
                 , text label_
                 ]
     in
-    div [ class "edit-field edit-field--radio-group" ]
+    div
+        [ class "edit-field edit-field--radio-group"
+        , attribute "role" "radiogroup"
+        , attribute "aria-label" "Spellcasting ability"
+        ]
         [ span [ class "edit-field__label" ] [ text "Ability" ]
         , div [ class "edit-radio-row" ]
             [ radio Compendium.Int_ "INT"
@@ -1416,16 +1400,28 @@ rawTextarea labelText toMsg current rows =
         ]
 
 
-removeButton : Msg -> Html Msg
-removeButton msg =
+removeButton : String -> Msg -> Html Msg
+removeButton label_ msg =
     button
         [ class "edit-row__remove"
         , type_ "button"
         , onClick msg
-        , attribute "aria-label" "Remove"
-        , Tooltips.attr "Remove"
+        , attribute "aria-label" label_
+        , Tooltips.attr label_
         ]
         [ text "×" ]
+
+
+{-| Names what a row's × removes, by the row's own text where it
+has some.
+-}
+removeLabel : String -> String -> String
+removeLabel what rowText =
+    if String.isEmpty (String.trim rowText) then
+        "Remove " ++ what
+
+    else
+        "Remove " ++ what ++ ": " ++ String.trim rowText
 
 
 footer : CompendiumEditUi -> Html Msg

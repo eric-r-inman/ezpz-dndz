@@ -23,7 +23,16 @@ suite =
         [ durationSuite
         , immunitySuite
         , wireSuite
+        , emptyPresetsSuite
         ]
+
+
+emptyPresetsSuite : Test
+emptyPresetsSuite =
+    test "a null preset store decodes as no presets" <|
+        \_ ->
+            D.decodeString Wire.decodePresets "null"
+                |> Expect.equal (Ok Dict.empty)
 
 
 durationSuite : Test

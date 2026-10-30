@@ -47,10 +47,6 @@ def test_the_column_boots_with_manage_hp_pinned_open_and_the_rest_folded(app):
     app.shot("boot")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-18: the boot-open Manage HP stays aimed at no one until a turn passes",
-)
 def test_the_open_manage_hp_aims_at_the_head_of_the_queue_before_combat(app):
     app.add("Goblin Warrior", count=2)
     expect(manage_hp_target(app)).to_have_text("Target: Goblin Warrior", timeout=2000)
@@ -58,10 +54,6 @@ def test_the_open_manage_hp_aims_at_the_head_of_the_queue_before_combat(app):
     assert app.card("Goblin Warrior").hp() == 7
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-18: on the first turn Manage HP is aimed at no one, so Damage does nothing",
-)
 def test_manage_hp_damages_the_active_creature_on_the_first_turn(app):
     app.add("Goblin Warrior", count=2)
     app.begin_combat()
@@ -243,10 +235,6 @@ def test_escape_folds_the_lowest_open_panel_first(app):
     assert drawer_titles(app.page) == BOOT_ORDER
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-09: Esc that closes the settings popover also folds an editor",
-)
 @pytest.mark.cross_browser
 def test_escape_on_the_settings_popover_closes_only_the_popover(app):
     trigger = app.page.get_by_role("button", name="Open settings")
@@ -257,10 +245,6 @@ def test_escape_on_the_settings_popover_closes_only_the_popover(app):
     assert app.panel("Manage HP").is_open()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-09: Esc that closes the Encounter menu also folds an editor",
-)
 @pytest.mark.cross_browser
 def test_escape_on_the_encounter_menu_closes_only_the_menu(app):
     trigger = app.page.get_by_role("button", name=re.compile("^Encounter"))

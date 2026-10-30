@@ -2,7 +2,7 @@ module Compendium.Wire exposing
     ( fetchAll, fetchAllPublic
     , decodeCreature, encodeCreature, encodeDraft
     , defaultSpeed, defaultAbilities, defaultSenses
-    , LocalCompendiumSnapshot, SavedCompendiumMeta, currentBundledVersion, decodeLocalCompendiumSnapshot, deleteCompendiumSaveCmd, encodeLocalCompendiumSnapshot, getCompendiumSaveCmd, importCmd, listCompendiumSavesCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
+    , LocalCompendiumSnapshot, SavedCompendiumMeta, currentBundledVersion, decodeLocalCompendiumSnapshot, decodeTabSync, deleteCompendiumSaveCmd, encodeLocalCompendiumSnapshot, encodeTabSync, getCompendiumSaveCmd, listCompendiumSavesCmd, mergeCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
     )
 
 {-| Wire format + HTTP client for the compendium domain.
@@ -914,8 +914,8 @@ encodeMaybe enc m =
 -- localStorage on every CRUD edit, plus a `next_local_id` counter
 -- that hands out unique ids for newly-created creatures without
 -- needing server allocation.  The wire shape mirrors what
--- `POST /api/compendium/import` accepts so the login-time
--- migration can hand the snapshot straight to the server.
+-- `POST /api/compendium/merge` accepts.  Sign-in hands the snapshot
+-- straight to the server.
 
 
 {-| Bundled-data version the Elm side knows about. Mirror of the
@@ -934,7 +934,7 @@ ids aren't in the bundle are preserved across the merge.
 -}
 currentBundledVersion : Int
 currentBundledVersion =
-    4
+    5
 
 
 type alias LocalCompendiumSnapshot =
@@ -976,21 +976,36 @@ decodeLocalCompendiumSnapshot =
         )
 
 
-{-| `POST /api/compendium/import` — replace the server's
-compendium + groups with the supplied snapshot. Used by the
-login-time migration to push the anonymous session's local state
-into the freshly-authenticated user's account. Server side
-swaps both the shared bestiary and the caller's groups in one
-shot.
+{-| What one tab posts to the others when its compendium changes:
+the snapshot, under the owner from `Auth.owner`.
 -}
-importCmd :
+encodeTabSync : String -> LocalCompendiumSnapshot -> E.Value
+encodeTabSync owner snap =
+    E.object
+        [ ( "owner", E.string owner )
+        , ( "snapshot", encodeLocalCompendiumSnapshot snap )
+        ]
+
+
+decodeTabSync : D.Decoder ( String, LocalCompendiumSnapshot )
+decodeTabSync =
+    D.map2 Tuple.pair
+        (D.field "owner" D.string)
+        (D.field "snapshot" decodeLocalCompendiumSnapshot)
+
+
+{-| `POST /api/compendium/merge` adds a signed-out session's creatures
+and groups to the account. The server gives each a fresh id and keeps
+everything the account already holds.
+-}
+mergeCmd :
     (Result Http.Error () -> msg)
     -> List Creature
     -> List Compendium.Group.Group
     -> Cmd msg
-importCmd toMsg creatures groups =
+mergeCmd toMsg creatures groups =
     Http.post
-        { url = "/api/compendium/import"
+        { url = "/api/compendium/merge"
         , body =
             Http.jsonBody
                 (E.object

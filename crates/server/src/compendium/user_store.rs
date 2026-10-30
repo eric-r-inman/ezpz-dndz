@@ -201,6 +201,44 @@ impl UserCompendiumStore {
     }
   }
 
+  /// Append `creatures` to this user's list and keep what is there.
+  /// Sign-in uses it to carry a signed-out session's work into the
+  /// account.  A creature made while signed out has no creation time.
+  /// It takes the time it joins the account.
+  pub async fn append_for_user(
+    &self,
+    user_id: &UserId,
+    creatures: Vec<Creature>,
+  ) -> Result<(), CompendiumStoreError> {
+    let now = epoch_millis();
+    let mut tx = self.db.pool().begin().await.map_err(|source| {
+      CompendiumStoreError::TransactionBegin {
+        store: "creature",
+        source,
+      }
+    })?;
+    let first = next_position(&mut tx, user_id).await?;
+    for (i, creature) in creatures.into_iter().enumerate() {
+      let stamped = Creature {
+        created_at: if creature.created_at > 0 {
+          creature.created_at
+        } else {
+          now
+        },
+        updated_at: now,
+        ..creature
+      };
+      insert_creature(&mut tx, user_id.as_str(), first + i as i64, &stamped)
+        .await?;
+    }
+    tx.commit().await.map_err(|source| {
+      CompendiumStoreError::TransactionCommit {
+        store: "creature",
+        source,
+      }
+    })
+  }
+
   /// Replace this user's entire creature list with `creatures`.
   /// Used by the reset-to-bundled path (empty `creatures`) and by
   /// full-compendium import (the user uploaded a JSON export).
@@ -250,7 +288,11 @@ async fn next_position(
   .map_err(|source| CompendiumStoreError::CreatureRowsRead { source })
 }
 
-fn creature_from_draft(draft: CreatureDraft, id: String, now: i64) -> Creature {
+pub(crate) fn creature_from_draft(
+  draft: CreatureDraft,
+  id: String,
+  now: i64,
+) -> Creature {
   Creature {
     id,
     name: draft.name,

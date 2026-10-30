@@ -4,7 +4,7 @@ module Ui.Account exposing
     , maxDisplayNameLength
     )
 
-{-| State for the `/me` Account page.
+{-| State for the `/account` page.
 
 The Account page is a _route_, not a modal, so its UI substate
 lives on `Model` directly (like `loginUi`) rather than inside the

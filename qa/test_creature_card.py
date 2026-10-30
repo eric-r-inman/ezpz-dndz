@@ -117,10 +117,6 @@ def test_a_natural_twenty_wakes_the_creature_at_one_hit_point(app):
     app.shot("revived")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-03: a creature a natural 20 revives at 1 HP is not marked Bloodied",
-)
 def test_a_creature_revived_by_a_natural_twenty_is_bloodied(app):
     app.add("Goblin Warrior")
     card = downed(app, "Goblin Warrior")
@@ -146,10 +142,6 @@ def test_healing_a_downed_creature_clears_its_death_saves(app):
     expect_pips(card, 0, 0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-04: damage taken at 0 HP does not add a failed death save",
-)
 def test_damage_while_down_counts_as_a_failed_death_save(app):
     app.add("Goblin Warrior")
     card = downed(app, "Goblin Warrior")
@@ -158,10 +150,6 @@ def test_damage_while_down_counts_as_a_failed_death_save(app):
     expect(pip(card, "Failure", 1)).to_have_attribute("aria-pressed", "true", timeout=2000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-04: damage past 0 that equals the HP maximum does not kill outright",
-)
 def test_massive_damage_kills_outright(app):
     app.add("Goblin Warrior")
     card = app.card("Goblin Warrior")
@@ -184,10 +172,6 @@ def test_the_lifecycle_badge_marks_dead_and_reverts_to_down(app):
     expect_pips(card, 1, 0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-09: Begin combat hands the first turn to a creature that is down or dead",
-)
 def test_combat_does_not_open_on_a_creature_that_is_already_down(app):
     app.add("Goblin Warrior", count=2)
     downed(app, "Goblin Warrior", begin=False)
@@ -298,10 +282,6 @@ def test_falling_damage_rolls_a_d6_per_ten_feet_and_grounds_the_creature(app):
     expect_pools(ogre, 68, 68)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-05: a concentrating creature dropped to 0 HP keeps concentrating",
-)
 def test_concentration_ends_when_the_creature_drops_to_zero(app):
     app.add("Ogre")
     ogre = app.card("Ogre")
@@ -313,6 +293,17 @@ def test_concentration_ends_when_the_creature_drops_to_zero(app):
     expect(concentrating).to_be_visible()
     ManageHp(app).open_for("Ogre").damage(68)
     expect(concentrating).to_have_count(0, timeout=2000)
+
+
+def test_damage_to_a_concentrating_creature_prompts_its_save(app):
+    app.add("Ogre")
+    status = status_panel(app, "Ogre")
+    status.root.get_by_role("button", name="concentrating", exact=True).click()
+    status.root.get_by_role("button", name="Target", exact=True).click()
+    ManageHp(app).open_for("Ogre").damage(24)
+    expect(
+        app.page.get_by_text("Ogre makes a DC 12 Constitution save to keep concentrating.")
+    ).to_be_visible()
 
 
 # Legendary pools, recharge and special reactions.
@@ -378,10 +369,6 @@ def test_a_special_reaction_badge_spends_and_refreshes_at_its_turn(app):
     expect(badge).to_have_attribute("aria-pressed", "false")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-07: the bundled Black Pudding names its Split reaction Parry, so no badge shows",
-)
 def test_the_black_pudding_shows_its_split_reaction(app):
     app.add("Black Pudding")
 
@@ -461,10 +448,6 @@ def test_a_pudding_split_divides_its_hit_points_between_two_new_puddings(app):
     app.shot("pudding")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-08: the halves of a Bloodied pudding are not marked Bloodied",
-)
 def test_the_halves_of_a_bloodied_pudding_are_bloodied(app):
     app.add("Black Pudding")
     ManageHp(app).open_for("Black Pudding").damage(35)
