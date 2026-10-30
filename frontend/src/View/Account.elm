@@ -144,7 +144,7 @@ profileFeedback : ProfileDraft -> Html Msg
 profileFeedback draft =
     case ( draft.error, draft.success ) of
         ( Just err, _ ) ->
-            p [ class "account-card__error" ] [ text err ]
+            p [ class "account-card__error", Attr.attribute "role" "alert" ] [ text err ]
 
         ( Nothing, Just ok ) ->
             p [ class "account-card__success" ] [ text ok ]
@@ -232,7 +232,7 @@ passwordFeedback : PasswordDraft -> Html Msg
 passwordFeedback draft =
     case ( draft.error, draft.success ) of
         ( Just err, _ ) ->
-            p [ class "account-card__error" ] [ text err ]
+            p [ class "account-card__error", Attr.attribute "role" "alert" ] [ text err ]
 
         ( Nothing, Just ok ) ->
             p [ class "account-card__success" ] [ text ok ]

@@ -1,9 +1,9 @@
 module Effects exposing
-    ( cardId, compendiumRowId, mainRegionId, saveRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+    ( cardId, compendiumRowId, mainRegionId, replaceRowId, saveRowId, xpScopeOptionId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
     , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
     , RollSpec, rollBatch, autoRollSpecsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-    , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+    , persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
     , compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
@@ -25,11 +25,11 @@ and `Model` for the small set of model-level helpers. Doesn't
 import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
-@docs cardId, compendiumRowId, mainRegionId, saveRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+@docs cardId, compendiumRowId, mainRegionId, replaceRowId, saveRowId, xpScopeOptionId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
 @docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
 @docs RollSpec, rollBatch, autoRollSpecsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-@docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+@docs persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
 @docs compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
 @docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
 @docs importCompendiumBundle, clearCompendiumCreatures, resetCompendium
@@ -52,6 +52,7 @@ import Encounter.SaveChain.Wire
 import Encounter.Treasure exposing (TreasureTable)
 import Encounter.Treasure.TableWire
 import Encounter.Wire
+import Encounter.Xp exposing (XpScope(..))
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -151,6 +152,35 @@ the save's name.
 saveRowId : String -> String
 saveRowId name =
     "save-row-" ++ name
+
+
+{-| Stable HTML id for one row of the Replace editor's picker,
+keyed by the creature's compendium id.
+-}
+replaceRowId : String -> String
+replaceRowId creatureId =
+    "replace-row-" ++ creatureId
+
+
+{-| Stable HTML id for one of the Encounter XP panel's scope
+options.
+-}
+xpScopeOptionId : XpScope -> String
+xpScopeOptionId scope =
+    "xp-scope-"
+        ++ (case scope of
+                ScopeXpEnemiesAndNpcs ->
+                    "enemies-and-npcs"
+
+                ScopeXpEnemiesOnly ->
+                    "enemies"
+
+                ScopeXpNpcsOnly ->
+                    "npcs"
+
+                ScopeXpSelectedOnly ->
+                    "selected"
+           )
 
 
 {-| DOM id of the editor column's scroll container. The stack
@@ -732,6 +762,10 @@ pushIncomingDiceRoll roll model =
                 -- triple-roll's own handler re-sets it after its own
                 -- three pushes clear it here.
                 , rollBadgeOverride = Nothing
+
+                -- The menu is keyed by row, and a new roll shifts
+                -- every row down one.
+                , rerunMenuOpenFor = Nothing
             }
       }
     , Cmd.none
@@ -1223,10 +1257,17 @@ persistEncounterFor auth encounter =
             Encounter.Wire.persistEncounterCmd EncounterPersisted encounter
 
         Auth.AuthAnonymous ->
-            Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
+            persistLocalEncounter encounter
 
         Auth.AuthLoading ->
             Cmd.none
+
+
+{-| Write the encounter to the browser's own slot.
+-}
+persistLocalEncounter : Encounter.Encounter -> Cmd Msg
+persistLocalEncounter encounter =
+    Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
 
 
 {-| Persist the full dice-history list to `localStorage` when

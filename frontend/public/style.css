@@ -866,15 +866,14 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.05rem;
 }
 
-/* CR Calculator modal: bump every text node so party rows,
+/* CR Calculator body: bump every text node so party rows,
    scope buttons, budget cells, result readouts all read at low
    vision.  `:not(.action-btn)` exempts the "+ Add character"
    button, which already sizes well via the shared `.action-btn`
-   rule. */
-[data-theme="accessible"] .panel-drawer--cr-calculator,
-[data-theme="accessible"]
-  .panel-drawer--cr-calculator
-  *:not(.action-btn):not(.action-btn *) {
+   rule.  The panel's header sits outside `.cr-calc` and keeps
+   the size every other header has. */
+[data-theme="accessible"] .cr-calc,
+[data-theme="accessible"] .cr-calc *:not(.action-btn):not(.action-btn *) {
   font-size: 1.1rem;
 }
 
@@ -1289,7 +1288,12 @@ body {
 .app-bar__title:hover,
 .app-bar__title:focus-visible {
   color: var(--color-accent, #4a90e2);
-  outline: none;
+}
+
+.app-bar__title:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* Italic "Sign in to keep changes." prompt sitting to the right
@@ -3259,6 +3263,12 @@ body {
   color: #ef7777;
 }
 
+/* Gives the Accessible theme one root for the calculator's body.
+   It adds no box, so the drawer lays out the sections directly. */
+.cr-calc {
+  display: contents;
+}
+
 .cr-calc__blurb {
   margin: 0;
   padding: var(--space-2) 18px;
@@ -3733,9 +3743,11 @@ body {
   gap: 6px;
 }
 
+/* A long name keeps its longest word whole.  The CR, XP and buttons
+   wrap to a second line when the drawer has no room for them. */
 .random-encounter__group-row {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto auto auto auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
@@ -3802,11 +3814,14 @@ body {
 }
 
 .random-encounter__group-count {
+  flex: 0 0 40px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .random-encounter__group-name {
+  flex: 1 1 0;
+  min-width: min-content;
   font-weight: 600;
 }
 
@@ -4123,6 +4138,23 @@ body {
 .app-footer__contact a:focus-visible {
   color: var(--color-text);
   text-decoration: underline;
+}
+
+/* At phone width the brand and the nav take a row each.  One row
+   would push Donate and settings off the screen. */
+@media (max-width: 520px) {
+  :root {
+    --header-height: 96px;
+  }
+  .app-bar {
+    flex-wrap: wrap;
+    align-content: center;
+    row-gap: var(--space-1);
+    padding: 0 var(--space-3);
+  }
+  .app-bar__nav {
+    gap: var(--space-1);
+  }
 }
 
 @media (max-width: 720px) {
@@ -6878,6 +6910,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .statblock__name {
+  margin: 0;
   font-weight: 700;
   font-size: 1.1rem;
 }
@@ -7465,7 +7498,8 @@ button.creature-card__lifecycle--dead:focus-visible {
      applies inline width / height / transform on top, capped by
      `max-width` / `max-height` and floored by `min-*`.  Position
      is `relative` so the 8 absolute-positioned resize handles
-     can hang off the perimeter. */
+     can hang off the perimeter.  The modal itself does not clip,
+     or the rounded corner would hide the corner handles. */
   position: relative;
   width: var(--modal-max-w, 640px);
   max-width: 95vw;
@@ -7474,7 +7508,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-height: 200px;
   display: flex;
   flex-direction: column;
+}
+
+/* Clips the header and body to the rounded corners.  The radius
+   is the modal's less its 1px border. */
+.modal__frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  border-radius: calc(var(--radius-lg) - 1px);
 }
 
 /* Drag-handle styling on the modal header: changes the cursor
@@ -7561,10 +7605,20 @@ button.creature-card__lifecycle--dead:focus-visible {
   width: calc(var(--handle-thick) * 2);
   height: calc(var(--handle-thick) * 2);
   cursor: nwse-resize;
-  /* Subtle 8px diagonal-stripe marker so this corner reads as
-     "the resize affordance" — discoverability without a full
-     drag-handle widget.  The other corners are silent to keep
-     the chrome calm. */
+}
+
+/* This subtle 8px diagonal-stripe marker shows that this corner
+   resizes the modal.  It needs no full drag-handle widget.  The
+   other corners are silent to keep the chrome calm.  Standing
+   5px in from the corner keeps it inside the rounded edge at
+   either theme's radius. */
+.modal__resize--se::after {
+  content: "";
+  position: absolute;
+  right: calc(var(--handle-thick) + 5px);
+  bottom: calc(var(--handle-thick) + 5px);
+  width: var(--handle-thick);
+  height: var(--handle-thick);
   background: linear-gradient(
     135deg,
     transparent 50%,
@@ -8673,7 +8727,10 @@ button.creature-card__lifecycle--dead:focus-visible {
     -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  max-width: 360px;
+  /* Whose roll it is matters more than the formula.  The row unfolds
+     to show the formula in full.  The share is a judgment call. */
+  flex-shrink: 0;
+  max-width: 60%;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
@@ -10217,13 +10274,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-direction: column;
 }
 
-.compendium__list--empty {
-  padding: 24px;
-  color: var(--color-text-muted);
-  text-align: center;
-  font-style: italic;
-}
-
 .compendium__row {
   text-align: left;
   padding: 10px 14px;
@@ -10323,9 +10373,16 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.78rem;
 }
 
+/* The detail pane's padding.  The sticky action bar and editor
+   footer reach out across it, so nothing scrolls past them. */
+:root {
+  --compendium-detail-pad-y: 18px;
+  --compendium-detail-pad-x: 22px;
+}
+
 .compendium__detail {
   overflow-y: auto;
-  padding: 18px 22px;
+  padding: var(--compendium-detail-pad-y) var(--compendium-detail-pad-x);
 }
 
 /* An editor occupying the detail pane in place of the stat
@@ -10387,7 +10444,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--color-surface-2);
   position: sticky;
-  top: 0;
+  top: calc(-1 * var(--compendium-detail-pad-y));
   z-index: 1;
 }
 
@@ -10634,7 +10691,8 @@ button.creature-card__lifecycle--dead:focus-visible {
    filter-mismatch). Each variant shows a primary line + a
    smaller hint. The "creating one / pasting / importing" links
    inside the genuine-empty variant are click-actionable. */
-.compendium__list--empty {
+.compendium__empty {
+  display: flex;
   padding: 32px 24px;
   text-align: center;
   color: var(--color-text-muted);
@@ -10643,11 +10701,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 8px;
 }
 
-.compendium__list--empty p {
+.compendium__empty-line {
   margin: 0;
 }
 
 .compendium__empty-hint {
+  margin: 0;
   font-size: 0.8rem;
   font-style: normal;
 }
@@ -10711,7 +10770,8 @@ button.creature-card__lifecycle--dead:focus-visible {
    variants only differ in border color + icon. */
 .toast-stack {
   position: fixed;
-  top: 16px;
+  /* The stack sits below the app bar so a toast never covers its links. */
+  top: calc(var(--header-height) + var(--space-3));
   right: 16px;
   display: flex;
   flex-direction: column;
@@ -11092,13 +11152,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding-top: 8px;
   border-top: 1px solid var(--color-border);
   position: sticky;
-  bottom: 0;
+  bottom: calc(-1 * var(--compendium-detail-pad-y));
   background: var(--color-surface);
-  margin: 0 -20px -16px;
-  padding: 12px 20px;
+  margin: 0 calc(-1 * var(--compendium-detail-pad-x))
+    calc(-1 * var(--compendium-detail-pad-y));
+  padding: 12px var(--compendium-detail-pad-x);
 }
 
 .edit-footer__spacer {
@@ -11819,17 +11879,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   will-change: transform, opacity;
 }
 
-/* Triple-roll popups (attack / ability check / saving throw fired
-   as standard + advantage + disadvantage together): white / green
-   / red instead of the single-roll yellow, so the three read as a
-   labelled set rather than three unrelated rolls. Same glyph size
-   and shadow trick as the base rule for legibility over any card
-   or stat-block background underneath. */
+/* An attack, ability check or saving throw can fire a standard, an
+   advantage and a disadvantage roll together.  The three leave the
+   single-roll yellow, so they read as a labelled set.  The standard
+   roll takes the theme's own text colour with a halo in the surface
+   colour.  The halo reads on any page.  Advantage and disadvantage
+   keep the base rule's shadow trick in green and red. */
 .roll-popup--standard {
-  color: #ffffff;
+  color: var(--color-text);
   text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.55),
-    0 0 6px rgba(255, 255, 255, 0.35);
+    0 1px 2px var(--color-surface),
+    0 0 6px var(--color-surface);
 }
 
 .roll-popup--advantage {

@@ -232,10 +232,6 @@ def test_removing_the_active_creature_passes_the_turn_on(app):
     assert app.card_names() == ORDER[1:]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-03: removing the active creature hands the turn to an inactive one",
-)
 def test_removing_the_active_creature_passes_over_an_inactive_successor(app):
     fight(app)
     app.begin_combat()
@@ -244,10 +240,6 @@ def test_removing_the_active_creature_passes_over_an_inactive_successor(app):
     assert app.active_name() == "Goblin Warrior"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-03: removing the active creature starts no turn for its successor",
-)
 def test_removing_the_active_creature_starts_the_successors_turn(app):
     fight(app)
     app.begin_combat()
@@ -258,10 +250,6 @@ def test_removing_the_active_creature_starts_the_successors_turn(app):
     expect(reaction(app, "Wolf")).to_have_attribute("aria-pressed", "false")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-03: removing the last creature on its turn wraps without a new round",
-)
 def test_removing_the_last_creature_on_its_turn_starts_the_next_round(app):
     fight(app)
     app.begin_combat()

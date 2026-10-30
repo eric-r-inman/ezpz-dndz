@@ -105,12 +105,31 @@ encounterLoaded result model =
 {-| Persist response. Success is silent (the user's edit just
 flowed through); failure raises a toast so they know the change
 won't survive a reload.
+
+A 401 means the server forgot the session. A restart does that. The
+fight is copied into the browser's own slot. A reload then shows it.
+The next sign-in keeps it as the live fight.
+
 -}
 encounterPersisted : Result Http.Error () -> Model -> ( Model, Cmd Msg )
 encounterPersisted result model =
     case result of
         Ok () ->
             ( model, Cmd.none )
+
+        Err (Http.BadStatus 401) ->
+            let
+                keep =
+                    Effects.persistLocalEncounter model.encounter
+            in
+            if model.sessionLost then
+                ( model, keep )
+
+            else
+                Update.Toast.pushWith ToastError
+                    "Save failed: you were signed out.  Sign in again to save this fight.  It stays in this browser until then."
+                    keep
+                    { model | sessionLost = True }
 
         Err err ->
             Update.Toast.push ToastError

@@ -51,13 +51,16 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 12. Close the gaps against the 2024 rules.  See QA-FIGHT-04, QA-FIGHT-05,
     QA-TURN-04 and QA-TURN-05.  Done except QA-TURN-05.  That one is a question.
 13. Harden sign-in and sessions.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
-    QA-ACCT-09.
+    QA-ACCT-09.  Done as far as this repository reaches.  The rest needs
+    rust-template.  QA-ACCT-05 is a question.
 14. Keep random encounters inside their budget and scale.  See QA-BUILD-04,
-    QA-BUILD-05 and QA-BUILD-06.
-15. Fit the phone layout.  See QA-UI-01.
+    QA-BUILD-05 and QA-BUILD-06.  Done.
+15. Fit the phone layout.  See QA-UI-01.  Done.
 16. Decide each open question.  Every entry marked question needs a decision
     before it can be fixed or closed.
-17. Sweep the remaining minor and cosmetic entries.
+17. Sweep the remaining minor and cosmetic entries.  Done.  QA-COMP-12 needs a
+    decision and joins item 16.  So does the contact address in QA-UI-02 and
+    QA-ACCT-18.
 
 * How the run worked
 
@@ -116,6 +119,7 @@ The suite did not cover these:
 
 *** QA-TURN-03: Removing the active creature skips the turn rules
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Remove the active creature in each of three setups.  In the first,
   the next creature is inactive.  In the second, the next creature has spent its
@@ -127,9 +131,7 @@ The suite did not cover these:
   ~test_removing_the_active_creature_passes_over_an_inactive_successor~,
   ~test_removing_the_active_creature_starts_the_successors_turn~ and
   ~test_removing_the_last_creature_on_its_turn_starts_the_next_round~
-- Action :: When the removed creature is the active one, advance through the
-  ~Lifecycle.nextTurn~ walk.  Do not take the next name in
-  ~Roster.removeCreature~.
+- Action :: Fixed.  Removing the creature whose turn it is runs Next turn first.
 
 *** QA-TURN-04: A readied action never lapses
 
@@ -173,12 +175,13 @@ The suite did not cover these:
 
 *** QA-TURN-07: Tied numbered copies sort as text
 
+- Status :: fixed
 - Severity :: cosmetic
 - Steps :: Quick Add 10 Goblin Warriors.
 - Expected :: Goblin Warrior, then 2, 3 and on to 10.
 - Actual :: Goblin Warrior, then 10, then 2.
 - Evidence :: ~test_tied_copies_keep_their_numbered_order~
-- Action :: Compare the trailing number of a tied name as a number.
+- Action :: Fixed.  A tied name's trailing copy number sorts as a number.
 
 *** QA-TURN-08: Turn controls a keyboard or screen reader cannot use
 
@@ -229,26 +232,30 @@ The suite did not cover these:
 
 *** QA-TURN-11: The column's dice log clips whose roll it is
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: In the narrow column an initiative roll's source shrinks to "Ir".
   The DM cannot tell whose roll is whose without unfolding each row.
 - Evidence :: The screenshot from
   ~test_advantage_keeps_the_higher_d20_and_disadvantage_the_lower~.
-- Action :: Put the creature's name before the formula or let the source wrap.
+- Action :: Fixed.  The source keeps its width.  The formula gives way.  The row
+  unfolds to show it in full.
 
 *** QA-TURN-12: A dead creature still offers Death Saves
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: After the DOWN badge marks a creature dead, its card shows the DEAD
   badge with a Death Saves button beside it.
 - Evidence :: The screenshot from
   ~test_three_rounds_with_skipped_downed_and_dead_creatures_stay_coherent~.
-- Action :: Hide the Death Saves button once the creature is dead.
+- Action :: Fixed.  A dead creature's card offers no Death Saves.
 
 ** The editor column, dice, layout and accessibility
 
 *** QA-UI-01: The phone layout scrolls sideways
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Run a fight with six creatures at 390 by 844.
 - Expected :: No sideways scroll.  Every control is in reach.
@@ -257,7 +264,7 @@ The suite did not cover these:
   and a half cards.  Tablet and laptop sizes are fine.
 - Evidence :: ~test_a_six_creature_fight_never_scrolls_sideways~ and
   ~test_the_controls_a_dm_needs_are_reachable_at_every_size~ at phone size.
-- Action :: Wrap or collapse the app bar below about 500 pixels.
+- Action :: Fixed.  Below 520 pixels the brand and the nav take a row each.
 
 *** QA-UI-02: The Contact address has no domain ending
 
@@ -282,12 +289,14 @@ The suite did not cover these:
 
 *** QA-UI-04: The Manage HP field takes focus on load
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The HP field in ~View.Inline.HpChange~ has ~autofocus~.  The first
   Tab then lands in the roll field.  The skip link and the app bar are passed
   over.  A screen reader starts in the middle of the column.
 - Evidence :: ~test_the_first_tab_on_the_encounter_page_reaches_the_skip_link~
-- Action :: Focus the field only when the DM opens Manage HP.
+- Action :: Fixed.  Nothing takes focus on load.  Opening Manage HP puts the
+  caret in its amount field.
 
 *** QA-UI-05: axe finds serious faults in 11 of 15 page and theme pairs
 
@@ -316,34 +325,40 @@ The suite did not cover these:
 
 *** QA-UI-06: Impossible dice roll instead of failing
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: ~0d6~ rolls one d6.  ~1d0~ rolls a die that always shows 1.  ~200d6~
   quietly becomes 99d6.  The formula does show 99d6.
 - Evidence ::
   ~test_an_impossible_die_is_refused_rather_than_rolled_as_something_else~
-- Action :: Refuse a count below 1 and a die with fewer than 2 faces.
+- Action :: Fixed.  A count below 1 or a die with fewer than 2 faces is refused.
+  A count above 99 still becomes 99, and the formula says so.
 
 *** QA-UI-07: An open re-roll menu moves to the next roll
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Roll ~2d6+5~.  Open its ↻ menu.  Click d4.  Choose Reroll.
 - Expected :: ~2d6+5~ rolls again or the menu has closed.
 - Actual :: The d4 rolls again.  The menu is keyed by row position.
 - Evidence :: ~test_an_open_reroll_menu_stays_with_the_roll_it_was_opened_on~
-- Action :: Key the menu by the roll itself or close it when a roll lands.
+- Action :: Fixed.  The menu closes when a roll lands.
 
 *** QA-UI-08: The re-roll menu ignores Esc and clicks elsewhere
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Esc folds the whole Dice Roller instead.  A click elsewhere leaves
   the menu open.  The doc on ~rerunMenuClose~ names subscriptions that do not
   exist.
 - Evidence :: ~test_escape_closes_the_reroll_menu_and_leaves_the_roller_open~
   and ~test_a_click_elsewhere_closes_the_reroll_menu~
-- Action :: Add the subscriptions the doc describes.
+- Action :: Fixed.  Esc and a click elsewhere close the menu and leave the
+  roller open.  The doc names the real subscriptions.
 
 *** QA-UI-09: Esc on a popover also folds an editor
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Open the settings popover or the Encounter menu.  Press Esc.
 - Expected :: Only the popover closes.
@@ -351,11 +366,11 @@ The suite did not cover these:
   do it.
 - Evidence :: ~test_escape_on_the_settings_popover_closes_only_the_popover~ and
   ~test_escape_on_the_encounter_menu_closes_only_the_menu~
-- Action :: Let the column's Esc yield while a popover is open.  It already
-  yields to the Condition preset menu.
+- Action :: Fixed.  The column's Esc yields while any popover or menu is open.
 
 *** QA-UI-10: Resizing a modal can close it
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: ~overflow: hidden~ and the rounded corners clip the resize handles.
   Only a sliver of 2 to 4 pixels answers.  A press on the visible corner lands
@@ -364,8 +379,8 @@ The suite did not cover these:
 - Evidence ::
   ~test_pressing_on_the_very_corner_of_a_modal_resizes_rather_than_closes_it~
   and ~test_a_modal_shrinks_no_smaller_than_its_floor_and_stays_open~
-- Action :: Close only when the press also began on the backdrop.  Keep the
-  handles inside the clip.
+- Action :: Fixed.  A modal closes only when the press began on its backdrop.
+  The handles sit outside the rounded clip, so the corner itself resizes.
 
 *** QA-UI-11: Every new account gets an error toast
 
@@ -390,11 +405,12 @@ The suite did not cover these:
 
 *** QA-UI-13: Toasts cover the app bar
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A sign-up raises three stacked toasts.  They hide About, Donate, the
   account link and ⚙ until they fade.
 - Evidence :: ~test_a_toast_leaves_the_app_bar_usable~
-- Action :: Anchor toasts below the app bar.
+- Action :: Fixed.  Toasts sit below the app bar.
 
 *** QA-UI-14: Many buttons have names that do not say what they act on
 
@@ -411,29 +427,33 @@ The suite did not cover these:
 
 *** QA-UI-15: The title link shows no focus ring
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The "eZpZ-dndZ" link's ~:focus-visible~ rule sets ~outline: none~.
   Only its colour changes.  Hover changes it the same way.
 - Evidence :: ~test_every_tab_stop_shows_where_the_focus_is~
-- Action :: Give it the focus ring the other controls use.
+- Action :: Fixed.  The link shows the focus ring the other controls use.
 
 *** QA-UI-16: Closing a modal drops focus to the page
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Open Round Set from the round button.  Press Esc.
 - Expected :: Focus returns to the round button.
 - Actual :: Focus goes to the page body.
 - Evidence :: ~test_closing_a_modal_returns_focus_to_what_opened_it~
-- Action :: Remember the opener and focus it again on close.
+- Action :: Fixed.  Closing a modal returns focus to the control that opened it.
 
 *** QA-UI-17: One panel title is oversized in the Accessible theme
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: The Encounter Difficulty title renders at 19.25 pixels.  The others
   render at 13.92 pixels.  It wraps.
 - Evidence :: ~test_every_panel_title_in_the_column_is_the_same_size~ in the
   Accessible theme.
-- Action :: Find the rule that scales that one title and drop it.
+- Action :: Fixed.  The Accessible theme's bump for that panel skips its header
+  row.
 
 *** QA-UI-18: Manage HP has no target before combat
 
@@ -478,11 +498,13 @@ The suite did not cover these:
 
 *** QA-UI-22: Small polish
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: The ⚙ tooltip still says "Set Theme".  The popover holds Profile
   too.  In the dice log the "d20" source chip shrinks to "d.." on advantage and
   disadvantage rows.
-- Action :: Rename the tooltip to "Settings".  Let the chip show its text.
+- Action :: Fixed.  The tooltip says Settings.  The chip keeps its width since
+  the turn sweep.  The column d20 scenario now checks it.
 
 ** Accounts, persistence and the CLI
 
@@ -561,6 +583,7 @@ The suite did not cover these:
 
 *** QA-ACCT-06: A server restart signs every DM out and loses edits quietly
 
+- Status :: partly fixed
 - Severity :: minor
 - Steps :: Restart the server in the middle of a fight.  Change HP in the open
   tab.
@@ -572,16 +595,19 @@ The suite did not cover these:
   sessions live in memory.
 - Evidence :: ~test_a_server_restart_keeps_the_dm_signed_in~ and
   ~test_an_open_tab_tells_the_dm_to_sign_in_again_after_a_restart~
-- Action :: Keep sessions in the database.  Turn a 401 into a prompt to sign in
-  again.
+- Action :: Partly fixed.  A 401 on a save now says to sign in again.  The tab
+  keeps the fight in the browser, so a reload shows it and the next sign-in
+  keeps it live.  Sessions still live in memory.  The foundation's runner builds
+  a ~MemoryStore~ itself, so a lasting store needs a rust-template change.
 
 *** QA-ACCT-07: Form errors are not announced
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A wrong password shows a paragraph with no role.  A screen reader
   says nothing.  The account page's errors are the same.
 - Evidence :: ~test_a_sign_in_error_is_announced_to_screen_readers~
-- Action :: Give the inline errors ~role="alert"~.
+- Action :: Fixed.  The sign-in and account errors carry ~role="alert"~.
 
 *** QA-ACCT-08: The sign-in form hides the server's reasons
 
@@ -598,6 +624,7 @@ The suite did not cover these:
 
 *** QA-ACCT-09: The sign-in throttle trusts any forwarded address
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Make 10 bad attempts.  Send an 11th with a made-up ~X-Forwarded-For~
   header.
@@ -607,14 +634,18 @@ The suite did not cover these:
   client can lock every DM out for up to a minute.  Good sign-ins count toward
   the ten.
 - Evidence :: ~test_a_forged_forwarded_for_header_does_not_dodge_the_throttle~
-- Action :: Trust the header only from a configured proxy.  Otherwise key the
-  bucket on the connection's address.
+- Action :: Fixed.  The header counts only with ~--trust-forwarded-for~.  Then
+  only its last entry counts.  The proxy wrote that one.  A direct deployment
+  still shares one bucket.  Keying by connection needs the foundation to pass
+  the peer address on.  Good sign-ins still count toward the ten.
 
 *** QA-ACCT-10: A wrong current password reads "Server returned 401."
 
+- Status :: fixed
 - Severity :: minor
 - Evidence :: ~test_a_wrong_current_password_is_refused_with_a_reason~
-- Action :: Say "Current password is incorrect."
+- Action :: Fixed.  The server answers a wrong current password with a 403 and
+  "Current password is incorrect".  The account page shows that.
 
 *** QA-ACCT-11: A password change leaves other devices signed in
 
@@ -626,57 +657,68 @@ The suite did not cover these:
 
 *** QA-ACCT-12: A request with no session hears "Invalid email or password"
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: All 21 protected endpoints answer 401.  That is right.  Each one
   blames a password nobody typed.
 - Evidence ::
   ~test_a_caller_without_a_session_is_not_told_their_password_is_wrong~
-- Action :: Give the unauthorized case its own message.  "Sign in required"
-  would do.
+- Action :: Fixed.  A request with no session hears "Sign in required".
 
 *** QA-ACCT-13: Some stores accept JSON of any shape
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A ~PUT~ of ~{"zzz":1}~ succeeds on the encounter saves, the
   compendium saves and the treasure profiles.  Malformed JSON is refused well
   everywhere.  No request gave a 500 or logged an error.
 - Evidence :: ~test_stores_refuse_a_body_of_the_wrong_shape~
-- Action :: Check save bodies the way ~PUT /api/encounter~ already does.
+- Action :: Fixed.  A named save needs a ~creatures~ list.  A compendium save
+  may also be the bare list older saves used.  Each treasure profile must be an
+  object.
 
 *** QA-ACCT-14: CLI reset-password blames the password for an unknown email
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: ~users reset-password~ for an unknown email says "Invalid email or
   password".  The other subcommands name the missing user.  The exit code is 1.
   That is right.
 - Evidence :: ~test_reset_password_for_an_unknown_email_names_the_problem~
-- Action :: Reuse ~db::user_by_email~ here.
+- Action :: Fixed.  The command names the unknown email.  It still checks the
+  password's length first.
 
 *** QA-ACCT-15: Importing a draft file twice imports it twice
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The CLI's help says a re-import changes nothing.  A file of drafts
   without ids gets fresh ids on each run.  The second run adds copies.
 - Evidence :: ~test_importing_a_draft_file_twice_does_not_duplicate_it~
-- Action :: Skip drafts that match an existing creature or correct the help.
+- Action :: Fixed.  The import skips a creature that matches an existing one
+  apart from its id and timestamps.  The help says so.
 
 *** QA-ACCT-16: A mistyped data dir makes an empty database
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: ~compendium count --data-dir ./typo~ makes the folder and a new
   database.  It prints 0 and exits 0.  An operator could think the data is gone.
 - Evidence ::
   ~test_inspecting_a_mistyped_data_dir_fails_instead_of_creating_one~
-- Action :: Make the read-only subcommands refuse a missing database.
+- Action :: Fixed.  The read-only subcommands refuse a missing database and
+  create nothing.  Import, dice clear and reset-password still create one.
 
 *** QA-ACCT-17: The compendium page asks for sign-in but offers no link
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The Server option says to sign in.  The compendium page has no app
   bar and no link.  Server is also picked by default for an anonymous DM.
 - Evidence ::
   ~test_the_compendium_page_offers_a_way_to_sign_in_for_server_saves~
-- Action :: Reuse the sign-in link from ~View.Modal.SaveLoad~.
+- Action :: Fixed.  Both compendium modals show the Sign in link beside the
+  nudge.  Server stays the default.
 
 *** QA-ACCT-18: Leave feedback mails an address with no domain
 
@@ -703,9 +745,12 @@ The suite did not cover these:
 
 *** QA-ACCT-21: Sign-in toasts cover the app bar
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: This is QA-UI-13 at sign-in.  The "Imported 0 creatures" toast is
   noise.  "1 creatures" is a grammar slip.
+- Action :: Fixed.  Toasts sit below the app bar.  Sign-in no longer reports an
+  empty import.  One creature reads as one.
 
 *** QA-ACCT-22: Each device's boot writes the treasure table back
 
@@ -722,6 +767,7 @@ The suite did not cover these:
 
 *** QA-BUILD-01: The placeholder rename field opens without focus
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Add a placeholder.  Click its name.
 - Expected :: The cursor is in the field.
@@ -730,68 +776,83 @@ The suite did not cover these:
   same fault as QA-TURN-09.
 - Evidence ::
   ~test_clicking_a_placeholder_name_puts_the_cursor_in_the_rename_field~
-- Action :: Focus the field from ~PlaceholderRenameOpen~.
+- Action :: Fixed.  Opening the rename focuses the field.  The AC editor and
+  Manage HP's amount field take focus the same way.
 
 *** QA-BUILD-02: Enter on a Quick Add row does nothing
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The rows take focus but answer only clicks.  The Random Encounter
   pin and exclude rows are built the same way.
 - Evidence :: ~test_a_keyboard_dm_adds_a_creature_from_quick_add_with_enter~
-- Action :: Make them real buttons or handle Enter and Space.
+- Action :: Fixed.  Enter and Space press the Quick Add rows, the Random
+  Encounter pin and exclude rows, and the lore member pickers.
 
 *** QA-BUILD-03: The Encounter XP scope is out of keyboard reach
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Tab skips from the pin button to "Show calculations".  The Replace
   picker's options are built the same way.
 - Evidence :: ~test_a_keyboard_dm_can_reach_the_encounter_xp_scope~
-- Action :: Make the options focusable and give them key handling.
+- Action :: Fixed.  Both lists hold one tab stop.  Enter, Space and the arrow
+  keys pick, and focus follows the pick.
 
 *** QA-BUILD-04: Include minions adds none to small rolls but keeps their budget
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: One rolls never get minions.  Few rolls got them in at most 3 of 20
   rolls.  A fifth of the budget is set aside for minions anyway.  For 4 level-1
   characters at Low, One rolls 100 to 200 XP without minions.  It always rolls
   100 XP with them.
 - Evidence :: ~test_include_minions_adds_minions_or_is_unavailable~
-- Action :: Hold back minion budget only when the scale has room.  Otherwise
-  disable the option for One.
+- Action :: Fixed.  Minions keep two places and a fifth of the budget only when
+  a main group fits beside them.  For One the option is disabled.
 
 *** QA-BUILD-05: Few and Many rolls often bring fewer creatures than promised
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: For 4 level-1 characters, a Low Few roll gave 1 creature in 4 of 10
   rolls.  A Moderate Many roll gave 2 or 3 creatures in half the rolls.  The
   first slot may take the whole budget.  Later slots are then skipped.
 - Evidence :: ~test_scale_few_and_many_keep_their_promised_creature_counts~
-- Action :: Cap each slot at its share of the budget.
+- Action :: Fixed.  Each slot spends at most its share.  A Many slot brings at
+  least two creatures.
 
 *** QA-BUILD-06: About one default roll in seven lands a band low
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Of 100 Moderate rolls at 300 XP, 14 landed at 200 or 150 XP.  The
   app's own difficulty panel calls those Low.
 - Evidence :: ~test_the_default_roll_lands_in_the_moderate_band~
-- Action :: Let the top-up pass run when a roll is well under budget.
+- Action :: Fixed.  A slot prefers creatures that spend at least three fifths of
+  its share.  The top-up pass was not the cause.  At level 1 four cheap
+  creatures filled the count cap before it could run.
 
 *** QA-BUILD-07: By creature keeps loot that was removed or re-rolled
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Roll treasure for three goblins.  Remove a coin row.
 - Expected :: The breakdown matches the totals.
 - Actual :: The totals drop the row.  Each creature still lists it.
 - Evidence :: ~test_removing_a_coin_row_updates_the_by_creature_breakdown~
-- Action :: Rebuild or drop the breakdown whenever the roll changes.
+- Action :: Fixed.  Removing a row takes it from the creature that rolled it.  A
+  re-roll replaces each creature's share, or drops the breakdown when the
+  creatures have changed.
 
 *** QA-BUILD-08: An anonymous DM's Tune profiles vanish on reload
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Save is offered with no warning.  The profiles live only in memory.
   Every other anonymous preset is kept in localStorage.
 - Evidence :: ~test_an_anonymous_dms_named_profile_survives_a_reload~
-- Action :: Keep them in localStorage or say that saving needs an account.
+- Action :: Fixed.  An anonymous DM's profiles are kept in localStorage.
 
 *** QA-BUILD-09: Revert to bundled comes undone on reload
 
@@ -835,21 +896,24 @@ The suite did not cover these:
 
 *** QA-BUILD-12: A JSON file that is not an encounter floods the error
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Loading a compendium file fills the Load dialog with stat block
   text.  The reason sits at the very end.
 - Evidence ::
   ~test_a_json_file_that_is_not_an_encounter_fails_with_a_short_message~
-- Action :: Show a fixed "not an encounter file" message.
+- Action :: Fixed.  The dialog says the file is not an encounter file.
 
 *** QA-BUILD-13: A refused save or rename shows only a status code
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A rename to a taken name says "Server returned 409."  A save named
   "Act 1/Scene 2" says "Server returned 400."  The server knows the reason in
   both cases.
 - Evidence :: ~test_a_refused_save_name_says_why~
-- Action :: Map these to plain messages.
+- Action :: Fixed.  A taken name and a name the server cannot store each get a
+  plain message.
 
 *** QA-BUILD-14: A keyboard user cannot pick a saved encounter
 
@@ -866,29 +930,35 @@ The suite did not cover these:
 
 *** QA-BUILD-15: Random Encounter names run under the CR and XP
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: "Earth Elemental", "Polar Bear" and "White Dragon Wyrmling" wrap
   under the numbers and become hard to read.
 - Evidence :: ~test_roll_result_rows_keep_the_name_clear_of_the_cr~
-- Action :: Give the name column room or let the row wrap.
+- Action :: Fixed.  The row wraps.  The name keeps its longest word whole.  The
+  CR, XP and buttons move down when there is no room.
 
 *** QA-BUILD-16: Treasure and result controls lack usable names
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Seven rows of Fewer, Normal and More buttons do not name their row
   or say which is pressed.  All seven switches are named "☐ None".  The profile
   delete button is named "🚫".  Every rolled row's button is "Remove this item".
   The table's coin fields have no names.  The results have no list or table
   structure.
-- Action :: Name each control with its context and its pressed state.
+- Action :: Fixed.  Each knob row is a named group whose buttons say which is
+  pressed.  Each switch, delete button and remove button names its row, profile
+  or item.  The table's coin fields carry names.  The results were already lists
+  in Chromium and Firefox.
 
 *** QA-BUILD-17: Quick Add's replace mode is unreachable
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: Commit 923e0ec removed the only button that opened it.  The Replace
   editor took over that job.
-- Action :: Delete the replace branches from Quick Add's state, update module
-  and message.
+- Action :: Fixed.  The replace branches are gone from Quick Add.
 
 *** QA-BUILD-18: The Quick Add search matches more than names
 
@@ -937,24 +1007,27 @@ The suite did not cover these:
 
 *** QA-FIGHT-02: The card's AC field opens without focus
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Click a card's AC.  Type 16 and press Enter.
 - Expected :: AC becomes 16.
 - Actual :: The keys go nowhere and the field stays open in both browsers.  This
   is the same fault as QA-TURN-09.
 - Evidence :: ~test_typing_straight_after_clicking_the_armor_class_edits_it~
-- Action :: Focus the field from ~HpEditStart~ with the existing
-  ~Effects.focusField~.
+- Action :: Fixed.  The field takes focus when it opens.  It opens empty with
+  the value as its placeholder.  Typing replaces it.
 
 *** QA-FIGHT-03: A natural 20 revival is not marked Bloodied
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Drop a Goblin Warrior to 0.  Begin death saves.  Roll a natural 20.
 - Expected :: Its 1 of 10 hit points shows as Bloodied.
 - Actual :: It shows in green.  ~Update.DeathSave.applyResult~ sets HP without
   working out Bloodied.
 - Evidence :: ~test_a_creature_revived_by_a_natural_twenty_is_bloodied~
-- Action :: Write the 1 HP through ~HpChange.setCurrentHp~.
+- Action :: Fixed.  The revival writes its hit point through
+  ~HpChange.setCurrentHp~.
 
 *** QA-FIGHT-04: Damage at 0 HP adds no failure and massive damage never kills
 
@@ -995,15 +1068,18 @@ The suite did not cover these:
 
 *** QA-FIGHT-07: The bundled Black Pudding names its Split reaction Parry
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: In ~crates/lib/data/bundled-creatures.json~ the pudding's reaction
   holds Split's text under the name Parry.  Parry is on the list of plain
   reactions.  The card shows no badge for it.  The Ochre Jelly's Split shows.
 - Evidence :: ~test_the_black_pudding_shows_its_split_reaction~
-- Action :: Rename the reaction to Split in the bundle.
+- Action :: Fixed.  The bundle names the reaction Split and flags the pudding as
+  having one.  The bundle version is now 5.
 
 *** QA-FIGHT-08: The halves of a Bloodied pudding are not Bloodied
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Bring a pudding to 33 of 68.  Split it with Duplicate's Pudding mode.
 - Expected :: Both halves at 16 of 34 show Bloodied.
@@ -1011,7 +1087,8 @@ The suite did not cover these:
   split also ignores the 2024 rule that the pudding must have at least 10 HP and
   be Medium or larger.
 - Evidence :: ~test_the_halves_of_a_bloodied_pudding_are_bloodied~
-- Action :: Work out Bloodied after halving.
+- Action :: Fixed.  Bloodied is worked out after halving.  The split's size and
+  hit point rule is still the DM's call.
 
 *** QA-FIGHT-09: Begin combat can open on a creature that is down
 
@@ -1042,6 +1119,7 @@ The suite did not cover these:
 
 *** QA-FIGHT-11: An unsaved area Save Chain never resolves
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Build an area chain without saving it.  Mark a creature in the area.
   Advance to its turn.
@@ -1050,11 +1128,13 @@ The suite did not cover these:
   same.  From the code, an edited chain also resolves from the saved preset and
   not the form.
 - Evidence :: ~test_an_area_chain_resolves_without_being_saved_as_a_preset~
-- Action :: Store the chain on the marker.  Failing that, disable "Mark in area"
-  until the chain is saved and say why.
+- Action :: Fixed.  Each marked chain is remembered as it was applied.  Its
+  marker resolves against that.  After a reload a marker falls back to the
+  preset of its name.
 
 *** QA-FIGHT-12: Next turn wipes a half-built condition or chain
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Half fill the Condition/Effect or Save Chain form.  Press Next turn.
 - Expected :: The form survives.
@@ -1062,17 +1142,20 @@ The suite did not cover these:
   ~Model.aimEditorsAtTarget~ rebuilds every editor from scratch.
 - Evidence :: ~test_a_condition_being_built_survives_the_next_turn~ and
   ~test_a_chain_being_built_survives_the_next_turn~
-- Action :: Re-aim the editor but keep the form.
+- Action :: Fixed.  An editor whose target stays keeps its form.  Save Chain
+  keeps its form when the target changes too.
 
 *** QA-FIGHT-13: The beginning and end toggle is out of keyboard reach
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: This is the QA-TURN-08 fault in the Condition/Effect and Save Chain
   duration rows.  ~style.css~ hides the radios with ~display: none~.
-- Action :: Fix it with QA-TURN-08.
+- Action :: Fixed with QA-TURN-08.
 
 *** QA-FIGHT-14: Fight controls lack names
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The card's AC field has no name.  Condition/Effect's Custom and Note
   fields have labels with no ~for~.  The "turns of" picker has no name.  Save
@@ -1080,8 +1163,9 @@ The suite did not cover these:
   condition" without the condition.  Two groups of "Manual" radios share a name
   with no group label.  The death-save controls omit the creature.  Bloodied
   shows only by colour.
-- Action :: Tie labels with ~for~ and ~id~.  Put the names into the labels.  Use
-  fieldsets for radio groups.
+- Action :: Fixed.  Labels are tied to their fields.  The chip ×, the death-save
+  controls and the AC field name what they act on.  The radio rows are named
+  groups.  Bloodied is spoken beside the hit points.
 
 *** QA-FIGHT-15: Roll saves applies a formula's average damage
 
@@ -1132,10 +1216,11 @@ The suite did not cover these:
 
 *** QA-FIGHT-21: The damage hint stays in warning colour
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: Save Chain's "req. to apply dmg" stays in warning colour after an
   amount is typed.
-- Action :: Show the hint only while the amount is empty.
+- Action :: Fixed.  The hint shows only while the amount is empty.
 
 ** The compendium and custom creatures
 
@@ -1160,32 +1245,38 @@ The suite did not cover these:
 
 *** QA-COMP-02: A deep link selects the creature but leaves it off screen
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Open ~/compendium?creature=<id>~ or use 📖 on a card's stat block.
 - Expected :: The row scrolls into view.
 - Actual :: The list stays at the top.  The scroll looks for ~compendiumListId~.
   Only the loading skeleton carries that id.
 - Evidence :: ~test_deep_link_scrolls_the_chosen_row_into_view~
-- Action :: Put the id on the loaded list too.
+- Action :: Fixed.  The loaded list carries the id the scroll looks for.
 
 *** QA-COMP-03: "Added 1 creatures"
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: Add Selected with one row toasts "Added 1 creatures to encounter".
   The sign-up import toast has the same slip.
 - Evidence :: ~test_add_selected_with_one_creature_reads_as_singular~
-- Action :: Pluralize as the group and lore toasts already do.
+- Action :: Fixed.  Every creature count picks its word through one shared
+  helper.  The sign-up toast already read right.
 
 *** QA-COMP-04: Newest first puts a signed-out creature last
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A creature made while signed out is stored with creation time 0.
   Newest first then puts Aboleth on top.  Signed in, it works.
 - Evidence :: ~test_newest_first_puts_a_creature_made_while_signed_out_on_top~
-- Action :: Stamp the current time on create and duplicate while signed out.
+- Action :: Fixed.  A signed-out create, duplicate or edit stamps the current
+  time.
 
 *** QA-COMP-05: "/" and Esc do nothing in a new compendium tab
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Open the compendium tab.  Pick a creature and press "/".  Open Reset
   and press Esc.
@@ -1196,7 +1287,8 @@ The suite did not cover these:
   the hidden panel.
 - Evidence :: ~test_slash_jumps_to_the_search_box~ and
   ~test_escape_backs_out_of_the_reset_dialog~
-- Action :: Skip the column's key handling on the compendium route.
+- Action :: Fixed.  The column takes Esc only on the encounter page.  The
+  compendium tab keeps its own keys.
 
 *** QA-COMP-06: New creatures do not reach the encounter tab until it reloads
 
@@ -1218,38 +1310,45 @@ The suite did not cover these:
 
 *** QA-COMP-07: The editor saves a creature with 0 max HP
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Max HP of 0 saves.  The code has no range check.  Negative values
   save too.
 - Evidence :: ~test_editor_rejects_a_creature_with_no_hit_points~
-- Action :: Require at least 1.
+- Action :: Fixed.  The editor refuses a Max HP below 1.
 
 *** QA-COMP-08: The editor quietly drops entries it cannot save
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Add the tag "swamp witch" and an action with no name.  Press Create.
 - Expected :: A message names the problem.
 - Actual :: The creature saves and both entries are gone.  Unnamed skills and
   custom sections vanish the same way.  So do save rows without a whole number.
 - Evidence :: ~test_editor_warns_before_dropping_entries_it_cannot_save~
-- Action :: Report the problem instead of filtering the entry out.
+- Action :: Fixed.  The editor names the first entry it could not keep and stays
+  open.  A wholly blank row is still dropped.
 
 *** QA-COMP-09: Some deletes skip the confirmation
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The list's 🗑 asks first.  The editor's Delete, a group's 🗑 and a
   lore grouping's 🗑 delete at once.  The lore delete shows no toast either.
 - Evidence :: ~test_deleting_from_the_editor_asks_before_it_removes~,
   ~test_deleting_a_group_asks_first~ and
   ~test_editing_and_deleting_a_lore_grouping~
-- Action :: Route every delete through the same confirmation.
+- Action :: Fixed.  The editor's Delete, a group's 🗑 and a lore grouping's 🗑 ask
+  through the same banner as the list.  A lore delete toasts.
 
 *** QA-COMP-10: The Reset dialog promises "the original 5 creatures"
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: The bundle holds 330.
-- Evidence :: ~test_reset_dialog_counts_the_bundled_creatures_it_restores~
-- Action :: Compute the count or drop it.
+- Evidence :: ~test_reset_dialog_names_the_bundled_creatures_it_restores~
+- Action :: Fixed.  The dialog says the library returns to the bundled SRD
+  creatures.  The client only learns the count by fetching the bundle.
 
 *** QA-COMP-11: The import confirmation sits behind the Load dialog
 
@@ -1283,6 +1382,7 @@ The suite did not cover these:
 
 *** QA-COMP-14: Group initiative ignores each creature's bonus
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Make a group of three Goblin Warriors that each roll initiative.  Add
   it to the encounter.
@@ -1290,32 +1390,36 @@ The suite did not cover these:
 - Actual :: Each total equals the die.  The shared roll does the same.  A code
   comment admits it.
 - Evidence :: ~test_each_rolls_initiative_adds_each_creatures_initiative_bonus~
-- Action :: Add each creature's own bonus.
+- Action :: Fixed.  Each rolls adds each creature's own bonus.  A shared roll
+  adds the first creature's bonus.  The group still shares one total.
 
 *** QA-COMP-15: A second lore grouping with the same name replaces the first
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The id is built from the name.
 - Evidence :: ~test_two_lore_groupings_with_one_name_both_survive~
-- Action :: Give each grouping its own id or refuse a name already taken.
+- Action :: Fixed.  A new grouping takes the first free id after its name.
 
 *** QA-COMP-16: A pasted block without an Initiative line gets +0
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Paste a 2014-style block with DEX 14 and no Initiative line.
 - Expected :: An initiative bonus of +2 from DEX.
 - Actual :: +0.
 - Evidence ::
   ~test_pasted_block_without_an_initiative_line_rolls_initiative_off_dex~
-- Action :: Default to the DEX modifier.
+- Action :: Fixed.  A block with no Initiative line takes its DEX modifier.
 
 *** QA-COMP-17: Lore groupings vanish when no creature row is listed
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A search that matches nothing hides the lore section and its "+ New"
   button.  Clear All does the same.
 - Evidence :: ~test_lore_groupings_stay_listed_when_no_creature_matches~
-- Action :: Keep the lore section above the empty message.
+- Action :: Fixed.  The lore section stays above the empty message.
 
 *** QA-COMP-18: Signing out and back in wipes the account's creatures
 
@@ -1328,40 +1432,47 @@ The suite did not cover these:
 
 *** QA-COMP-19: The detail pane keeps a stale scroll and shows text through strips
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: After Create or Save the stat block opens where the editor was
   scrolled.  Text shows through a strip above the sticky action bar.  Editor
   fields show below the sticky footer in both themes.
-- Action :: Reset the pane's scroll when the editor closes.  Pin the footer to
-  the bottom.
+- Action :: Fixed.  The pane gets a fresh scroll when the editor opens or
+  closes.  The action bar and the editor footer reach across the pane's padding.
 
 *** QA-COMP-20: The straight-roll popup is white on a light stat block
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: ~#ffffff~ is written into ~style.css~ directly.  That also breaks
   the rule that colours come from CSS variables.
-- Action :: Use a theme variable with enough contrast.
+- Action :: Fixed.  A straight roll uses the theme's text colour with a halo in
+  the surface colour.
 
 *** QA-COMP-21: A tooltip got stuck in the top-left corner
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: After a signed-in Clear All, "Click to roll DEX (+0)" stayed in the
   corner.  Its trigger had likely left the page.  It did not happen again on
   demand and has no test.
-- Action :: Skip a tooltip whose trigger is no longer in the document.
+- Action :: Fixed.  A tooltip whose trigger has left the page is hidden and
+  never placed.
 
 *** QA-COMP-22: Hover text that misdescribes
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: "Add to Encounter" and "Add Selected" say they roll initiative.
   Cards arrive at 0.  The Import tooltip says "Compenidum".  The disabled Save
   in Save Compendium carries its tooltip on the button.  ~llms.org~ forbids
   that.  Chrome never shows it.
-- Action :: Fix the strings.  Wrap the disabled button in a span that carries
-  the tooltip.
+- Action :: Fixed.  The strings are corrected.  The disabled Save sits in a
+  wrapper that carries its tooltip.
 
 *** QA-COMP-23: Compendium controls lack names
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Each row is a button around a checkbox.  Every checkbox is named
   "Select for bulk action" with no creature.  The stat block's name is not a
@@ -1369,7 +1480,9 @@ The suite did not cover these:
   nothing to tell them apart.  The save ability select has no label.  Its ×
   buttons are named only ×.  The group initiative radios and the lore weight
   slider have no names.
-- Action :: Add names that say which creature or picker they belong to.
+- Action :: Fixed.  The checkboxes name their creature.  The stat block's name
+  is a heading.  The pickers, radio groups, slider, save select and × buttons
+  say what they belong to.
 
 *** QA-COMP-24: A file that is not a compendium gets a misleading warning
 
@@ -1388,26 +1501,30 @@ The suite did not cover these:
 
 *** QA-COMP-26: A request with no session hears "Invalid email or password"
 
+- Status :: fixed
 - Severity :: question
 - Actual :: This is QA-ACCT-12.
+- Action :: Fixed with QA-ACCT-12.
 
 ** Infrastructure
 
 *** QA-INFRA-01: A server built with Nix had no database migrations
 
+- Status :: fixed
 - Severity :: blocker
 - Actual :: The flake's source filter dropped the ~.sql~ files that
   ~sqlx::migrate!~ embeds.  The build still passed.  The server stopped at
   startup on a fresh data dir with "no such table: schema_meta".  On an existing
   database it would skip every newer migration.  The template's new Flake checks
   job caught it.
-- Action :: Fixed in v0.35.0.  The filter keeps ~.sql~ files now.  Check which
-  build the homelab runs.
+- Action :: Fixed.  In v0.35.0 the filter keeps ~.sql~ files.  Check which build
+  the homelab runs.
 
 *** QA-INFRA-02: A fresh data dir logs a misleading warning
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The first boot warns that edits to bundled creatures need to be made
   again.  A fresh data dir has no edits.  The check in ~compendium::store~ fires
   when creatures were added.  It should fire only when they were refreshed.
-- Action :: Warn only when ~counts.refreshed~ is above 0.
+- Action :: Fixed.  The warning fires only when creatures were refreshed.

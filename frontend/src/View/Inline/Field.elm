@@ -1,9 +1,9 @@
-module View.Inline.Field exposing (checkbox, foldHead, radio, radioWith, spin)
+module View.Inline.Field exposing (checkbox, foldHead, radio, radioWith, spin, unavailableCheckbox)
 
 {-| The small controls the editors share. One shape for every
 editor keeps the drawer reading as one form rather than several.
 
-@docs checkbox, foldHead, radio, radioWith, spin
+@docs checkbox, foldHead, radio, radioWith, spin, unavailableCheckbox
 
 -}
 
@@ -112,13 +112,23 @@ other attribute the label should wear.
 -}
 checkbox : { checked : Bool, msg : Msg, label : String, extra : List (Html.Attribute Msg) } -> Html Msg
 checkbox cfg =
-    Html.label (class "cond-checkbox" :: cfg.extra)
-        [ input
-            [ type_ "checkbox"
-            , class "cond-checkbox__box"
-            , checked cfg.checked
-            , onClick cfg.msg
-            ]
-            []
-        , span [ class "cond-radio__label" ] [ text cfg.label ]
+    checkboxWith cfg.extra [ checked cfg.checked, onClick cfg.msg ] cfg.label
+
+
+{-| A checkbox that cannot apply right now. It shows unticked and
+disabled. The reason rides the label as its tooltip, and the box
+lets hover through to it.
+-}
+unavailableCheckbox : { label : String, reason : String } -> Html Msg
+unavailableCheckbox cfg =
+    checkboxWith [ Tooltips.attr cfg.reason ]
+        [ checked False, Attr.disabled True, class "inline-btn-inert" ]
+        cfg.label
+
+
+checkboxWith : List (Html.Attribute Msg) -> List (Html.Attribute Msg) -> String -> Html Msg
+checkboxWith labelAttrs inputAttrs labelText =
+    Html.label (class "cond-checkbox" :: labelAttrs)
+        [ input (type_ "checkbox" :: class "cond-checkbox__box" :: inputAttrs) []
+        , span [ class "cond-radio__label" ] [ text labelText ]
         ]
