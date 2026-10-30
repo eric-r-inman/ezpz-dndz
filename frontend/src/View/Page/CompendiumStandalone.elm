@@ -18,6 +18,7 @@ import Html exposing (Html, div, p, section, text)
 import Html.Attributes exposing (class)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
+import View.Landmark
 import View.StatBlock
 
 
@@ -42,7 +43,7 @@ view compendiumDb id =
                             p [ class "empty" ]
                                 [ text "Creature not found in the compendium." ]
     in
-    div [ class "workspace workspace--standalone" ]
+    View.Landmark.mainRegion [ class "workspace workspace--standalone" ]
         [ section [ class "panel panel--standalone" ]
             [ div [ class "panel__body" ] [ body ] ]
         ]

@@ -16,11 +16,12 @@ usual heading-size bumps.
 import Hotkeys exposing (Hotkey)
 import Html exposing (Html, a, div, h1, h2, h3, kbd, li, p, section, text, ul)
 import Html.Attributes exposing (class, href, rel, target)
+import View.Landmark
 
 
 view : Html msg
 view =
-    div [ class "workspace workspace--standalone" ]
+    View.Landmark.mainRegion [ class "workspace workspace--standalone" ]
         [ section [ class "panel panel--standalone about-page" ]
             [ div [ class "panel__body about-page__body" ]
                 [ h1 [ class "about-page__title" ] [ text "eZpZ-dndZ" ]

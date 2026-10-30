@@ -23,6 +23,7 @@ dismiss it.
 -}
 
 import Dict
+import Effects
 import Encounter exposing (TurnPhase)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
@@ -39,18 +40,20 @@ own timer setup is already expanded closes it (a cancel).
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open name model =
-    ( case model.surface of
-        Just (SurfaceTimerSetup ui) ->
-            if ui.target == name then
-                { model | surface = Nothing }
+    let
+        next =
+            case model.surface of
+                Just (SurfaceTimerSetup ui) ->
+                    if ui.target == name then
+                        { model | surface = Nothing }
 
-            else
-                { model | surface = Just (SurfaceTimerSetup (TimerUi.fresh name)) }
+                    else
+                        { model | surface = Just (SurfaceTimerSetup (TimerUi.fresh name)) }
 
-        _ ->
-            { model | surface = Just (SurfaceTimerSetup (TimerUi.fresh name)) }
-    , Cmd.none
-    )
+                _ ->
+                    { model | surface = Just (SurfaceTimerSetup (TimerUi.fresh name)) }
+    in
+    ( next, Effects.editorFieldFocus TimerUi.turnsInputId next )
 
 
 turnsChanged : String -> Model -> ( Model, Cmd Msg )

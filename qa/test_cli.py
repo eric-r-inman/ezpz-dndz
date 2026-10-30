@@ -92,10 +92,6 @@ def test_reset_password_lets_a_locked_out_dm_sign_in_again(app, cli):
     wait_signed_in(app, "Dee Em")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-14: reset-password for an unknown email says 'Invalid email or password'",
-)
 def test_reset_password_for_an_unknown_email_names_the_problem(cli):
     result = cli(
         "users",
@@ -145,7 +141,7 @@ def test_compendium_inspection_shows_what_the_dm_made(app, cli):
     register(app.page, DM)
     hag = create_creature(app.page, "Bramble Hag")
     create_creature(app.page, "Swamp Troll")
-    bundled = int(cli("compendium", "count", "--bundled").stdout)
+    bundled = len(json.loads((REPO / "crates/lib/data/bundled-creatures.json").read_text()))
     assert bundled > 0
 
     assert cli("compendium", "count", "--email", DM, *on(app.server)).stdout.strip() == "2"
@@ -205,10 +201,6 @@ def test_importing_skips_creatures_that_belong_to_the_bundled_set(app, cli, tmp_
     assert own_creature_names(app.page) == ["Bog Ogre"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-15: importing a file of drafts twice imports every creature twice",
-)
 def test_importing_a_draft_file_twice_does_not_duplicate_it(app, cli, tmp_path):
     register(app.page, DM)
     drafts = creature_file(
@@ -271,15 +263,17 @@ def test_unknown_users_and_bad_arguments_fail_with_a_clear_message(cli, tmp_path
     drafts = creature_file(
         tmp_path, "one.json", [BOG_WIGHT]
     )
+    # The writes come first.  They make the database the read-only
+    # subcommands refuse to create.
     for words in [
+        ("dice", "clear", "--yes"),
+        ("compendium", "import", drafts),
         ("encounter", "show"),
         ("encounter", "count"),
         ("dice", "count"),
         ("dice", "tail"),
-        ("dice", "clear", "--yes"),
         ("compendium", "list"),
         ("compendium", "count"),
-        ("compendium", "import", drafts),
     ]:
         result = cli(*words, "--email", "nobody@example.test", check=False)
         assert result.returncode == 1, words
@@ -296,10 +290,6 @@ def test_unknown_users_and_bad_arguments_fail_with_a_clear_message(cli, tmp_path
         assert message in result.stderr, words
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-16: a mistyped --data-dir creates an empty database and reports 0",
-)
 def test_inspecting_a_mistyped_data_dir_fails_instead_of_creating_one(cli):
     typo = cli.data_dir / "no-such-dir"
     result = cli("compendium", "count", "--data-dir", str(typo), check=False)

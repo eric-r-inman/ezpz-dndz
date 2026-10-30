@@ -23,6 +23,7 @@ a `creatureId` or whose compendium source has been deleted.
 import Compendium
 import Encounter exposing (Creature)
 import Encounter.Roster
+import HpChange
 import Model exposing (Model, Surface(..))
 import Msg exposing (DuplicateMode(..), Msg)
 import Set
@@ -243,36 +244,36 @@ puddingPair src enc =
 {-| One pudding half, sans final name. Source's HP halved
 (rounded down via integer divide), conditions / notices /
 posture / death-save / legendary-pip state all cleared. Note
-and memo are preserved — they're identity, not status.
+and memo are preserved — they're identity, not status. Bloodied
+is worked out from the halved hit points.
 -}
 puddingHalf : Creature -> Creature
 puddingHalf src =
-    { src
-        | currentHp = src.currentHp // 2
-        , maxHp = src.maxHp // 2
-        , originalMaxHp = src.maxHp // 2
-        , tempHp = 0
-        , conditions = []
-        , saveNotices = []
-        , concentrating = False
-        , concentrationNote = ""
-        , hiding = False
-        , dodging = False
-        , flying = False
-        , flyHeight = 0
-        , bloodied = False
-        , deathSaves = Encounter.emptyDeathSaves
-        , acceptingDeathSaves = False
-        , reactionUsed = False
-        , rechargeAbilities = []
-        , readied = False
-        , inactive = False
-        , timer = Nothing
-        , selected = False
-        , legendaryActionsUsed = Set.empty
-        , legendaryResistanceUsed = Set.empty
-        , specialReactionsUsed = Set.empty
-    }
+    HpChange.setCurrentHp (src.currentHp // 2)
+        { src
+            | maxHp = src.maxHp // 2
+            , originalMaxHp = src.maxHp // 2
+            , tempHp = 0
+            , conditions = []
+            , saveNotices = []
+            , concentrating = False
+            , concentrationNote = ""
+            , hiding = False
+            , dodging = False
+            , flying = False
+            , flyHeight = 0
+            , deathSaves = Encounter.emptyDeathSaves
+            , acceptingDeathSaves = False
+            , reactionUsed = False
+            , rechargeAbilities = []
+            , readied = False
+            , inactive = False
+            , timer = Nothing
+            , selected = False
+            , legendaryActionsUsed = Set.empty
+            , legendaryResistanceUsed = Set.empty
+            , specialReactionsUsed = Set.empty
+        }
 
 
 

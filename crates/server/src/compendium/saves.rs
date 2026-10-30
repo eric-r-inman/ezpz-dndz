@@ -375,6 +375,17 @@ pub fn validate_save_name(raw: &str) -> Result<String, CompendiumStoreError> {
   Ok(trimmed.to_string())
 }
 
+/// The body stays opaque, but it has to be a save of creatures.  The
+/// frontend sends an object holding a `creatures` list.  Older saves
+/// are the bare list.
+pub fn validate_save_body(body: &Value) -> Result<(), CompendiumStoreError> {
+  if body.is_array() || body.get("creatures").is_some_and(Value::is_array) {
+    Ok(())
+  } else {
+    Err(CompendiumStoreError::SaveBodyInvalid)
+  }
+}
+
 fn epoch_millis() -> i64 {
   SystemTime::now()
     .duration_since(UNIX_EPOCH)
