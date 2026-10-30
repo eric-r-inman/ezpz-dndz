@@ -11,7 +11,8 @@ custom creatures and groups.
 
 The suite holds 443 scenarios.  The first full run passed 432 cases and held 156
 as known faults.  A known fault is a strict ~xfail~ that names its finding
-below.  No case failed.  A finding marked fixed has had its ~xfail~ removed.
+below.  No case failed.  A finding marked fixed has had its ~xfail~ removed.  A
+finding marked declined keeps today's behaviour by the maintainer's decision.
 Some findings show in more than one area.  A repeat points to its first entry.
 The table counts a repeat in each area it shows in.
 
@@ -49,7 +50,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 11. Make the app work by keyboard and screen reader.  Start with QA-UI-05,
     QA-UI-14, QA-TURN-08, QA-TURN-09 and QA-BUILD-14.  Done.
 12. Close the gaps against the 2024 rules.  See QA-FIGHT-04, QA-FIGHT-05,
-    QA-TURN-04 and QA-TURN-05.  Done except QA-TURN-05.  That one is a question.
+    QA-TURN-04 and QA-TURN-05.  Done.  QA-TURN-05 is declined.
 13. Harden sign-in and sessions.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
     QA-ACCT-09.  Done as far as this repository reaches.  The rest needs
     rust-template.  QA-ACCT-05 is a question.
@@ -57,7 +58,8 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
     QA-BUILD-05 and QA-BUILD-06.  Done.
 15. Fit the phone layout.  See QA-UI-01.  Done.
 16. Decide each open question.  Every entry marked question needs a decision
-    before it can be fixed or closed.
+    before it can be fixed or closed.  QA-TURN-05, QA-FIGHT-06 and QA-FIGHT-18
+    are declined.
 17. Sweep the remaining minor and cosmetic entries.  Done.  QA-COMP-12 needs a
     decision and joins item 16.  So does the contact address in QA-UI-02 and
     QA-ACCT-18.
@@ -146,6 +148,7 @@ The suite did not cover these:
 
 *** QA-TURN-05: Legendary pools always count the lair
 
+- Status :: declined
 - Severity :: question
 - Steps :: Add an Adult Red Dragon.
 - Expected :: Outside its lair the dragon has 3 legendary actions.  The
@@ -153,8 +156,8 @@ The suite did not cover these:
 - Actual :: The card shows 4 legendary actions and 4 legendary resistances.
   Nothing switches the lair off.
 - Evidence :: ~test_legendary_actions_refresh_at_the_start_of_the_dragons_turn~
-- Action :: Add an in-lair toggle for the encounter that starts off.  The other
-  choice is to show the lair's extra use apart from the base pool.
+- Action :: Declined.  A DM knows the fourth legendary action is the lair's.
+  The pools keep counting it.
 
 *** QA-TURN-06: A re-sort mid-fight drops the DM's manual order
 
@@ -1058,13 +1061,14 @@ The suite did not cover these:
 
 *** QA-FIGHT-06: Legendary creatures always get their lair pools
 
+- Status :: declined
 - Severity :: minor
 - Actual :: This is QA-TURN-05 as a failing check.  An Adult Red Dragon shows 4
   legendary actions and 4 legendary resistances.  Its tooltip also ends with
   "Resets after 0."
-- Evidence ::
-  ~test_a_dragon_outside_its_lair_has_three_legendary_actions_and_resistances~
-- Action :: Add an in-lair toggle that starts off.
+- Evidence :: ~test_legendary_actions_refresh_at_the_start_of_the_dragons_turn~
+- Action :: Declined with QA-TURN-05.  The tooltip now says a click at 0 refills
+  the pool.
 
 *** QA-FIGHT-07: The bundled Black Pudding names its Split reaction Parry
 
@@ -1192,11 +1196,12 @@ The suite did not cover these:
 
 *** QA-FIGHT-18: Exhaustion wraps from 6 to 0
 
+- Status :: declined
 - Severity :: question
 - Actual :: Level 6 steps to a chip reading "Exhaustion: 0".  Under the 2024
   rules level 6 is death.
-- Action :: Remove the chip at 0.  Offer a step down.  Mark the creature dead at
-  6.
+- Evidence :: ~test_exhaustion_climbs_a_level_a_click_and_wraps_after_six~
+- Action :: Declined.  The level keeps wrapping from 6 to 0.
 
 *** QA-FIGHT-19: Fall damage is rolled but not dealt
 

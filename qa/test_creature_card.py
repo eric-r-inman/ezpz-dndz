@@ -309,19 +309,6 @@ def test_damage_to_a_concentrating_creature_prompts_its_save(app):
 # Legendary pools, recharge and special reactions.
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-06: every legendary creature gets its in-lair pools, with no way to say it is out of its lair",
-)
-def test_a_dragon_outside_its_lair_has_three_legendary_actions_and_resistances(app):
-    app.add("Adult Red Dragon")
-    dragon = app.card("Adult Red Dragon")
-
-    app.shot("legendary")
-    expect(readout(dragon, "Legendary Action")).to_have_text("LA: 3(3)", timeout=2000)
-    expect(readout(dragon, "Legendary Resistance")).to_have_text("LR: 3(3)", timeout=2000)
-
-
 def test_a_spent_recharge_ability_prompts_a_roll_at_the_next_turn(app):
     app.add("Adult Red Dragon")
     app.add("Ogre")

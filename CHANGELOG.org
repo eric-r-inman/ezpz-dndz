@@ -4,6 +4,8 @@
 * Upcoming
 ** Added
 ** Fixes
+1. A legendary pool's hover text says that a click at 0 refills it.  No action
+   needed.
 ** Breaking
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.

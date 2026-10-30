@@ -401,7 +401,7 @@ legendaryRemaining what remaining capacity =
         ++ String.fromInt remaining
         ++ " of "
         ++ String.fromInt capacity
-        ++ " remaining. Click to use. Resets after 0."
+        ++ " remaining. Click to use one. A click at 0 refills it."
 
 
 specialReactionSpent : String

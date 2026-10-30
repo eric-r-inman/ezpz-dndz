@@ -349,7 +349,7 @@ def test_legendary_actions_refresh_at_the_start_of_the_dragons_turn(app):
     readout(app.card("Adult Red Dragon"), "Legendary Resistance").click()
     expect(readout(app.card("Adult Red Dragon"), "Legendary Action")).to_have_text("LA: 2(4)")
     expect(readout(app.card("Adult Red Dragon"), "Legendary Action")).to_have_accessible_name(
-        "Legendary Action: 2 of 4 remaining. Click to use. Resets after 0."
+        "Legendary Action: 2 of 4 remaining. Click to use one. A click at 0 refills it."
     )
     expect(readout(app.card("Adult Red Dragon"), "Legendary Resistance")).to_have_text("LR: 3(4)")
     expect(la_strip).to_contain_text("Adult Red Dragon (2)")
