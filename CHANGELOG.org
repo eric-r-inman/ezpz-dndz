@@ -39,6 +39,8 @@
    =--yes= or a subcommand.
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.
+2. The QA report records how long compendium snapshot saves take on a release
+   build.  No action needed.
 ** Security
 1. Sign-in takes as long for an unknown email as for a wrong password.  No
    action needed.

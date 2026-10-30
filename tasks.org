@@ -424,3 +424,12 @@ Each now holds.  See QA-BUILD-04, QA-BUILD-05 and QA-BUILD-06.  Part of
 The app bar did not wrap at phone width.  Toasts covered it.  The bar now takes
 two rows on a phone.  Toasts sit below it.  See QA-UI-01 and QA-UI-13.  Part of
 [[*Work through the findings in the QA report]].
+
+* TODO Make compendium snapshot saves fast
+
+A server snapshot save takes about 2.2 seconds on a release build.  The body is
+the whole library a DM sees.  It holds 330 creatures and about 34,000 JSON
+nodes.  ~save_body.rs~ writes one row per node with one INSERT each.  A load
+reads the rows back in 0.14 seconds.  Batching the inserts keeps the node tree.
+Storing the body as one JSON value drops it.  The choice needs the maintainer.
+See QA-COMP-25.  Part of [[*Work through the findings in the QA report]].
