@@ -94,9 +94,9 @@ type Sign
 
 {-| One dice group: count + face count + sign.
 
-`count` is clamped to 1..99 by the parser. `faces` accepts any
-positive integer for forward compatibility, though the standard
-buttons stick to 4 / 6 / 8 / 10 / 12 / 20 / 100.
+The parser refuses a count below 1 and caps it at 99. `faces`
+accepts any integer from 2 up for forward compatibility, though
+the standard buttons stick to 4 / 6 / 8 / 10 / 12 / 20 / 100.
 
 -}
 type alias Dice =
@@ -437,16 +437,18 @@ groupParser =
 
 diceParser : Parser Dice
 diceParser =
-    Parser.succeed
-        (\c f ->
-            { count = clampCount c
-            , faces = clampFaces f
-            , sign = Positive
-            }
-        )
+    Parser.succeed Tuple.pair
         |= Parser.oneOf [ Parser.int, Parser.succeed 1 ]
         |. Parser.symbol "d"
         |= Parser.int
+        |> Parser.andThen
+            (\( c, f ) ->
+                if c < 1 || f < 2 then
+                    Parser.problem "no such die"
+
+                else
+                    Parser.succeed { count = Basics.min 99 c, faces = f, sign = Positive }
+            )
 
 
 foldTerm : Sign -> Term -> Acc -> Acc
@@ -535,16 +537,6 @@ stripTrailingDamage s =
 
     else
         s
-
-
-clampCount : Int -> Int
-clampCount c =
-    Basics.max 1 (Basics.min 99 c)
-
-
-clampFaces : Int -> Int
-clampFaces f =
-    Basics.max 1 f
 
 
 

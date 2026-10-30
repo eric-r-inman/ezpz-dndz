@@ -1,5 +1,5 @@
 module Update.Compendium.Bulk exposing
-    ( deleteFromBrowser, importClick, importFileChosen
+    ( deleteRequested, groupDeleteRequested, loreDeleteRequested, importClick, importFileChosen
     , importFileRead, importResponse, pendingCancel, pendingConfirm
     , resetClick, resetResponse
     , clearAll, clearClick, clearResponse, clearSelected, deleteSelected
@@ -14,7 +14,7 @@ the library or wipe a creature without one final yes.
 action the GM has queued; `pendingConfirm` dispatches to the
 right Cmd.
 
-@docs deleteFromBrowser, importClick, importFileChosen
+@docs deleteRequested, groupDeleteRequested, loreDeleteRequested, importClick, importFileChosen
 @docs importFileRead, importResponse, pendingCancel, pendingConfirm
 @docs resetClick, resetResponse
 
@@ -43,8 +43,11 @@ import Ui.Compendium
         )
 import Ui.Toast exposing (ToastKind(..))
 import Update.Compendium.Browser exposing (withCompendium)
+import Update.Compendium.Group
+import Update.Compendium.Lore
 import Update.Toast
 import Util.Http
+import Util.Number
 
 
 importClick : Model -> ( Model, Cmd Msg )
@@ -143,16 +146,41 @@ resetClick model =
     )
 
 
-deleteFromBrowser : String -> String -> Model -> ( Model, Cmd Msg )
-deleteFromBrowser id displayName model =
-    ( withCompendium
-        (\ui ->
-            { ui
-                | pending = Just (PendingDelete id displayName)
-                , bulkError = Nothing
-            }
+{-| Every compendium delete asks first through the same banner. The
+list's 🗑 and the editor's Delete both stage a creature here.
+-}
+deleteRequested : String -> String -> Model -> ( Model, Cmd Msg )
+deleteRequested id displayName =
+    staged (PendingDelete id displayName)
+
+
+groupDeleteRequested : String -> Model -> ( Model, Cmd Msg )
+groupDeleteRequested groupId model =
+    staged
+        (PendingGroupDelete groupId
+            (Dict.get groupId model.compendium.groups
+                |> Maybe.map .name
+                |> Maybe.withDefault "this group"
+            )
         )
         model
+
+
+loreDeleteRequested : String -> Model -> ( Model, Cmd Msg )
+loreDeleteRequested id model =
+    staged
+        (PendingLoreDelete id
+            (Update.Compendium.Lore.findGroup id model
+                |> Maybe.map .name
+                |> Maybe.withDefault "this lore grouping"
+            )
+        )
+        model
+
+
+staged : PendingAction -> Model -> ( Model, Cmd Msg )
+staged action model =
+    ( withCompendium (\ui -> { ui | pending = Just action, bulkError = Nothing }) model
     , Cmd.none
     )
 
@@ -206,6 +234,12 @@ pendingConfirm model =
                 _ ->
                     applyLocalCompendiumDelete id model
 
+        Just (PendingGroupDelete groupId _) ->
+            Update.Compendium.Group.delete groupId (withCompendium (\ui -> { ui | pending = Nothing }) model)
+
+        Just (PendingLoreDelete id _) ->
+            Update.Compendium.Lore.delete id (withCompendium (\ui -> { ui | pending = Nothing }) model)
+
         Just PendingClear ->
             ( model, Cmd.none )
 
@@ -243,7 +277,8 @@ applyLocalImport creatures groups model =
         |> Update.Toast.push ToastSuccess
             ("Imported "
                 ++ String.fromInt (List.length creatures)
-                ++ " creatures"
+                ++ " "
+                ++ Util.Number.pluralize "creature" "creatures" (List.length creatures)
             )
 
 
@@ -279,7 +314,8 @@ applyLocalReset model =
 
 {-| Anonymous-mode equivalent of the single-row delete wire round-
 trip. Drop the creature from the in-memory DB, clear it from
-selections, toast. The update wrapper persists the snapshot.
+selections, close an editor open on it, toast. The update wrapper
+persists the snapshot.
 -}
 applyLocalCompendiumDelete : String -> Model -> ( Model, Cmd Msg )
 applyLocalCompendiumDelete id model =
@@ -294,9 +330,34 @@ applyLocalCompendiumDelete id model =
 
                 other ->
                     other
+
+        editingIt =
+            case model.surface of
+                Just (Model.SurfaceCompendiumEdit { mode }) ->
+                    case mode of
+                        Ui.Compendium.EditExisting edited ->
+                            edited.id == id
+
+                        Ui.Compendium.CreateMode ->
+                            False
+
+                _ ->
+                    False
     in
     { model
-        | compendium =
+        | surface =
+            if editingIt then
+                Nothing
+
+            else
+                model.surface
+        , compendiumEditDraft =
+            if editingIt then
+                Nothing
+
+            else
+                model.compendiumEditDraft
+        , compendium =
             { compendium
                 | db = newDb
                 , bulkBusy = False
@@ -449,7 +510,8 @@ applyLocalClear kept model =
         |> Update.Toast.push ToastSuccess
             ("Library now has "
                 ++ String.fromInt (List.length kept)
-                ++ " creatures"
+                ++ " "
+                ++ Util.Number.pluralize "creature" "creatures" (List.length kept)
             )
 
 
@@ -491,7 +553,7 @@ importResponse result model =
                 )
                 model
                 |> Update.Toast.pushWith ToastSuccess
-                    ("Imported " ++ String.fromInt count ++ " creatures")
+                    ("Imported " ++ String.fromInt count ++ " " ++ Util.Number.pluralize "creature" "creatures" count)
                     (Cmd.batch
                         [ Compendium.Wire.fetchAll CompendiumLoaded
                         , Compendium.GroupWire.fetchAll CompendiumGroupsLoaded
@@ -532,7 +594,7 @@ clearResponse result model =
                 )
                 model
                 |> Update.Toast.pushWith ToastSuccess
-                    ("Library now has " ++ String.fromInt count ++ " creatures")
+                    ("Library now has " ++ String.fromInt count ++ " " ++ Util.Number.pluralize "creature" "creatures" count)
                     (Compendium.Wire.fetchAll CompendiumLoaded)
 
 

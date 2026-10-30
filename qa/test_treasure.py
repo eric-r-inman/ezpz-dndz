@@ -76,7 +76,7 @@ def open_tune(panel):
 
 
 def knob_row(panel, label):
-    """One Tune your rolls row.  Its buttons carry no row in their names."""
+    """One Tune your rolls row."""
     return panel.root.locator(".treasure__settings-row").filter(
         has=panel.page.locator(".treasure__settings-row-label", has_text=re.compile(f"^{label}$"))
     )
@@ -88,6 +88,19 @@ def active_knobs(panel, label):
 
 def skipped(panel, label):
     return knob_row(panel, label).get_by_role("switch").get_attribute("aria-checked") == "true"
+
+
+def test_each_knob_names_its_row_and_says_which_is_pressed(app):
+    panel = treasure_panel(app)
+    open_tune(panel)
+    amount = panel.root.get_by_role("group", name="Coins amount")
+    expect(amount.get_by_role("button", name="Normal")).to_have_attribute("aria-pressed", "true")
+    expect(amount.get_by_role("button", name="More")).to_have_attribute("aria-pressed", "false")
+    rarity = panel.root.get_by_role("group", name="Magic rarity")
+    expect(rarity.get_by_role("button", name="Higher")).to_have_attribute("aria-pressed", "false")
+    expect(panel.root.get_by_role("switch", name="Gems none")).to_have_attribute(
+        "aria-checked", "false"
+    )
 
 
 def preset(panel, name):
@@ -153,10 +166,6 @@ def contribution_coins(rows):
     return totals
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-07: By creature keeps showing loot the DM removed or re-rolled",
-)
 def test_removing_a_coin_row_updates_the_by_creature_breakdown(app):
     app.add("Goblin Warrior", count=3)
     panel = treasure_panel(app)
@@ -164,11 +173,12 @@ def test_removing_a_coin_row_updates_the_by_creature_breakdown(app):
     roll(panel, "All (individual loot)")
     panel.root.get_by_role("button", name=re.compile("By creature")).click()
     rows = panel.root.locator(".treasure__contributions-row")
+    expect(rows).to_have_count(3)
     assert contribution_coins(rows) == coins(panel.root)
 
     first = section(panel, "Coins").get_by_role("listitem").first
     removed = first.inner_text().split()[1]
-    first.get_by_role("button", name="Remove this item").click()
+    first.get_by_role("button", name=re.compile(f"^Remove [0-9,]+ {removed}$")).click()
     settle(app.page)
     assert removed not in coins(panel.root)
     app.shot("after-remove")
@@ -204,7 +214,7 @@ def test_removing_a_rolled_row_takes_it_off_the_total(app):
     before = summary(panel)
     name, count, value = gems[0]
     section(panel, "Gems").get_by_role("listitem").first.get_by_role(
-        "button", name="Remove this item"
+        "button", name=f"Remove {name}", exact=True
     ).click()
     settle(app.page)
     after = summary(panel)
@@ -404,10 +414,7 @@ def test_a_signed_in_dm_saves_loads_and_deletes_a_named_profile(app):
     chip = panel.root.get_by_role("button", name="Dragon hoard", exact=True)
     expect(chip).to_be_visible()
     app.shot("profile-saved")
-    # The delete button's only name is its glyph.
-    panel.root.locator(".treasure__settings-profile-chip").filter(
-        has=app.page.get_by_role("button", name="Dragon hoard", exact=True)
-    ).get_by_role("button", name="🚫").click()
+    panel.root.get_by_role("button", name="Delete profile Dragon hoard").click()
     expect(chip).to_have_count(0)
     expect(panel.root.get_by_text("(none saved yet)")).to_be_visible()
     app.reload()
@@ -416,10 +423,6 @@ def test_a_signed_in_dm_saves_loads_and_deletes_a_named_profile(app):
     expect(panel.root.get_by_text("(none saved yet)")).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-08: an anonymous DM's named profiles vanish on reload",
-)
 def test_an_anonymous_dms_named_profile_survives_a_reload(app):
     app.add("Ogre")
     panel = treasure_panel(app)
@@ -547,11 +550,7 @@ def test_reset_to_bundled_throws_away_the_draft(app):
 
 
 def one_row_individual_table(app, dialog, gold):
-    """Edits Individual CR 0-4 down to one row that always rolls gold gp.
-
-    The coin formula fields have no accessible names.  They are found by class
-    within the gp column.
-    """
+    """Edits Individual CR 0-4 down to one row that always rolls gold gp."""
     bracket = unfold(dialog, "CR 0–4 5 rows")
     for _ in range(4):
         bracket.get_by_role("button", name="Remove row").first.click()
@@ -560,14 +559,10 @@ def one_row_individual_table(app, dialog, gold):
         clear = bracket.get_by_role("button", name=f"Clear {coin}")
         if clear.count():
             clear.click()
-    gp = bracket.locator(".treasure-table__coin-column").filter(
-        has=app.page.locator(".treasure-table__coin-label", has_text=re.compile("^gp$"))
-    )
-    gp.get_by_role("button", name="+").click()
-    fields = gp.locator(".treasure-table__num-input")
-    fields.nth(0).fill("1")
-    fields.nth(1).fill("1")
-    fields.nth(2).fill(str(gold))
+    bracket.get_by_role("button", name="Add a gp formula to this row").click()
+    bracket.get_by_role("spinbutton", name="gp count").fill("1")
+    bracket.get_by_role("spinbutton", name="gp faces").fill("1")
+    bracket.get_by_role("spinbutton", name="gp multiplier").fill(str(gold))
     settle(app.page)
     return bracket
 
@@ -621,7 +616,13 @@ def test_a_reverted_table_stays_reverted_after_a_reload(app):
     save_one_extra_mundane_item(app)
     dialog = open_table(app)
     dialog.get_by_role("button", name="↺ Revert").click()
-    dialog.get_by_role("button", name="Confirm Revert").click()
+    # A reload before the server has dropped the table would bring it back.
+    with app.page.expect_response(
+        lambda response: response.url.endswith("/api/treasure-table")
+        and response.request.method == "DELETE"
+    ) as reverted:
+        dialog.get_by_role("button", name="Confirm Revert").click()
+    assert reverted.value.ok
     expect(dialog.get_by_role("button", name="↺ Revert")).to_have_count(0)
 
     app.reload()

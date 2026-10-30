@@ -60,10 +60,12 @@ view header model =
                 , header = header
                 , extraClass = "panel-drawer--cr-calculator"
                 , body =
-                    [ blurb
-                    , partySection model.party
-                    , scopeSection ui
-                    , resultSection model ui
+                    [ div [ class "cr-calc" ]
+                        [ blurb
+                        , partySection model.party
+                        , scopeSection ui
+                        , resultSection model ui
+                        ]
                     ]
                 }
 

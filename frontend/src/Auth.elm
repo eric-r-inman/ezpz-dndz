@@ -1,6 +1,7 @@
 module Auth exposing
     ( AuthState(..)
     , LoginMode(..)
+    , SubmitError(..)
     , User
     , isAuthenticated
     , owner
@@ -44,6 +45,17 @@ clear the email the user already typed.
 type LoginMode
     = Login
     | Register
+
+
+{-| Why a sign-in or registration did not go through. A refusal
+carries the server's own reason when it gave one. A throttled one
+also carries the seconds to wait.
+-}
+type SubmitError
+    = Refused { status : Int, reason : Maybe String, retryAfterSecs : Maybe Int }
+    | Unreachable
+    | TimedOut
+    | Unreadable
 
 
 {-| Public user projection. Mirrors the server's

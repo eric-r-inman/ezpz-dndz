@@ -31,6 +31,7 @@ import Task
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Toast exposing (ToastKind(..))
 import Update.Toast
+import Util.Number
 
 
 {-| Single-creature add from the compendium browser. Materialises
@@ -150,7 +151,9 @@ addSelectedToQueue model =
                     |> Update.Toast.push ToastSuccess
                         ("Added "
                             ++ String.fromInt (List.length instances)
-                            ++ " creatures to encounter"
+                            ++ " "
+                            ++ Util.Number.pluralize "creature" "creatures" (List.length instances)
+                            ++ " to encounter"
                         )
 
         _ ->

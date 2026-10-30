@@ -40,6 +40,7 @@ import Ui.SaveCompendium as SaveCompendiumUi
         , SaveListState(..)
         )
 import Util.Keyboard
+import View.Inline.ApplyButton as ApplyButton
 import View.Modal
 import View.Tooltips as Tooltips
 
@@ -176,8 +177,11 @@ errorBanner auth ui =
         -- a prior submit attempt with the friendlier sign-in
         -- hint.  Anonymous Server is a precondition failure, not
         -- a server error.
-        p [ class "save-modal__error save-modal__error--auth" ]
-            [ text "Sign in to save your compendium to the eZpZ-dndZ server." ]
+        div [ class "save-load__device" ]
+            [ p [ class "save-modal__error save-modal__error--auth" ]
+                [ text "Sign in to save your compendium to the eZpZ-dndZ server." ]
+            , View.Modal.signInLink
+            ]
 
     else
         case ui.error of
@@ -278,13 +282,13 @@ submitRow auth ui =
                         "Save the compendium to a file on this device"
     in
     div [ class "save-modal__buttons" ]
-        [ button
-            [ class "action-btn action-btn--green"
-            , onClick SaveCompendiumSubmit
-            , disabled blocked
-            , Tooltips.attr tooltip
-            ]
-            [ text "Save" ]
+        [ ApplyButton.view
+            { enabled = not blocked
+            , cls = "action-btn action-btn--green"
+            , msg = SaveCompendiumSubmit
+            , tip = tooltip
+            , label = "Save"
+            }
         , button
             [ class "action-btn"
             , onClick SaveCompendiumClose

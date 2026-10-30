@@ -273,7 +273,7 @@ rerunMenuToggle idx model =
 
 
 {-| Close the re-roll dropdown (no-op when nothing is open).
-Fired by the global click-outside / Esc subscriptions in
+Fired by the click-outside and Esc subscriptions in
 `Main.subscriptions` and by both menu items after they dispatch.
 -}
 rerunMenuClose : Model -> ( Model, Cmd Msg )
