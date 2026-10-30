@@ -87,10 +87,12 @@ meReceived result model =
                             -- active" matches what they see.  Skips
                             -- the GET that would otherwise overwrite
                             -- their work with the previous device's
-                            -- last save.
+                            -- last save.  The account's own live fight
+                            -- is saved under a name first.
                             ( enc
-                            , Encounter.Wire.persistEncounterCmd
+                            , Encounter.Wire.persistEncounterArchivingCmd
                                 EncounterPersisted
+                                ("Account — " ++ model.migrationDateLabel)
                                 enc
                             )
 
@@ -451,7 +453,7 @@ matters since the user submitted from `/login`, which we don't
 want them to land back on after the auth probe flips them to
 authenticated.
 -}
-response : Result Http.Error Auth.User -> Model -> ( Model, Cmd Msg )
+response : Result Auth.SubmitError Auth.User -> Model -> ( Model, Cmd Msg )
 response result model =
     case result of
         Ok _ ->
@@ -550,7 +552,7 @@ logoutDone _ model =
     -- pressed logout, the cookie is now stale or about to be, and a
     -- fresh boot at the root URL gives us the consistent post-logout
     -- state. Going to `/` (instead of just reloading the current URL)
-    -- means a sign-out from `/me` doesn't leave the URL bar pointing
+    -- means a sign-out from `/account` doesn't leave the URL bar pointing
     -- at the now-inaccessible account page.
     --
     -- `localStorage.encounter` is deliberately NOT cleared here: a
@@ -565,32 +567,60 @@ logoutDone _ model =
     )
 
 
-{-| Translate an `Http.Error` from a login / register submission
-into a one-line message the form can show. 401 / 409 / 400 each
-get a tailored line; everything else is a generic fallback.
+{-| The one line the form shows for a failed login or registration.
+The server's own reason wins. A throttled attempt also says how long
+to wait. The tailored lines below cover a reply that gave no reason.
 -}
-humanize : Http.Error -> LoginMode -> String
+humanize : Auth.SubmitError -> LoginMode -> String
 humanize err mode =
     case err of
-        Http.BadStatus 401 ->
-            "Invalid email or password."
+        Auth.Refused refusal ->
+            case refusal.reason of
+                Just reason ->
+                    sentence reason
+                        ++ (refusal.retryAfterSecs
+                                |> Maybe.map (\secs -> "  Try again in " ++ String.fromInt secs ++ " seconds.")
+                                |> Maybe.withDefault ""
+                           )
 
-        Http.BadStatus 409 ->
-            "That email is already registered."
+                Nothing ->
+                    statusLine refusal.status mode
 
-        Http.BadStatus 400 ->
-            case mode of
-                Register ->
-                    "Check your email shape, password length (≥8), and display name."
-
-                Login ->
-                    "Bad request."
-
-        Http.NetworkError ->
+        Auth.Unreachable ->
             "Couldn't reach the server.  Try again."
 
-        Http.Timeout ->
+        Auth.TimedOut ->
             "Request timed out.  Try again."
+
+        Auth.Unreadable ->
+            "Something went wrong.  Try again."
+
+
+statusLine : Int -> LoginMode -> String
+statusLine status mode =
+    case ( status, mode ) of
+        ( 401, _ ) ->
+            "Invalid email or password."
+
+        ( 409, _ ) ->
+            "That email is already registered."
+
+        ( 400, Register ) ->
+            "Check your email shape, password length (≥8), and display name."
+
+        ( 400, Login ) ->
+            "Bad request."
 
         _ ->
             "Something went wrong.  Try again."
+
+
+{-| The server words its reasons without a closing stop.
+-}
+sentence : String -> String
+sentence reason =
+    if String.endsWith "." reason then
+        reason
+
+    else
+        reason ++ "."

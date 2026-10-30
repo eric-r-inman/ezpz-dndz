@@ -144,8 +144,11 @@ errorBanner auth ui =
         -- Anonymous + Server: replace any stale 401 / network
         -- text with the friendlier sign-in hint, same wording
         -- shape as the Save Compendium modal.
-        p [ class "save-modal__error save-modal__error--auth" ]
-            [ text "Sign in to load your compendium from the eZpZ-dndZ server." ]
+        div [ class "save-load__device" ]
+            [ p [ class "save-modal__error save-modal__error--auth" ]
+                [ text "Sign in to load your compendium from the eZpZ-dndZ server." ]
+            , View.Modal.signInLink
+            ]
 
     else
         case ui.error of

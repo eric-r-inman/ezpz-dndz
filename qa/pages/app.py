@@ -10,7 +10,8 @@ import re
 from playwright.sync_api import expect
 
 NEXT_TURN = "Advance to next creature in initiative order"
-ACTIVE_MARKER = "It is this creature's turn"
+# The turn arrow on the active creature's card.  Its name carries the creature.
+ACTIVE_MARKER = re.compile(r"^It is .+'s turn$")
 DM = "dm@example.test"
 PASSWORD = "correct horse battery staple"
 BEGIN_COMBAT = re.compile("^Begin combat")
@@ -177,10 +178,13 @@ class Panel:
             )
         )
 
+    def name_pattern(self):
+        # Playwright sends a name pattern as a /regex/ literal.  A slash in a
+        # title such as Condition/Effect would end it early.
+        return re.escape(self.title).replace("/", r"\/")
+
     def fold_button(self):
-        return self.root.get_by_role(
-            "button", name="Fold this panel away, or open it back up"
-        )
+        return self.root.get_by_role("button", name=re.compile("^Fold " + self.name_pattern()))
 
     def is_open(self):
         return self.fold_button().get_attribute("aria-expanded") == "true"
@@ -198,7 +202,9 @@ class Panel:
         return self
 
     def pin_button(self):
-        return self.root.get_by_role("button", name=re.compile("^(Pin to|Unpin from) the top"))
+        return self.root.get_by_role(
+            "button", name=re.compile("^(Pin|Unpin) " + self.name_pattern())
+        )
 
     def is_pinned(self):
         return self.pin_button().get_attribute("aria-pressed") == "true"
@@ -255,5 +261,5 @@ class Card:
             expect(box).to_be_checked(checked=not was)
 
     def remove(self):
-        self.root.get_by_role("button", name="Remove", exact=True).click()
+        self.root.get_by_role("button", name=f"Remove {self.name}", exact=True).click()
         settle(self.page)

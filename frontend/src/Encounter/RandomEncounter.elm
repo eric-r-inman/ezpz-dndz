@@ -2,7 +2,7 @@ module Encounter.RandomEncounter exposing
     ( TargetDifficulty(..), targetLabel, allTargets
     , Scale(..), scaleLabel, scaleWire, scaleFromWire, allScales
     , allCreatureTypes
-    , GenParams, RollResult, generator
+    , GenParams, RollResult, generator, minionsFit
     , budgetFor
     )
 
@@ -19,11 +19,12 @@ compendium sized to fit the party's XP budget.
 The algorithm:
 
   - Filter the pool by habitat, creature type, and `xp > 0`.
-  - Reserve 20% of the budget for minions if the toggle is on.
+  - Reserve 20% of the budget and two places for minions when the
+    toggle is on and a main group still fits beside them.
   - Build a slot queue from the Scale + selected types:
     ScaleOne = 1 slot; ScaleFew = 2–3; ScaleMany = 3–4. When
-    multiple types are selected the queue cycles through them
-    so each chosen type contributes at least one species.
+    multiple types are selected the queue cycles through them.
+    The count cap can trim the queue below the number of types.
   - Fill each slot in turn, picking a creature whose XP suits
     the slot's share of the budget. Already-picked species are
     excluded so the result always contains distinct creatures.
@@ -40,7 +41,7 @@ without the full 2024 DMG composition-template model. No
 @docs TargetDifficulty, targetLabel, allTargets
 @docs Scale, scaleLabel, scaleWire, scaleFromWire, allScales
 @docs allCreatureTypes
-@docs GenParams, RollResult, generator
+@docs GenParams, RollResult, generator, minionsFit
 @docs budgetFor
 
 -}
@@ -274,12 +275,27 @@ generator params pool =
         remaining =
             max 0 (params.budget - pinnedXp)
 
+        -- Every step that spawns creatures stays under this cap.  A
+        -- Few roll never grows past 4 and a One roll stays at 1.
+        randomCountCap =
+            max 0 (scaleMaxTotal params.scale - countCreatures params.pinned)
+
+        withMinions =
+            params.includeMinions && minionsFit params.scale params.pinned
+
         ( mainBudget, minionBudget ) =
-            if params.includeMinions then
+            if withMinions then
                 ( remaining * 4 // 5, remaining // 5 )
 
             else
                 ( remaining, 0 )
+
+        mainCountCap =
+            if withMinions then
+                randomCountCap - 2
+
+            else
+                randomCountCap
     in
     if remaining == 0 then
         Random.constant
@@ -289,18 +305,8 @@ generator params pool =
         let
             pinnedIds =
                 List.map (\( c, _ ) -> c.id) params.pinned
-
-            pinnedCount =
-                countCreatures params.pinned
-
-            -- Scale's total-count cap, minus what the GM has
-            -- already pinned.  Threaded through every step that
-            -- spawns creatures so a Few roll never grows past
-            -- 4, a One roll stays at 1, etc.
-            randomCountCap =
-                max 0 (scaleMaxTotal params.scale - pinnedCount)
         in
-        mainFill params randomCountCap mainBudget filtered pinnedIds
+        mainFill params mainCountCap mainBudget filtered pinnedIds
             |> Random.andThen
                 (\main ->
                     let
@@ -317,7 +323,7 @@ generator params pool =
                             pinnedIds ++ List.map (\( c, _ ) -> c.id) main
 
                         topUpCountCap =
-                            max 0 (randomCountCap - afterMainCount)
+                            max 0 (mainCountCap - afterMainCount)
                     in
                     topUp topUpCountCap (mainBudget - mainSpent) filtered afterMainIds
                         |> Random.andThen
@@ -336,7 +342,7 @@ generator params pool =
                                     minionCountCap =
                                         max 0 (randomCountCap - afterExtrasCount)
                                 in
-                                if params.includeMinions && minionCountCap >= 2 then
+                                if withMinions && minionCountCap >= 2 then
                                     pickMinions minionCountCap minionBudget filtered afterExtrasIds
                                         |> Random.map
                                             (\minions ->
@@ -353,6 +359,15 @@ generator params pool =
                                         }
                             )
                 )
+
+
+{-| Whether a roll has room for minions beside a main group. Pinned
+creatures count against that room. The minions need two places and
+the main fill one. A One roll never has room.
+-}
+minionsFit : Scale -> List ( Creature, Int ) -> Bool
+minionsFit scale pinned =
+    scaleMaxTotal scale - countCreatures pinned >= 3
 
 
 {-| Total creature count across a list of `(creature, count)`
@@ -443,8 +458,9 @@ the active filters at this budget, fall through to the regular
 slot-based pick so the GM still gets a roll.
 
 `countCap` is the maximum total creature count the main fill
-is allowed to produce — already adjusted for pinned creatures,
-so a Scale=Few roll with 1 pinned creature has `countCap = 3`.
+may produce. Pinned creatures and the minions' two places already
+come off it. A Few roll with one pinned creature and minions off
+has `countCap = 3`.
 
 -}
 mainFill :
@@ -465,6 +481,7 @@ mainFill params countCap totalBudget pool excludedIds =
 
                         Nothing ->
                             pickMainGroups params.scale
+                                countCap
                                 params.creatureTypes
                                 totalBudget
                                 pool
@@ -473,6 +490,7 @@ mainFill params countCap totalBudget pool excludedIds =
 
     else
         pickMainGroups params.scale
+            countCap
             params.creatureTypes
             totalBudget
             pool
@@ -544,9 +562,9 @@ contains multiple species and reflects every selected type:
 
 For multi-type selections the slot queue cycles through the
 chosen types in order (`[Dragon, Fiend]` with 3 slots →
-`[Dragon, Fiend, Dragon]`), guaranteeing each type appears.
-Already-picked species are excluded so a Few/Many roll never
-produces two identical groups.
+`[Dragon, Fiend, Dragon]`). `countCap` bounds the slot count, so a
+tight cap can leave a type out. Already-picked species are excluded
+so a Few/Many roll never produces two identical groups.
 
 Per-slot count is scaled down by the slot count so the total
 creature count still feels right for the Scale knob — a
@@ -556,12 +574,13 @@ ScaleMany roll spread across 3 slots fills each slot with a
 -}
 pickMainGroups :
     Scale
+    -> Int
     -> List String
     -> Int
     -> List Creature
     -> List String
     -> Generator (List ( Creature, Int ))
-pickMainGroups scale creatureTypes totalBudget pool pinnedIds =
+pickMainGroups scale countCap creatureTypes totalBudget pool pinnedIds =
     let
         sources =
             if List.isEmpty creatureTypes then
@@ -571,23 +590,29 @@ pickMainGroups scale creatureTypes totalBudget pool pinnedIds =
                 creatureTypes
 
         slotCount =
-            case scale of
-                ScaleOne ->
-                    1
+            min countCap
+                (case scale of
+                    ScaleOne ->
+                        1
 
-                ScaleFew ->
-                    max 2 (min 3 (List.length sources))
+                    ScaleFew ->
+                        max 2 (min 3 (List.length sources))
 
-                ScaleMany ->
-                    max 3 (min 4 (List.length sources))
+                    ScaleMany ->
+                        max 3 (min 4 (List.length sources))
+                )
 
         queue =
             cycleTake slotCount sources
 
         cap =
-            perSlotCap scale slotCount
+            min (perSlotCap scale slotCount) (countCap // max 1 slotCount)
     in
-    fillSlots scale cap queue totalBudget pool pinnedIds []
+    if slotCount <= 0 then
+        Random.constant []
+
+    else
+        fillSlots scale cap queue totalBudget pool pinnedIds []
 
 
 {-| Per-slot count cap derived from the Scale's _total_ target
@@ -632,8 +657,10 @@ perSlotCap scale slots =
 slot from the type-filtered pool. Each pick deducts from the
 remaining budget; species already picked (including pinned
 ones) are excluded so every slot contributes a different
-creature. If a slot has no eligible species, it's skipped and
-its share of the budget flows to the next slot.
+creature. A slot may spend only its share of what is left, so the
+first slot cannot starve the rest. The last slot's share is
+everything left. If a slot has no eligible species, it's skipped
+and its share of the budget flows to the next slot.
 -}
 fillSlots :
     Scale
@@ -666,7 +693,7 @@ fillSlots scale cap queue budgetLeft pool excludedIds acc =
                         |> List.filter (\c -> not (List.member c.id excludedIds))
 
                 affordable =
-                    List.filter (\c -> c.xp <= budgetLeft) eligible
+                    List.filter (\c -> c.xp <= budgetThisSlot) eligible
             in
             case affordable of
                 [] ->
@@ -686,11 +713,12 @@ fillSlots scale cap queue budgetLeft pool excludedIds acc =
                             )
 
 
-{-| Pick one creature for a slot. Prefers creatures whose XP
-sits near `slotBudget / target` so the slot's count lands in
-the Scale's per-slot range; falls back to any affordable
-creature when no sweet-spot match exists. The caller hands in
-a guaranteed-non-empty `(head, tail)` so the result is total.
+{-| Pick one creature for a slot. A Many slot wants at least two of
+its creature. Among those, a pick that spends at least three fifths
+of the slot's budget is preferred. Few cheap creatures would leave
+the roll short of its difficulty. Each preference falls away when
+no creature meets it. The caller hands in a guaranteed-non-empty
+`(head, tail)` so the result is total.
 -}
 pickSlotCreature :
     Scale
@@ -700,53 +728,42 @@ pickSlotCreature :
     -> Generator ( Creature, Int )
 pickSlotCreature scale cap slotBudget ( first, more ) =
     let
-        affordable =
-            first :: more
+        countOf c =
+            slotCountFor cap slotBudget c
 
-        -- Budget-aware floor: at `cap` copies, a creature at
-        -- the floor would fill a meaningful fraction of the
-        -- slot.  Scale-dependent so the floor stays loose for
-        -- ScaleMany (allowing small swarms at any level) and
-        -- tighter for ScaleOne (boss intent — pick a creature
-        -- whose XP is at least half the slot budget).
-        --
-        -- Without this, the previous "no floor" pick would
-        -- grab a 25-XP Kobold for a 7,000-XP slot, capping
-        -- spend at `cap * 25` ≈ 100 XP and wasting 99% of the
-        -- budget.  When the floor screens everything out the
-        -- fallback below picks from the unfiltered affordable
-        -- list — kobolds still appear at low budgets because
-        -- the floor itself is low there.
-        floor_ =
+        minCount =
             case scale of
-                ScaleOne ->
-                    slotBudget // 2
-
-                ScaleFew ->
-                    slotBudget // (max 1 cap * 3)
-
                 ScaleMany ->
-                    slotBudget // (max 1 cap * 4)
+                    2
+
+                _ ->
+                    1
+
+        enough =
+            List.filter (\c -> countOf c >= minCount) (first :: more)
 
         sweetSpot =
-            List.filter (\c -> c.xp >= floor_) affordable
+            List.filter (\c -> countOf c * c.xp * 5 >= slotBudget * 3) enough
 
         pickGen =
-            case sweetSpot of
-                a :: rest ->
+            case ( sweetSpot, enough ) of
+                ( a :: rest, _ ) ->
                     Random.uniform a rest
 
-                [] ->
+                ( [], a :: rest ) ->
+                    Random.uniform a rest
+
+                ( [], [] ) ->
                     Random.uniform first more
     in
     pickGen
-        |> Random.map (\c -> ( c, slotCountFor cap slotBudget c ))
+        |> Random.map (\c -> ( c, countOf c ))
 
 
 {-| Per-slot count: budget // xp, clamped to the pre-computed
-`cap` (from `perSlotCap`). The cap is set so that the sum of
-caps across all slots stays within the Scale's intended total
-count range.
+`cap`. `pickMainGroups` derives `cap` from `perSlotCap` and the
+count cap. The sum of caps across all slots stays within the
+Scale's intended total count range.
 -}
 slotCountFor : Int -> Int -> Creature -> Int
 slotCountFor cap slotBudget creature =

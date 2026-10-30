@@ -183,6 +183,8 @@ tickTimerFor name phase enc =
     Legendary resistances do NOT reset (per long rest).
   - **Reaction reset** — `reactionUsed` flips back to False so
     the creature has a fresh reaction for the new round.
+  - **Readied action lapses.** A readied action unused by the
+    creature's next turn is lost.
 
 -}
 applyBeginOfTurn : String -> Encounter -> Encounter
@@ -194,6 +196,7 @@ applyBeginOfTurn name enc =
         |> Encounter.pruneOrphanedLinks
         |> resetLegendaryActionsFor name
         |> resetReactionFor name
+        |> lapseReadiedFor name
         |> resetSpecialReactionsFor name
         |> markSpentRechargesPendingFor name
 
@@ -209,6 +212,13 @@ resetReactionFor : String -> Encounter -> Encounter
 resetReactionFor name enc =
     Encounter.mapCreature name
         (\c -> { c | reactionUsed = False })
+        enc
+
+
+lapseReadiedFor : String -> Encounter -> Encounter
+lapseReadiedFor name enc =
+    Encounter.mapCreature name
+        (\c -> { c | readied = False })
         enc
 
 

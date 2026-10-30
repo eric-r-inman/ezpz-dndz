@@ -88,6 +88,11 @@ pub enum CompendiumStoreError {
   #[error("Saved compendium name is invalid: {reason}")]
   SaveNameInvalid { reason: &'static str },
 
+  /// A named save's body is neither a creature list nor an object
+  /// holding one.
+  #[error("Saved compendium body must hold a creatures list")]
+  SaveBodyInvalid,
+
   /// Lookup-by-id missed on the groups store.  Used by GET / PUT
   /// / DELETE `/api/compendium/groups/{id}`.
   #[error("Compendium group with id {id} was not found")]
@@ -165,7 +170,8 @@ impl IntoResponse for CompendiumStoreError {
       }
       Self::CreatureIdMismatchError { .. }
       | Self::GroupIdMismatchError { .. }
-      | Self::SaveNameInvalid { .. } => StatusCode::BAD_REQUEST,
+      | Self::SaveNameInvalid { .. }
+      | Self::SaveBodyInvalid => StatusCode::BAD_REQUEST,
       Self::BundledNotEditable { .. } => StatusCode::FORBIDDEN,
       Self::StoreError(_)
       | Self::BundledParseError { .. }

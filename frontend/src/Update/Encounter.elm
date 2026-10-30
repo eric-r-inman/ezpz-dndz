@@ -98,11 +98,8 @@ nextTurn model =
             Encounter.Lifecycle.nextTurn model.encounter
 
         endRolls =
-            Effects.autoRollCmdsFor Encounter.AutoRollAtEnd outgoingName newEnc
-                ++ Effects.areaRollCmdsFor Encounter.AtEnd outgoingName newEnc
-
-        beginRolls =
-            turnStartRolls newEnc
+            Effects.autoRollSpecsFor Encounter.AutoRollAtEnd outgoingName newEnc
+                ++ Effects.areaRollSpecsFor Encounter.AtEnd outgoingName newEnc
 
         scrollCmds =
             if model.preferences.autoScrollActiveCard then
@@ -129,17 +126,17 @@ nextTurn model =
     -- chip and the GM clicks to roll, so we don't include the
     -- recharge cmds in the turn-advance batch any more.
     ( releaseTarget { model | encounter = newEnc, flashConditions = flashes }
-    , Cmd.batch (scrollCmds ++ endRolls ++ beginRolls ++ flashCmds)
+    , Cmd.batch (Effects.rollBatch (endRolls ++ turnStartRolls newEnc) :: scrollCmds ++ flashCmds)
     )
 
 
 {-| The saves the active creature's turn starts with. These are its
 own saves set to roll then and the saves of areas it stands in.
 -}
-turnStartRolls : Encounter.Encounter -> List (Cmd Msg)
+turnStartRolls : Encounter.Encounter -> List Effects.RollSpec
 turnStartRolls enc =
-    Effects.autoRollCmdsFor Encounter.AutoRollAtBegin enc.activeName enc
-        ++ Effects.areaRollCmdsFor Encounter.AtBegin enc.activeName enc
+    Effects.autoRollSpecsFor Encounter.AutoRollAtBegin enc.activeName enc
+        ++ Effects.areaRollSpecsFor Encounter.AtBegin enc.activeName enc
 
 
 {-| A creature taking the turn lets the highlight go, so every
@@ -524,9 +521,19 @@ queueDragEnd model =
     ( { model | queueDrag = Nothing }, Cmd.none )
 
 
+{-| Removing the creature whose turn it is runs Next turn first. The
+successor's turn-start rules run. An inactive successor is passed
+over. A removal at the bottom of the queue starts the next round.
+-}
 removeCreature : String -> Model -> ( Model, Cmd Msg )
 removeCreature name model =
-    ( withEncounter (Encounter.Roster.removeCreature name) model, Cmd.none )
+    (if name == model.encounter.activeName then
+        nextTurn model
+
+     else
+        ( model, Cmd.none )
+    )
+        |> Tuple.mapFirst (withEncounter (Encounter.Roster.removeCreature name))
 
 
 {-| Drop a "Placeholder N" stub at the bottom of the queue. No
@@ -752,7 +759,7 @@ run model =
                 [ Effects.scrollActiveIntoView nextEnc.activeName ]
     in
     ( releaseTarget { model | encounter = nextEnc }
-    , Cmd.batch (scrollCmds ++ turnStartRolls nextEnc)
+    , Cmd.batch (Effects.rollBatch (turnStartRolls nextEnc) :: scrollCmds)
     )
 
 

@@ -20,7 +20,7 @@ import Url.Parser.Query as Query
   - `Home` — the encounter manager (default).
   - `Login` — sign-in / register form, reachable from the AppBar's
     Sign-in button when the user is anonymous.
-  - `Me` — placeholder for a future profile page.
+  - `Account` — the signed-in DM's account page at `/account`.
   - `About` — static "about this app" page, linked from the
     AppBar nav.
   - `CompendiumCreaturePage id` — standalone read-only stat
@@ -36,7 +36,7 @@ import Url.Parser.Query as Query
 type Route
     = Home
     | Login
-    | Me
+    | Account
     | Donate
     | About
     | CompendiumCreaturePage String
@@ -49,7 +49,7 @@ parser =
     oneOf
         [ Url.Parser.map Home top
         , Url.Parser.map Login (Url.Parser.s "login")
-        , Url.Parser.map Me (Url.Parser.s "me")
+        , Url.Parser.map Account (Url.Parser.s "account")
         , Url.Parser.map Donate (Url.Parser.s "donate")
         , Url.Parser.map About (Url.Parser.s "about")
         , Url.Parser.map CompendiumCreaturePage
