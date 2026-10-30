@@ -25,6 +25,8 @@
 11. Quick Add's search matches creature names only.  No action needed.
 12. Loading an encounter from a file asks before it replaces the fight.  No
     action needed.
+13. A device that signs in no longer writes the bundled treasure-table rows into
+    the account.  No action needed.
 ** Breaking
 1. A password change signs the account out on every other device.  Sign in again
    there with the new password.

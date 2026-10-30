@@ -779,6 +779,7 @@ The suite did not cover these:
 
 *** QA-ACCT-22: Each device's boot writes the treasure table back
 
+- Status :: fixed
 - Severity :: question
 - Actual :: A second device's boot writes the table to the server with the
   bundled rows filled in.  The DM's own edits survive.  The bundled defaults
@@ -786,7 +787,8 @@ The suite did not cover these:
   account.
 - Evidence ::
   ~test_save_chains_lore_groups_and_treasure_follow_the_dm_to_a_second_device~
-- Action :: Do not persist the table when the change came from the server.
+- Action :: Fixed.  A table that arrives from the server is not written back.
+  The DM's own edits still save.
 
 ** Building and saving an encounter
 

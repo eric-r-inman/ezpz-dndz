@@ -1391,6 +1391,12 @@ shouldPersistAfter msg =
         CompendiumFromOtherTab _ ->
             False
 
+        -- The table just came from the server with the bundled rows
+        -- filled in.  Writing it back would freeze those rows into the
+        -- account.  A later fix to the bundle would then never reach it.
+        TreasureTableLoaded _ ->
+            False
+
         _ ->
             True
 
