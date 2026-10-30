@@ -27,6 +27,7 @@ use ezpz_dndz_lib::compendium::{Creature, CreatureDraft};
 use ezpz_dndz_server::compendium::{
   BundledCompendium, CompendiumStoreError, UserCompendiumStore,
 };
+use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
@@ -194,9 +195,11 @@ pub enum CompendiumCommand {
   /// per-user compendium, allocating fresh ids and timestamps for
   /// any draft entries (entries without `id` / `created_at`).
   /// Creatures whose ids collide with the bundled set are skipped
-  /// (the bundle is read-only), and a re-import of the same file
-  /// is idempotent.  The user's existing creatures are preserved
-  /// unless `--replace` is set.
+  /// (the bundle is read-only).  A creature that matches an existing
+  /// one by id, or by everything but its id and timestamps, is
+  /// skipped too.  A re-import of the same file is idempotent, drafts
+  /// included.  The user's existing creatures are preserved unless
+  /// `--replace` is set.
   Import {
     /// Source JSON file — typically the output of `harvest` or a
     /// compendium export.  May contain either `Creature` records
@@ -302,7 +305,7 @@ async fn gather(
     Vec::new()
   };
 
-  let db = db::connect(args).await?;
+  let db = db::connect_existing(args).await?;
   let store = UserCompendiumStore::new(db.clone());
   if let Some(email) = email {
     let user = db::user_by_email(&db, email).await?;
@@ -494,6 +497,18 @@ fn harvest(
   Ok(())
 }
 
+/// A creature as JSON with its id and timestamps blanked.  An import
+/// assigns those, so two creatures with equal content are one entry.
+fn content(creature: &Creature) -> Result<Value, CompendiumCliError> {
+  serde_json::to_value(Creature {
+    id: String::new(),
+    created_at: 0,
+    updated_at: 0,
+    ..creature.clone()
+  })
+  .map_err(CompendiumCliError::SerializeError)
+}
+
 /// Promote a `CreatureDraft` to a fully-formed `Creature` by
 /// assigning a fresh UUID and stamping `created_at` /
 /// `updated_at` to the supplied epoch-millis instant.
@@ -655,8 +670,9 @@ fn infer_habitats_cmd(
 /// mirroring what `POST /api/compendium/import` does.
 ///
 /// `--replace` swaps the user's creature list wholesale; otherwise
-/// the import is additive (de-duplicated by `id` so a re-import of
-/// the same file is idempotent).
+/// the import is additive.  It skips a creature that matches an
+/// existing one by `id` or by [`content`].  A draft gets a fresh id
+/// on every run, so only its content can show it is already there.
 async fn import(
   src: &Path,
   args: &DbArgs,
@@ -715,10 +731,15 @@ async fn import(
       .list(&user.id)
       .await
       .map_err(CompendiumCliError::UserCreaturesRead)?;
+    let known = existing
+      .iter()
+      .map(content)
+      .collect::<Result<Vec<Value>, _>>()?;
     let mut added = 0usize;
     for creature in incoming {
-      if existing.iter().any(|e| e.id == creature.id) {
-        // Idempotent re-import — skip.
+      if existing.iter().any(|e| e.id == creature.id)
+        || known.contains(&content(&creature)?)
+      {
         continue;
       }
       store

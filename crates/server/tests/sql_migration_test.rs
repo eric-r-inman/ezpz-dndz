@@ -54,7 +54,7 @@ async fn app_state_for_dir(dir: &TempDir) -> AppState {
   let db = Db::connect(&default_sqlite_url(dir.path()))
     .await
     .expect("test database");
-  AppState::assemble(base, db, &paths, None)
+  AppState::assemble(base, db, &paths, None, false)
     .await
     .expect("app state assemble")
 }

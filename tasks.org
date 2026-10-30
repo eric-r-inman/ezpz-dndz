@@ -392,19 +392,33 @@ outside the lair wait on the question QA-TURN-05 asks.  See QA-FIGHT-04,
 QA-FIGHT-05, QA-TURN-04 and QA-TURN-05.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Harden sign-in and sessions
+* DONE Harden sign-in and sessions
 
-Sessions live in memory.  The form hides the server's reasons.  The throttle
-trusts any forwarded address.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
+The form now shows the server's reasons.  The throttle trusts a forwarded
+address only behind a configured proxy.  A save that meets a 401 says to sign in
+again and keeps the fight in the browser.  What remains needs rust-template.
+See [[*Give the foundation a lasting session store and the peer address]].
+QA-ACCT-05 is a question.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
 QA-ACCT-09.  Part of [[*Work through the findings in the QA report]].
 
-* TODO Keep random encounters inside their budget and scale
+* TODO Give the foundation a lasting session store and the peer address
 
-Minions hold back budget they never use.  The first slot can take the whole
-budget.  See QA-BUILD-04, QA-BUILD-05 and QA-BUILD-06.  Part of
+The foundation's runner builds a ~MemoryStore~ for sessions.  A restart signs
+every DM out.  It also serves without connect info.  The sign-in throttle then
+cannot key a direct client by its address.  Both need a change in
+rust-template's ~server::runner~: a session store the app can supply, and
+~into_make_service_with_connect_info~.  See QA-ACCT-06 and QA-ACCT-09.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Fit the phone layout
+* DONE Keep random encounters inside their budget and scale
 
-The app bar does not wrap at phone width.  Toasts cover it.  See QA-UI-01 and
-QA-UI-13.  Part of [[*Work through the findings in the QA report]].
+Minions held back budget they never used.  The first slot could take the whole
+budget.  Cheap creatures could fill a Few roll's count before its difficulty.
+Each now holds.  See QA-BUILD-04, QA-BUILD-05 and QA-BUILD-06.  Part of
+[[*Work through the findings in the QA report]].
+
+* DONE Fit the phone layout
+
+The app bar did not wrap at phone width.  Toasts covered it.  The bar now takes
+two rows on a phone.  Toasts sit below it.  See QA-UI-01 and QA-UI-13.  Part of
+[[*Work through the findings in the QA report]].

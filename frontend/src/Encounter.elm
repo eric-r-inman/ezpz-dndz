@@ -93,6 +93,7 @@ import Encounter.DeathSaves
 import Encounter.SaveNotice
 import Encounter.Treasure
 import Set exposing (Set)
+import Util.Number
 
 
 
@@ -1138,16 +1139,7 @@ describeDuration duration =
                         AtEnd ->
                             "end"
             in
-            String.fromInt n ++ " " ++ whose ++ pluralizeTurns n ++ " (" ++ phaseWord ++ ")"
-
-
-pluralizeTurns : Int -> String
-pluralizeTurns n =
-    if n == 1 then
-        "turn"
-
-    else
-        "turns"
+            String.fromInt n ++ " " ++ whose ++ Util.Number.pluralize "turn" "turns" n ++ " (" ++ phaseWord ++ ")"
 
 
 allConditionIds : Encounter -> List Int

@@ -173,9 +173,10 @@ customAndNoteSection ui =
 
           else
             [ div [ class "cond-row" ]
-                [ Html.label [ class "cond-label" ] [ text "Custom:" ]
+                [ Html.label [ for "cond-custom-input", class "cond-label" ] [ text "Custom:" ]
                 , input
-                    [ class "cond-input cond-input--w20"
+                    [ id "cond-custom-input"
+                    , class "cond-input cond-input--w20"
                     , type_ "text"
                     , value ui.customName
                     , maxlength Update.Condition.maxConditionNoteLength
@@ -193,9 +194,10 @@ customAndNoteSection ui =
             ]
          )
             ++ [ div [ class "cond-row" ]
-                    (Html.label [ class "cond-label" ] [ text "Note:" ]
+                    (Html.label [ for "cond-note-input", class "cond-label" ] [ text "Note:" ]
                         :: input
-                            [ class "cond-input cond-input--w20"
+                            [ id "cond-note-input"
+                            , class "cond-input cond-input--w20"
                             , type_ "text"
                             , value ui.note
                             , maxlength Update.Condition.maxConditionNoteLength
@@ -318,7 +320,7 @@ companionChip index name =
 durationSection : ConditionUi -> List String -> Html Msg
 durationSection ui creatureNames =
     div [ class "cond-section" ]
-        [ div [ class "cond-row" ]
+        [ div [ class "cond-row", attribute "role" "group", attribute "aria-label" "Duration" ]
             [ Html.label [ class "cond-label" ] [ text "Duration:" ]
             , durationKindRadio ui DurKindManual "Manual"
             , durationKindRadio ui DurKindUntilTurn "Next turn"
@@ -435,6 +437,7 @@ turnsOfSelect ui creatureNames =
     Html.select
         [ class "cond-select"
         , onInput ConditionUntilCreatureChanged
+        , attribute "aria-label" "Creature whose turns time the duration"
         ]
         (List.map
             (\name ->
@@ -543,7 +546,7 @@ saveSubsection s =
                     }
                 ]
             ]
-        , div [ class "cond-row" ]
+        , div [ class "cond-row", attribute "role" "group", attribute "aria-label" "Auto-roll" ]
             [ Html.label [ class "cond-label" ] [ text "Auto-roll:" ]
             , autoRollRadio s [] Encounter.AutoRollManual "Manual"
             , autoRollRadio s [] Encounter.AutoRollAtBegin "Start of turn"
