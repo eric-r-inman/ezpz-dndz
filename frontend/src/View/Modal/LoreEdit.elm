@@ -46,12 +46,13 @@ import Html.Attributes as Attr
         , type_
         , value
         )
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, preventDefaultOn)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium as CompendiumUi exposing (CompendiumDb(..))
 import Ui.GroupEdit as GroupEdit exposing (LoreDraft, LoreMemberDraft)
 import Ui.LoreEdit exposing (LoreEditUi)
+import Util.Keyboard
 import View.Modal
 import View.Tooltips as Tooltips
 
@@ -162,6 +163,7 @@ weightRow draft =
             , step "1"
             , value (String.fromInt draft.weight)
             , onInput LoreEditWeightChanged
+            , attribute "aria-label" "Weight"
             ]
             []
         , span [ class "group-edit__lore-weight-hint" ]
@@ -273,6 +275,7 @@ addResultRow c =
     li
         [ class "group-edit__lore-add-result"
         , onClick (LoreEditMemberAdd c.name)
+        , preventDefaultOn "keydown" (Util.Keyboard.buttonKeys (LoreEditMemberAdd c.name))
         , attribute "role" "button"
         , attribute "tabindex" "0"
         ]

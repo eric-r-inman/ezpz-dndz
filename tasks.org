@@ -417,7 +417,8 @@ budget.  Cheap creatures could fill a Few roll's count before its difficulty.
 Each now holds.  See QA-BUILD-04, QA-BUILD-05 and QA-BUILD-06.  Part of
 [[*Work through the findings in the QA report]].
 
-* TODO Fit the phone layout
+* DONE Fit the phone layout
 
-The app bar does not wrap at phone width.  Toasts cover it.  See QA-UI-01 and
-QA-UI-13.  Part of [[*Work through the findings in the QA report]].
+The app bar did not wrap at phone width.  Toasts covered it.  The bar now takes
+two rows on a phone.  Toasts sit below it.  See QA-UI-01 and QA-UI-13.  Part of
+[[*Work through the findings in the QA report]].

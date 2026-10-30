@@ -113,7 +113,22 @@ parserSuite =
 
                     Err _ ->
                         Expect.pass
+        , test "a die nobody can roll returns Err" <|
+            \_ ->
+                [ "0d6", "1d0", "2d1" ]
+                    |> List.filter (Dice.parse >> isOk)
+                    |> Expect.equal []
         ]
+
+
+isOk : Result e a -> Bool
+isOk result =
+    case result of
+        Ok _ ->
+            True
+
+        Err _ ->
+            False
 
 
 scannerSuite : Test

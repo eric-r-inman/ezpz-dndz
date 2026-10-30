@@ -47,6 +47,9 @@ pub enum DbError {
   #[error("Failed to connect to the database at {url}: {source}")]
   Connect { url: String, source: sqlx::Error },
 
+  #[error("No database exists at {path}")]
+  SqliteMissing { path: std::path::PathBuf },
+
   #[error("Failed to run database migrations: {0}")]
   Migrate(#[source] sqlx::migrate::MigrateError),
 
@@ -80,6 +83,20 @@ impl Db {
     })?;
     MIGRATOR.run(&pool).await.map_err(DbError::Migrate)?;
     Ok(Self { pool })
+  }
+
+  /// Connect to a database that must already exist.  A SQLite URL
+  /// naming a missing file is refused rather than created.  Other
+  /// backends connect as [`Db::connect`] does.
+  pub async fn connect_existing(url: &str) -> Result<Self, DbError> {
+    match sqlite_database_path(url) {
+      Some(path) if !is_in_memory(path) && !Path::new(path).exists() => {
+        Err(DbError::SqliteMissing {
+          path: Path::new(path).to_path_buf(),
+        })
+      }
+      _ => Self::connect(url).await,
+    }
   }
 
   /// Borrow the underlying pool.  Stores issue their queries through
@@ -122,9 +139,9 @@ async fn prepared_url(url: &str) -> Result<String, DbError> {
     return Ok(url.to_string());
   };
 
-  // In-memory databases (`sqlite::memory:` or `?mode=memory`) have
-  // no file to create and must not gain a conflicting mode.
-  if db_path == ":memory:" || db_path.is_empty() {
+  // In-memory databases have no file to create and must not gain a
+  // conflicting mode.
+  if is_in_memory(db_path) {
     return Ok(url.to_string());
   }
 
@@ -157,6 +174,13 @@ fn sqlite_database_path(url: &str) -> Option<&str> {
     .strip_prefix("sqlite://")
     .or_else(|| url.strip_prefix("sqlite:"))
     .map(|rest| rest.split('?').next().unwrap_or(rest))
+}
+
+/// Whether a SQLite path names an in-memory database rather than a
+/// file.  That is `sqlite::memory:`, or an empty path as
+/// `?mode=memory` leaves.
+fn is_in_memory(path: &str) -> bool {
+  path == ":memory:" || path.is_empty()
 }
 
 /// Pool sizing per backend; see the module docs for why SQLite gets
@@ -204,6 +228,22 @@ mod tests {
       .await
       .expect("count users");
     assert_eq!(count, 0);
+  }
+
+  #[tokio::test]
+  async fn connect_existing_refuses_a_missing_file_and_creates_nothing() {
+    let dir = TempDir::new().unwrap();
+    let typo = dir.path().join("typo");
+    let url = default_sqlite_url(&typo);
+
+    let refused = Db::connect_existing(&url).await;
+    assert!(matches!(refused, Err(DbError::SqliteMissing { .. })));
+    assert!(!typo.exists(), "nothing should have been created");
+
+    Db::connect(&url).await.expect("create");
+    Db::connect_existing(&url)
+      .await
+      .expect("open the existing file");
   }
 
   #[tokio::test]

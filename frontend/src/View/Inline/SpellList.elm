@@ -21,6 +21,7 @@ import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (onClick)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
+import Util.Number
 import View.Tooltips as Tooltips
 
 
@@ -180,16 +181,7 @@ slotLabel level slots =
         "Cantrips (at will)"
 
     else
-        ordinal level ++ " level (" ++ String.fromInt slots ++ " slot" ++ plural slots ++ ")"
-
-
-plural : Int -> String
-plural n =
-    if n == 1 then
-        ""
-
-    else
-        "s"
+        ordinal level ++ " level (" ++ String.fromInt slots ++ " " ++ Util.Number.pluralize "slot" "slots" slots ++ ")"
 
 
 ordinal : Int -> String
