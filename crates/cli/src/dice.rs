@@ -103,7 +103,7 @@ impl DiceCommand {
 }
 
 async fn count(args: &DbArgs, email: Option<&str>) -> Result<(), DiceCliError> {
-  let db = db::connect(args).await?;
+  let db = db::connect_existing(args).await?;
   let total = match email {
     Some(email) => {
       let user = db::user_by_email(&db, email).await?;
@@ -130,7 +130,7 @@ async fn tail(
   email: &str,
   n: usize,
 ) -> Result<(), DiceCliError> {
-  let db = db::connect(args).await?;
+  let db = db::connect_existing(args).await?;
   let user = db::user_by_email(&db, email).await?;
   let rolls = DiceStore::new(db)
     .load(&user.id)

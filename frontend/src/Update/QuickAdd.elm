@@ -1,4 +1,4 @@
-module Update.QuickAdd exposing (open, openForReplace, pick, pickPlaceholder, searchChanged, sortToggle)
+module Update.QuickAdd exposing (open, pick, pickPlaceholder, searchChanged, sortToggle)
 
 {-| Update branches for the Quick Add panel — a one-click picker
 that lists every compendium creature and adds the chosen one to
@@ -15,19 +15,10 @@ back-to-back.
 import Compendium
 import Effects
 import Encounter.Roster
-import Model exposing (Model, Surface(..))
+import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QuickAdd as QuickAddUi exposing (QuickAddUi)
-
-
-{-| The editor's own drawer entry, in the `Maybe Surface`
-shape the pattern matches below were written against.
--}
-drawerSurface : Model -> Maybe Surface
-drawerSurface model =
-    Model.drawerGet Model.quickAddLens model
-        |> Maybe.map SurfaceQuickAdd
 
 
 {-| The queue's "+" row sits far from the panel's heading, so an
@@ -41,17 +32,6 @@ open model =
     in
     ( next
     , Effects.scrollDrawerTo Model.quickAddLens next
-    )
-
-
-{-| Open the Quick Add panel in "replace this creature" mode.
-The pick path then swaps the named creature in place rather
-than appending — see `pick` / `pickPlaceholder` below.
--}
-openForReplace : String -> Model -> ( Model, Cmd Msg )
-openForReplace oldName model =
-    ( Model.openDrawer Model.quickAddLens (QuickAddUi.freshForReplace oldName) model
-    , Cmd.none
     )
 
 
@@ -70,110 +50,40 @@ withQuickAddUi =
     Model.mapSurface Model.quickAddLens
 
 
-{-| A pick leaves the panel up — it is one of the editors the
-drawer boots with, and a GM adding a party's worth of monsters
-should not have to reopen it. Only replace mode ends, because
-the creature it was aimed at has just been swapped; the search
-text survives so the next pick starts where this one left off.
--}
-addDone : Model -> Model
-addDone =
-    Model.mapDrawer Model.quickAddLens
-        (\ui -> { ui | replaceTarget = Nothing })
-
-
 {-| One-click placeholder: append a stub combatant via
 `Encounter.Roster.appendPlaceholder`. No initiative roll, no
 compendium lookup — placeholder rules apply directly. Mirrors
 the queue-bottom "+" button on the Workspace so the user has two
 equivalent surfaces for the same gesture.
-
-In replace mode (`ui.replaceTarget == Just oldName`) the
-placeholder swaps in for the named creature instead, preserving
-the old initiative.
-
 -}
 pickPlaceholder : Model -> ( Model, Cmd Msg )
 pickPlaceholder model =
-    let
-        nextEncounter =
-            case currentReplaceTarget model of
-                Just oldName ->
-                    Encounter.Roster.replaceWithPlaceholder oldName model.encounter
-
-                Nothing ->
-                    Encounter.Roster.appendPlaceholder model.encounter
-    in
-    ( addDone (Model.reaimStale { model | encounter = nextEncounter })
+    ( Model.reaimStale { model | encounter = Encounter.Roster.appendPlaceholder model.encounter }
     , Cmd.none
     )
 
 
 {-| Add one instance of the chosen creature to the encounter.
+The creature lands at initiative 0, and the GM types the value
+on the card afterwards. It fires no dice Cmd, writes no
+dice-history entry and raises no toast. The new card appearing is
+the feedback.
 
-In replace mode the swap is synchronous: build a fresh instance
-via `Compendium.draftToInstance` and call
-`Encounter.Roster.replaceCreature`, which preserves the old
-initiative value.
-
-In normal mode (append) the creature lands at initiative 0; the
-GM types the value on the card afterwards. No batched dice Cmd,
-no dice-history entry, no toast — the new card appearing is the
-feedback.
+A pick leaves the panel up. It is one of the editors the drawer
+boots with, and a GM adding a party's worth of monsters should
+not have to reopen it.
 
 -}
 pick : String -> Model -> ( Model, Cmd Msg )
 pick creatureId model =
     case model.compendium.db of
         CompendiumDbLoaded db ->
-            case Compendium.find creatureId db of
-                Just source ->
-                    case currentReplaceTarget model of
-                        Just oldName ->
-                            replaceInPlace oldName source model
-
-                        Nothing ->
-                            appendAtZero source model
-
-                Nothing ->
-                    ( model, Cmd.none )
+            Compendium.find creatureId db
+                |> Maybe.map (\source -> appendAtZero source model)
+                |> Maybe.withDefault ( model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
-
-
-{-| Synchronous swap path — used by both `pick` and
-`pickPlaceholder` in replace mode (with different newCreature
-builders).
--}
-replaceInPlace : String -> Compendium.Creature -> Model -> ( Model, Cmd Msg )
-replaceInPlace oldName source model =
-    let
-        existing =
-            List.filter (\n -> n /= oldName)
-                (List.map .name model.encounter.creatures)
-
-        provisionalName =
-            Encounter.Roster.uniqueInstanceName source.name existing
-
-        newCreature =
-            -- `initiativeRoll = 0` because Roster.replaceCreature
-            -- overrides it with the old creature's preserved value.
-            Compendium.draftToInstance
-                { displayName = provisionalName, initiativeRoll = 0 }
-                source
-    in
-    ( addDone
-        (Model.reaimStale
-            { model
-                | encounter =
-                    Encounter.Roster.replaceCreature oldName
-                        newCreature
-                        model.encounter
-            }
-        )
-    , Cmd.none
-    )
 
 
 appendAtZero : Compendium.Creature -> Model -> ( Model, Cmd Msg )
@@ -190,25 +100,10 @@ appendAtZero source model =
                 { displayName = name, initiativeRoll = 0 }
                 source
     in
-    ( addDone
-        (Model.reaimStale
-            { model
-                | encounter =
-                    Encounter.Roster.appendCreatures [ newCreature ] model.encounter
-            }
-        )
+    ( Model.reaimStale
+        { model
+            | encounter =
+                Encounter.Roster.appendCreatures [ newCreature ] model.encounter
+        }
     , Cmd.none
     )
-
-
-{-| Peek at the QuickAdd UI's `replaceTarget` field — present
-only when the panel was opened via `QuickAddOpenForReplace`.
--}
-currentReplaceTarget : Model -> Maybe String
-currentReplaceTarget model =
-    case drawerSurface model of
-        Just (SurfaceQuickAdd ui) ->
-            ui.replaceTarget
-
-        _ ->
-            Nothing

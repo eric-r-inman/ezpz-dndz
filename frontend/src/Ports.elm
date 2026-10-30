@@ -1,6 +1,6 @@
 port module Ports exposing
     ( savePreferences, persistLocalEncounter
-    , broadcastCompendium, broadcastDiceRoll, broadcastEncounter, clearLocalCompendium, clearLocalEncounter, clearLocalUserTreasureTable, incomingCompendium, incomingDiceRoll, incomingEncounter, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalUserLoreGroups, persistLocalUserTreasureTable
+    , broadcastCompendium, broadcastDiceRoll, broadcastEncounter, clearLocalCompendium, clearLocalEncounter, clearLocalUserTreasureTable, incomingCompendium, incomingDiceRoll, incomingEncounter, logRowOverflow, openCompendiumTab, persistLocalCompendium, persistLocalConditionPresets, persistLocalDiceHistory, persistLocalDrawerLayout, persistLocalParty, persistLocalSaveChainPresets, persistLocalTimerPresets, persistLocalTreasureProfiles, persistLocalUserLoreGroups, persistLocalUserTreasureTable
     )
 
 {-| Outbound ports for the JS host to consume.
@@ -148,6 +148,13 @@ encoded by [`Encounter.Treasure.TableWire`](Encounter-Treasure-TableWire).
 Fires on every edit in the Treasure Table editor.
 -}
 port persistLocalUserTreasureTable : E.Value -> Cmd msg
+
+
+{-| Persist the named Tune your rolls profiles to
+`localStorage.treasureProfiles`. Body is the dict encoded by
+[`Encounter.Treasure.ProfileWire`](Encounter-Treasure-ProfileWire).
+-}
+port persistLocalTreasureProfiles : E.Value -> Cmd msg
 
 
 {-| Drop `localStorage.userTreasureTable` once the GM reverts to the

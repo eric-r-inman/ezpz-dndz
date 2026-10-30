@@ -6434,7 +6434,7 @@
     "bonus_actions": [],
     "reactions": [
       {
-        "name": "Parry",
+        "name": "Split",
         "description": "_Trigger:_ While the pudding is Large or Medium and has 10+ Hit Points, it becomes Bloodied or is subjected to Lightning or Slashing damage. _Response:_ The pudding splits into two new Black Puddings. Each new pudding is one size smaller than the original pudding and acts on its Initiative. The original pudding\u2019s Hit Points are divided evenly between the new puddings (round down).",
         "usage": null
       }
@@ -6448,7 +6448,8 @@
     "treasures": [],
     "tags": [],
     "created_at": 1778176013882,
-    "updated_at": 1778176013882
+    "updated_at": 1778176013882,
+    "has_special_reactions": true
   },
   {
     "id": "0be4bffd-45f2-5a85-8d22-962a9d2fedf2",

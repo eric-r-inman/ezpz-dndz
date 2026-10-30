@@ -13,8 +13,9 @@ import Dice
 import Effects
 import Html exposing (Html, button, div, input, label, li, span, text, ul)
 import Html.Attributes as Attr exposing (attribute, class, for, id, placeholder, type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, stopPropagationOn)
 import Html.Keyed
+import Json.Decode as Decode
 import Msg exposing (Msg(..))
 import Set exposing (Set)
 import Ui.Dice exposing (DiceUi)
@@ -463,11 +464,16 @@ rerunControl idx isOpen roll =
              else
                 "dice-history__rerun-wrap"
             )
+
+        -- A press inside the menu must not reach the document
+        -- listener that closes it on a click elsewhere.
+        , stopPropagationOn "mousedown" (Decode.succeed ( NoOp, True ))
         ]
         [ button
             [ class "dice-history__rerun"
             , onClick (DiceRerunMenuToggle idx)
             , Tooltips.attr Tooltips.diceRollAgain
+            , attribute "aria-label" ("Roll " ++ tightFormula roll ++ " again")
             , attribute "aria-haspopup" "menu"
             , attribute "aria-expanded"
                 (if isOpen then

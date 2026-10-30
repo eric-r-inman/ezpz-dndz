@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, pinnedHeld, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, unfoldHpChangeOnly, unfoldPinnedOnly, xpLens
+    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, anyPopoverOpen, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, pinnedHeld, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, unfoldHpChangeOnly, unfoldPinnedOnly, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -692,8 +692,9 @@ reaimWhere stale model =
         target =
             defaultTarget model
 
+        -- An editor already on the target keeps everything.
         reaim wrap fresh aimed surface =
-            if stale aimed then
+            if stale aimed && aimed /= target then
                 wrap (fresh target)
 
             else
@@ -710,8 +711,10 @@ reaimWhere stale model =
                 SurfaceCondition ui ->
                     reaim SurfaceCondition UiCondition.fresh ui.target surface
 
+                -- A half-built chain is the GM's work in progress.  It
+                -- follows the new target.
                 SurfaceSaveChain ui ->
-                    reaim SurfaceSaveChain Ui.SaveChain.fresh ui.target surface
+                    reaim SurfaceSaveChain (\t -> { ui | target = t }) ui.target surface
 
                 SurfaceInitiative ui ->
                     reaim SurfaceInitiative Ui.Initiative.fresh ui.target surface
@@ -882,6 +885,18 @@ drawerGet lens model =
 drawerHas : SurfaceLens a -> Model -> Bool
 drawerHas lens model =
     drawerGet lens model /= Nothing
+
+
+{-| Whether a popover is open: the settings or Encounter menu, the
+compendium's bulk menu, or a dice roll's re-roll menu. Esc belongs
+to the popover then, not to the column behind it.
+-}
+anyPopoverOpen : Model -> Bool
+anyPopoverOpen model =
+    model.settingsOpen
+        || model.encounterMenuOpen
+        || (model.compendium.bulkMenu /= Nothing)
+        || (model.dice.rerunMenuOpenFor /= Nothing)
 
 
 {-| Whether a panel's body is on screen. `drawerHas` answers a
@@ -1591,6 +1606,10 @@ type alias Model =
     , quickView : QuickViewUi
     , toasts : List Toast
     , nextToastId : Int
+
+    -- The server answered a save with 401 since the page loaded.  The
+    -- prompt to sign in again shows once, not after every edit.
+    , sessionLost : Bool
     , rollPopups : List RollPopup
     , nextRollPopupId : Int
     , preferences : Preferences
@@ -1670,6 +1689,12 @@ type alias Model =
     -- something happens" recipes.  Persisted under
     -- `localStorage.saveChainPresets`.
     , saveChainPresets : Dict String SaveChain
+
+    -- Each area marker's chain by name.  It is the chain as the form
+    -- held it.  A marker's later saves resolve against it before any
+    -- preset.  It lasts the session.  After a reload a marker falls
+    -- back to the preset of its name.
+    , areaChains : Dict String SaveChain
 
     -- User-authored Lore groupings for the Random Encounter
     -- generator's _Lore-leaning_ toggle.  Bundled groups

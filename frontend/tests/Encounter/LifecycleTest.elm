@@ -17,6 +17,7 @@ suite : Test
 suite =
     describe "Encounter.Lifecycle"
         [ beginSuite
+        , beginOfTurnSuite
         , nextTurnSuite
         , deadSkipSuite
         , countdownTickSuite
@@ -139,6 +140,22 @@ beginSuite =
                 Lifecycle.begin { idle | creatures = List.map (\c -> { c | inactive = True }) idle.creatures }
                     |> .activeName
                     |> Expect.equal "A"
+        ]
+
+
+beginOfTurnSuite : Test
+beginOfTurnSuite =
+    let
+        allReadied =
+            { threeCreatures | creatures = List.map (\c -> { c | readied = True }) threeCreatures.creatures }
+    in
+    describe "applyBeginOfTurn"
+        [ test "a readied action lapses as its creature's turn begins" <|
+            \_ ->
+                Lifecycle.applyBeginOfTurn "B" allReadied
+                    |> .creatures
+                    |> List.map .readied
+                    |> Expect.equal [ True, False, True ]
         ]
 
 

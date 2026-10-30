@@ -5,6 +5,7 @@ short-lived note that renders as a pill in card row 3). Distinct
 from the long-lived `note` annotation in `Update.Note`.
 -}
 
+import Effects
 import Encounter
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
@@ -28,19 +29,20 @@ open name model =
                 |> List.head
                 |> Maybe.map .memo
                 |> Maybe.withDefault ""
+
+        next =
+            case model.surface of
+                Just (SurfaceMemoEdit ui) ->
+                    if ui.target == name then
+                        { model | surface = Nothing }
+
+                    else
+                        { model | surface = Just (SurfaceMemoEdit (MemoUi.fresh name current)) }
+
+                _ ->
+                    { model | surface = Just (SurfaceMemoEdit (MemoUi.fresh name current)) }
     in
-    ( case model.surface of
-        Just (SurfaceMemoEdit ui) ->
-            if ui.target == name then
-                { model | surface = Nothing }
-
-            else
-                { model | surface = Just (SurfaceMemoEdit (MemoUi.fresh name current)) }
-
-        _ ->
-            { model | surface = Just (SurfaceMemoEdit (MemoUi.fresh name current)) }
-    , Cmd.none
-    )
+    ( next, Effects.editorFieldFocus MemoUi.inputId next )
 
 
 change : String -> Model -> ( Model, Cmd Msg )
