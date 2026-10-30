@@ -484,15 +484,10 @@ resolveDuration activeName bearer duration =
             Encounter.DurationUntilTurn Encounter.AtEnd Encounter.OnCurrentTurn bearer
 
         LastsForTurns phase turns ->
-            Encounter.DurationCountdown phase turns (skipsFirstTick activeName bearer phase) Nothing
+            Encounter.DurationCountdown phase turns (Encounter.skipsFirstTick activeName bearer phase) Nothing
 
         LastsOneMinute ->
-            Encounter.DurationCountdown Encounter.AtEnd 10 (skipsFirstTick activeName bearer Encounter.AtEnd) Nothing
-
-
-skipsFirstTick : String -> String -> Encounter.TurnPhase -> Bool
-skipsFirstTick activeName bearer phase =
-    phase == Encounter.AtEnd && bearer == activeName
+            Encounter.DurationCountdown Encounter.AtEnd 10 (Encounter.skipsFirstTick activeName bearer Encounter.AtEnd) Nothing
 
 
 {-| The condition a granted immunity lives on as, named for the

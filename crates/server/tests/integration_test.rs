@@ -2003,7 +2003,7 @@ const MAXIMAL_ENCOUNTER: &str = r#"{
     "inactive": false,
     "note": "angry",
     "memo": "hoards gold",
-    "timer": { "remaining": 4, "phase": "atEnd", "ringing": false, "note": "lair" },
+    "timer": { "remaining": 4, "phase": "atEnd", "ringing": false, "note": "lair", "skipNextTick": true },
     "creatureId": "dragon-uuid",
     "legendaryActionsCount": 3,
     "legendaryActionsLairBonus": 1,

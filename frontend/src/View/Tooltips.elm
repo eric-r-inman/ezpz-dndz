@@ -56,6 +56,7 @@ module View.Tooltips exposing
     , conditionPresetSaveStart
     , conditionPresetSaveStartBlocked
     , conditionQuickApply
+    , countdownCaption
     , coverCycleTip
     , deathBegin
     , deathDead
@@ -105,6 +106,7 @@ module View.Tooltips exposing
     , nextTurn
     , noteAdd
     , noteEdit
+    , oneMinuteCaption
     , panelOpenCompendium
     , panelOpenDiceRoller
     , queueActiveTurn
@@ -1231,6 +1233,19 @@ timerRunning t =
         ++ " left, ticks at "
         ++ t.phaseWord
         ++ "-of-turn"
+
+
+{-| Captions the rule `Encounter.skipsFirstTick` states. `whose`
+names the creature whose turns the count counts.
+-}
+countdownCaption : String -> String
+countdownCaption whose =
+    "Set on " ++ whose ++ "'s turn, an end-of-turn count skips that turn."
+
+
+oneMinuteCaption : String
+oneMinuteCaption =
+    "The turn in progress does not count."
 
 
 timerRinging : String -> String

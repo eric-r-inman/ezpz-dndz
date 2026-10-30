@@ -44,6 +44,8 @@ view presets ui =
             , View.PhaseToggle.view "timer-phase" ui.phase TimerSetupPhaseSet
             , Html.label [ class "cond-label" ] [ text "of the bearer's turn" ]
             ]
+        , div [ class "cond-section__caption" ]
+            [ Html.em [] [ text (Tooltips.countdownCaption "the bearer") ] ]
         , div [ class "cond-row" ]
             [ Html.label [ for "timer-note-input", class "cond-label" ]
                 [ text "Label" ]

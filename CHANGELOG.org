@@ -8,6 +8,8 @@
    needed.
 2. A dragged queue keeps its order when creatures join or an initiative changes.
    No action needed.
+3. An end-of-turn timer started on its bearer's turn now skips that turn.  No
+   action needed.
 ** Breaking
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.

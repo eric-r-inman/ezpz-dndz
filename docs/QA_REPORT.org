@@ -224,6 +224,7 @@ The suite did not cover these:
 
 *** QA-TURN-10: Timers and condition countdowns count the current turn apart
 
+- Status :: fixed
 - Severity :: question
 - Steps :: On the active creature's turn, start a 1-turn timer that ticks at the
   end of a turn.  Press Next turn.
@@ -231,9 +232,9 @@ The suite did not cover these:
   ~Update.Condition.buildDuration~, a condition countdown set up the same way
   skips that tick.
 - Evidence ::
-  ~test_an_end_of_turn_timer_set_on_the_bearers_turn_counts_that_turn~
-- Action :: Pick one rule for both.  Mirroring the countdown's skip in
-  ~Update.Timer.apply~ is the likely fix.
+  ~test_an_end_of_turn_timer_set_on_the_bearers_turn_skips_that_turn~
+- Action :: Fixed.  A timer follows the countdown's rule.  Set on its bearer's
+  turn, an end-of-turn timer skips that turn.  Each editor's caption says so.
 
 *** QA-TURN-11: The column's dice log clips whose roll it is
 
@@ -1214,12 +1215,14 @@ The suite did not cover these:
 
 *** QA-FIGHT-20: What 1 Minute counts
 
+- Status :: fixed
 - Severity :: question
 - Actual :: Applied on the active creature in round 1, it lasts through that
   creature's turn in round 11.  That is one turn more than ten rounds.  On
   another creature it counts that creature's turns.  Its real length then moves
   with initiative.
-- Action :: Confirm the convention and state it in the caption.
+- Action :: Fixed.  The convention stands.  1 Minute ends with the counted
+  creature's 10th turn.  Its caption says the turn in progress does not count.
 
 *** QA-FIGHT-21: The damage hint stays in warning colour
 

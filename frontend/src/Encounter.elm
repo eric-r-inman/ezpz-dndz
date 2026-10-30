@@ -12,7 +12,7 @@ module Encounter exposing
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
-    , describeDuration
+    , describeDuration, skipsFirstTick
     , addSaveNotice, removeSaveNotice
     , AreaTracker, DamageTrigger(..), RechargeAbility, Standing(..), conditionLevel, creatureNamed, damageReminders, damageRolls, damageTaken, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, standing, unsavedChanges
     )
@@ -78,7 +78,7 @@ mutation (move, sort, remove, duplicate, append) lives in
 # Conditions / effects
 
 @docs addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
-@docs describeDuration
+@docs describeDuration, skipsFirstTick
 
 
 # Save notices
@@ -372,6 +372,8 @@ turn-phase hook fire on the bearer; rings when it hits 0.
     shows a flashing "0" with an × button until the GM
     dismisses it. The view layer also mounts an `<audio>`
     element with the ping sound when any timer is ringing.
+  - `skipNextTick` lets an end-of-turn timer started on its
+    bearer's turn skip that turn. See `skipsFirstTick`.
 
 -}
 type alias Timer =
@@ -379,6 +381,7 @@ type alias Timer =
     , phase : TurnPhase
     , ringing : Bool
     , note : String
+    , skipNextTick : Bool
     }
 
 
@@ -1093,6 +1096,16 @@ conditionsWhere pick name enc =
         |> Maybe.withDefault []
         |> List.filter (\cond -> cond.saveToEnd |> Maybe.map pick |> Maybe.withDefault False)
         |> List.map (\cond -> ( name, cond.id ))
+
+
+{-| Whether a turn count started now lets the turn in progress pass
+uncounted. An end-of-turn count started on the counted creature's
+own turn skips that turn. Timers, condition countdowns and Save
+Chain effects all follow this rule.
+-}
+skipsFirstTick : String -> String -> TurnPhase -> Bool
+skipsFirstTick activeName counted phase =
+    phase == AtEnd && counted == activeName
 
 
 {-| Render a one-line human-readable description of a duration

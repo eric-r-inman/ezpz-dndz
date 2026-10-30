@@ -17,6 +17,7 @@ import Html.Events exposing (onClick, onInput)
 import Msg exposing (DurationEdit(..), DurationKind(..), Msg)
 import Ui.DurationEdit as DurationEdit
 import View.PhaseToggle
+import View.Tooltips as Tooltips
 
 
 {-| `groupName` keeps this picker's radios apart from every other
@@ -90,7 +91,7 @@ subsection cfg =
 
         LastsOneMinute ->
             div [ class "cond-section__caption" ]
-                [ text "Expires at the end of the bearer's 10th turn." ]
+                [ text ("Expires at the end of the bearer's 10th turn. " ++ Tooltips.oneMinuteCaption) ]
 
         LastsThisTurn ->
             div [ class "cond-section__caption" ]
@@ -138,7 +139,7 @@ subsection cfg =
                     , Html.label [ class "cond-label" ] [ text "of the bearer's turn" ]
                     ]
                 , div [ class "cond-section__caption" ]
-                    [ Html.em [] [ text "Countdown timer begins when active creature's turn ends." ] ]
+                    [ Html.em [] [ text (Tooltips.countdownCaption "the bearer") ] ]
                 ]
 
 

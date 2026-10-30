@@ -1447,6 +1447,6 @@ buildDuration ui model =
                         Just ui.untilCreature
 
                 skipNextTick =
-                    ui.countdownPhase == Encounter.AtEnd && ui.untilCreature == model.encounter.activeName
+                    Encounter.skipsFirstTick model.encounter.activeName ui.untilCreature ui.countdownPhase
             in
             Encounter.DurationCountdown ui.countdownPhase ui.countdownTurns skipNextTick counter
