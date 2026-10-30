@@ -6,6 +6,7 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. =just dev= opens the browser once the server answers.  No action needed.
 ** Security
 * v0.38.0
 ** Added
