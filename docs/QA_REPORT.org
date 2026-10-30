@@ -479,13 +479,14 @@ The suite did not cover these:
 
 *** QA-UI-19: Esc folds the lowest open panel
 
+- Status :: fixed
 - Severity :: question
 - Actual :: Esc folds the lowest open panel in the column.  It passes over the
   one the DM opened last.  The code calls the bottom panel the newest.  Every
   panel now exists from boot.  The two orders differ.
-- Evidence :: ~test_escape_folds_the_lowest_open_panel_first~ records today's
-  behaviour.
-- Action :: Decide which panel Esc should fold.
+- Evidence :: ~test_escape_folds_the_panel_opened_last_first~
+- Action :: Fixed.  Esc folds the panel the DM opened most recently.  A panel
+  open since boot falls back to the lowest one showing.
 
 *** QA-UI-20: A dark operating system gets the light theme
 

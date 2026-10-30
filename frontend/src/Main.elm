@@ -645,6 +645,7 @@ init flags url key =
         , quickView = Ui.QuickView.fresh
         , drawer = Model.defaultDrawer
         , drawerDrag = Nothing
+        , drawerOpened = []
         , queueDrag = Nothing
         , compendiumEditDraft = Nothing
         , settingsOpen = False
@@ -761,7 +762,7 @@ update msg model =
             updateInner msg model
                 |> Update.Condition.damageTriggered msg model
                 |> Update.Concentration.savePrompts msg model
-                |> Tuple.mapFirst Model.dropStaleConditionEdit
+                |> Tuple.mapFirst (Model.dropStaleConditionEdit >> Model.trackDrawerOpened model)
 
         encounterCmd =
             if Effects.shouldPersistAfter msg && next.encounter /= model.encounter then
