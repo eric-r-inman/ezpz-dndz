@@ -60,8 +60,8 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
 16. Decide each open question.  Every entry marked question needs a decision
     before it can be fixed or closed.  QA-TURN-05, QA-FIGHT-06 and QA-FIGHT-18
     are declined.
-17. Sweep the remaining minor and cosmetic entries.  Done.  QA-COMP-12 needs a
-    decision and joins item 16.  So does the contact address in QA-UI-02 and
+17. Sweep the remaining minor and cosmetic entries.  Done.  QA-COMP-12 joined
+    item 16 for its decision.  So did the contact address in QA-UI-02 and
     QA-ACCT-18.
 
 * How the run worked
@@ -1418,14 +1418,17 @@ The suite did not cover these:
 
 *** QA-COMP-12: Clear All does not stay cleared
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Signed out, the library shows empty until a reload brings back all
   330 bundled creatures.  Signed in, the toast says the library has 0 creatures
   while all 330 stay listed.  The dialog says bundled creatures go too.
-- Evidence :: ~test_cleared_library_stays_empty_after_a_reload~ and
-  ~test_signed_in_clear_all_empties_the_library~
-- Action :: Decide whether a DM can hide the bundled creatures.  Make the dialog
-  and the toast match that.
+- Evidence :: ~test_cleared_library_stays_empty_after_a_reload~,
+  ~test_signed_in_clear_all_empties_the_library~ and
+  ~test_a_hidden_bundled_creature_stays_hidden_until_a_reset~
+- Action :: Fixed.  A DM can hide bundled creatures.  Signed in or not, Clear
+  All and Clear Selected hide the bundled ones they leave out.  Reset brings
+  them back.  The dialog and the toast now hold true.
 
 *** QA-COMP-13: The Save Chain error shows in the compendium tab too
 

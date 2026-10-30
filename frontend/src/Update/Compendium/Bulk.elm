@@ -305,6 +305,7 @@ applyLocalReset model =
                 , bulkMenu = Nothing
                 , compendiumDirty = False
                 , groups = Dict.empty
+                , hiddenBundled = Set.empty
             }
         , nextLocalCreatureId = 1
       }
@@ -387,7 +388,7 @@ clearClick model =
 
 
 {-| Clear All, from the staged dialog's own button.
-Routes through `Effects.clearCompendiumCreatures` so the
+Routes through `Effects.keepCompendiumCreatures` so the
 response lands in `clearResponse` and keeps the library marked
 dirty — the GM just discarded everything, so Export should
 still flag unsaved changes.
@@ -397,9 +398,9 @@ clearAll model =
     case model.auth of
         Auth.AuthAuthenticated _ ->
             ( withCompendium
-                (\ui -> { ui | pending = Nothing, bulkBusy = True })
+                (hideLeftOut [] >> (\ui -> { ui | pending = Nothing, bulkBusy = True }))
                 model
-            , Effects.clearCompendiumCreatures []
+            , Effects.keepCompendiumCreatures []
             )
 
         _ ->
@@ -409,7 +410,7 @@ clearAll model =
 
 {-| Replace the compendium with the kept set — every creature
 NOT in `selectedIds`. Same wire path as `clearAll` (also via
-`Effects.clearCompendiumCreatures`). No-op when nothing is
+`Effects.keepCompendiumCreatures`). No-op when nothing is
 selected or the library hasn't loaded.
 -}
 clearSelected : Model -> ( Model, Cmd Msg )
@@ -425,9 +426,9 @@ clearSelected model =
             case model.auth of
                 Auth.AuthAuthenticated _ ->
                     ( withCompendium
-                        (\ui -> { ui | pending = Nothing, bulkBusy = True })
+                        (hideLeftOut kept >> (\ui -> { ui | pending = Nothing, bulkBusy = True }))
                         model
-                    , Effects.clearCompendiumCreatures kept
+                    , Effects.keepCompendiumCreatures kept
                     )
 
                 _ ->
@@ -458,16 +459,18 @@ deleteSelected model =
             case model.auth of
                 Auth.AuthAuthenticated _ ->
                     ( withCompendium
-                        (\ui ->
-                            { ui
-                                | bulkMenu = Nothing
-                                , bulkBusy = True
-                                , pending = Nothing
-                                , bulkError = Nothing
-                            }
+                        (hideLeftOut kept
+                            >> (\ui ->
+                                    { ui
+                                        | bulkMenu = Nothing
+                                        , bulkBusy = True
+                                        , pending = Nothing
+                                        , bulkError = Nothing
+                                    }
+                               )
                         )
                         model
-                    , Effects.clearCompendiumCreatures kept
+                    , Effects.keepCompendiumCreatures kept
                     )
 
                 _ ->
@@ -481,18 +484,41 @@ deleteSelected model =
             )
 
 
-{-| Anonymous-mode equivalent of `Effects.clearCompendiumCreatures`
+{-| The bundled creatures a keep leaves out join the hidden set.
+-}
+hideLeftOut : List Compendium.Creature -> CompendiumUi -> CompendiumUi
+hideLeftOut kept ui =
+    let
+        keptIds =
+            Set.fromList (List.map .id kept)
+
+        leftOut =
+            case ui.db of
+                CompendiumDbLoaded db ->
+                    Compendium.toList db
+                        |> List.filter (\c -> c.isBundled && not (Set.member c.id keptIds))
+                        |> List.map .id
+                        |> Set.fromList
+
+                _ ->
+                    Set.empty
+    in
+    { ui | hiddenBundled = Set.union ui.hiddenBundled leftOut }
+
+
+{-| Anonymous-mode equivalent of `Effects.keepCompendiumCreatures`
 
   - `clearResponse`: keep only the supplied creatures (which the
     caller has already filtered down). Library stays marked dirty
-    since the GM just discarded creatures.
+    since the GM just discarded creatures. The bundled creatures
+    left out stay hidden across reloads.
 
 -}
 applyLocalClear : List Compendium.Creature -> Model -> ( Model, Cmd Msg )
 applyLocalClear kept model =
     let
         compendium =
-            model.compendium
+            hideLeftOut kept model.compendium
     in
     { model
         | compendium =
@@ -630,6 +656,7 @@ resetResponse result model =
                         , groups = Dict.empty
                         , expandedGroupIds = Set.empty
                         , selectedGroupId = Nothing
+                        , hiddenBundled = Set.empty
                     }
                 )
                 model

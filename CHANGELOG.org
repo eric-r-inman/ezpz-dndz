@@ -27,6 +27,8 @@
     action needed.
 13. A device that signs in no longer writes the bundled treasure-table rows into
     the account.  No action needed.
+14. Signed in or not, clearing the compendium hides the bundled creatures it
+    leaves out until a reset.  No action needed.
 ** Breaking
 1. A password change signs the account out on every other device.  Sign in again
    there with the new password.

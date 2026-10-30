@@ -1746,6 +1746,61 @@ async fn test_compendium_creatures_bundled_visible_to_every_user() {
 }
 
 #[tokio::test]
+async fn test_compendium_keep_hides_the_bundled_creatures_it_leaves_out() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let alice = register_and_get_cookie(&app).await;
+  let bob = register_user(&app, "bob@example.com", "Bob").await;
+  let everything = list_creatures(&app, &alice).await;
+  let bundled = everything.len();
+  let ogre = everything
+    .iter()
+    .find(|c| c["name"] == "Ogre")
+    .cloned()
+    .expect("a bundled Ogre");
+
+  let cleared = send_json(
+    &app,
+    &alice,
+    "POST",
+    "/api/compendium/keep",
+    serde_json::json!([]),
+  )
+  .await;
+  assert_eq!(cleared.status(), StatusCode::OK);
+  assert!(read_body(cleared).await.contains("\"kept\":0"));
+  assert!(list_creatures(&app, &alice).await.is_empty());
+  assert_eq!(list_creatures(&app, &bob).await.len(), bundled);
+
+  let one = send_json(
+    &app,
+    &alice,
+    "POST",
+    "/api/compendium/keep",
+    serde_json::json!([ogre]),
+  )
+  .await;
+  assert!(read_body(one).await.contains("\"kept\":1"));
+  let names: Vec<serde_json::Value> = list_creatures(&app, &alice)
+    .await
+    .iter()
+    .map(|c| c["name"].clone())
+    .collect();
+  assert_eq!(names, vec![serde_json::json!("Ogre")]);
+
+  let reset = send_json(
+    &app,
+    &alice,
+    "POST",
+    "/api/compendium/reset",
+    serde_json::json!({}),
+  )
+  .await;
+  assert_eq!(reset.status(), StatusCode::OK);
+  assert_eq!(list_creatures(&app, &alice).await.len(), bundled);
+}
+
+#[tokio::test]
 async fn test_compendium_creatures_per_user_isolation() {
   let (_temp, state) = stub_app_state().await;
   let app = build_test_router(state);
