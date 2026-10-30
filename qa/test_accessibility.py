@@ -48,34 +48,8 @@ def show(app, where):
 PAGES = ["empty encounter", "busy encounter", "login", "about", "compendium"]
 THEMES = ["Modern", "Dark", "Accessible"]
 
-MUTED = "QA-UI-05: muted grey text on panel headings and the footer is below 4.5:1"
-NESTED = "QA-UI-05: every compendium row is a focusable control wrapping more controls"
-
-# What axe found when this suite was written.  Each key is a page and a theme.
-KNOWN = {
-    ("empty encounter", "Modern"): MUTED,
-    ("empty encounter", "Accessible"): "QA-UI-05: the + Max label is 2.48:1 even in the Accessible theme",
-    ("busy encounter", "Modern"): MUTED + ", and the dice buttons and + Max too",
-    ("busy encounter", "Dark"): "QA-UI-05: dice buttons, idle status toggles and stat block titles are below 4.5:1",
-    ("busy encounter", "Accessible"): "QA-UI-05: + Max, dice buttons and stat block titles are below 4.5:1",
-    ("login", "Modern"): MUTED,
-    ("login", "Dark"): "QA-UI-05: the Sign in button's label is 3.08:1 on violet",
-    ("about", "Modern"): MUTED,
-    ("compendium", "Modern"): NESTED,
-    ("compendium", "Dark"): NESTED,
-    ("compendium", "Accessible"): NESTED,
-}
-
-
-def axe_case(where, theme):
-    reason = KNOWN.get((where, theme))
-    marks = [pytest.mark.xfail(strict=True, reason=reason)] if reason else []
-    return pytest.param(where, theme, marks=marks, id=f"{where}-{theme}")
-
-
-@pytest.mark.parametrize(
-    "where,theme", [axe_case(where, theme) for where in PAGES for theme in THEMES]
-)
+@pytest.mark.parametrize("theme", THEMES)
+@pytest.mark.parametrize("where", PAGES)
 def test_axe_finds_nothing_serious_or_critical(app, where, theme):
     choose_theme(app, theme)
     show(app, where)
@@ -128,10 +102,6 @@ def test_tab_walks_the_app_bar_then_the_column_then_the_cards_in_order(app):
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-15: the app bar's title link shows no focus ring",
-)
 @pytest.mark.cross_browser
 def test_every_tab_stop_shows_where_the_focus_is(app):
     app.add("Goblin Warrior")
@@ -190,10 +160,6 @@ def test_a_modal_takes_focus_and_keeps_tab_inside_it(app):
     expect(dialog).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-16: closing a modal drops focus to the page, not to the control that opened it",
-)
 @pytest.mark.cross_browser
 def test_closing_a_modal_returns_focus_to_what_opened_it(app):
     trigger = app.page.get_by_role("button", name="Set the round number")

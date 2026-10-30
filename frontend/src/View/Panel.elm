@@ -19,7 +19,7 @@ and the controls that change either.
 
 -}
 
-import Html exposing (Html, button, div, section, span, text)
+import Html exposing (Html, button, div, h2, section, span, text)
 import Html.Attributes exposing (attribute, class, type_)
 import Html.Events exposing (on, stopPropagationOn)
 import Json.Decode as Decode
@@ -59,7 +59,7 @@ view config =
                 ++ config.header.dragAttrs
             )
             [ collapseToggle config.title config.header
-            , div [ class "panel__title panel__title--drawer" ]
+            , h2 [ class "panel__title panel__title--drawer" ]
                 [ text config.title
                 , Maybe.withDefault (text "") config.titleTrail
                 ]

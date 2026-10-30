@@ -713,7 +713,7 @@ applyOutcome side ui chain model =
                 targets
 
         modelAfterCond =
-            { model | encounter = withConditions }
+            rememberArea chain { model | encounter = withConditions }
 
         entriesAt amount =
             List.map
@@ -1231,7 +1231,7 @@ savesRolled results model =
                         entries =
                             List.map entryFor results
                     in
-                    ( pushLog entries { modelWithHistory | encounter = encWithImmunity }
+                    ( pushLog entries (rememberArea chain { modelWithHistory | encounter = encWithImmunity })
                     , Cmd.batch historyCmds
                     )
 
@@ -1258,17 +1258,31 @@ markArea model =
                 effectCtx =
                     buildEffectContext chain model
             in
-            ( { model
-                | encounter =
-                    List.foldl (SaveChain.markArea effectCtx chain)
-                        model.encounter
-                        (resolveTargets chain ui model.encounter)
-              }
+            ( rememberArea chain
+                { model
+                    | encounter =
+                        List.foldl (SaveChain.markArea effectCtx chain)
+                            model.encounter
+                            (resolveTargets chain ui model.encounter)
+                }
             , Cmd.none
             )
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| Remember the chain an area marker came from as the form held it.
+The marker's later saves resolve against it. An unsaved or
+since-edited chain then resolves as it was applied.
+-}
+rememberArea : SaveChain -> Model -> Model
+rememberArea chain model =
+    if chain.area == Nothing then
+        model
+
+    else
+        { model | areaChains = Dict.insert chain.name chain model.areaChains }
 
 
 {-| The 🎲 on an area marker's chip: a creature that walked into
@@ -1287,9 +1301,10 @@ areaRollNow name id model =
 {-| An area marker's save landed: the side the roll earned applies
 to the bearer as one more resolution of the chain the marker
 names, with an auto-rolled amount as `savesRolled` uses, and the
-marker stays for the next turn. The chain is read from the
-presets by name, so a preset the GM has since deleted leaves a
-toast rather than an outcome.
+marker stays for the next turn. The chain is the one remembered
+when the marker went on. After a reload it is the preset of that
+name. A preset the GM has since deleted leaves a toast rather than
+an outcome.
 -}
 areaSaveLanded : String -> Int -> Dice.Roll -> Model -> ( Model, Cmd Msg )
 areaSaveLanded name id roll model =
@@ -1304,7 +1319,7 @@ areaSaveLanded name id roll model =
             Encounter.findCondition name id logged.encounter
                 |> Maybe.andThen (\( _, cond ) -> cond.area)
     in
-    case Maybe.map (\t -> ( t, Dict.get t.chain logged.saveChainPresets )) tracker of
+    case Maybe.map (\t -> ( t, chainFor t.chain logged )) tracker of
         Just ( t, Just chain ) ->
             ( resolveAreaSave name t chain roll logged, cmds )
 
@@ -1316,6 +1331,16 @@ areaSaveLanded name id roll model =
 
         Nothing ->
             ( logged, cmds )
+
+
+chainFor : String -> Model -> Maybe SaveChain
+chainFor name model =
+    case Dict.get name model.areaChains of
+        Just chain ->
+            Just chain
+
+        Nothing ->
+            Dict.get name model.saveChainPresets
 
 
 resolveAreaSave : String -> Encounter.AreaTracker -> SaveChain -> Dice.Roll -> Model -> Model
