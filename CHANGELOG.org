@@ -18,6 +18,8 @@
 7. The fall button deals its damage and lands the creature Prone.  No action
    needed.
 8. Esc folds the panel opened most recently.  No action needed.
+9. Native controls follow the chosen theme on a dark operating system.  No
+   action needed.
 ** Breaking
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.

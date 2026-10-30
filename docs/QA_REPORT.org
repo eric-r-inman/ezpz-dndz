@@ -490,12 +490,14 @@ The suite did not cover these:
 
 *** QA-UI-20: A dark operating system gets the light theme
 
+- Status :: fixed
 - Severity :: question
 - Actual :: A first visit with the system set to dark shows the light Modern
   theme.  ~Preferences.elm~ says that is deliberate.  ~color-scheme: light dark~
   on the root still turns native widgets dark inside the light theme.
 - Evidence :: ~test_a_dark_operating_system_leaves_the_modern_theme_whole~
-- Action :: Set ~color-scheme~ to match the chosen theme.
+- Action :: Fixed.  Each theme sets ~color-scheme~.  Native widgets follow the
+  chosen theme.
 
 *** QA-UI-21: Any trailing word counts as a damage type
 

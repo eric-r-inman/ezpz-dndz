@@ -698,8 +698,8 @@ The login form is mode-toggleable (Sign in ↔ Create account) and lives on
 ~Model.loginUi : LoginUi~ at ~Route.Login~ — anonymous users navigate there via
 the AppBar's "Sign in" link, the Cancel link on the form returns to ~/~, and Esc
 on the route fires ~LoginCancel~ for the same effect.  The form forces
-~data-theme="dark"~ on its wrapper so the panel reads consistent across all four
-themes (Modern / Dark / Auto / Accessible).
+~data-theme="dark"~ on its wrapper so the panel reads consistent across all
+three themes (Modern / Dark / Accessible).
 
 Submit posts to ~/api/auth/{login,register}~ — both return ~UserPublic~ so the
 two share the ~AuthLoginResponse~ Msg.  On success the page does ~Nav.load "/"~
@@ -723,12 +723,12 @@ The AppBar nav adapts to auth state:
 Text-labelled nav items (Encounter / About / Donate / Sign in) omit hover
 tooltips; the icon-only ⚙ trigger keeps a tooltip ("Settings").
 
-The ⚙ settings popover holds the theme picker (Modern / Dark / Auto /
-Accessible) and is enabled in all sessions, anonymous or not — theme persists
-via the existing ~savePreferences~ port regardless of auth.  The radio list
-stacks vertically at 1.05rem, with Accessible carrying an italic ~(alpha)~ badge
-via ~themeRadio~'s ~badge : String~ argument.  Foundation's Scalar (OpenAPI) UI
-is still mounted at ~/scalar~ but no longer linked from the nav.
+The ⚙ settings popover holds the theme picker (Modern / Dark / Accessible) and
+is enabled in all sessions, anonymous or not — theme persists via the existing
+~savePreferences~ port regardless of auth.  The radio list stacks vertically at
+1.05rem, with Accessible carrying an italic ~(alpha)~ badge via ~themeRadio~'s
+~badge : String~ argument.  Foundation's Scalar (OpenAPI) UI is still mounted at
+~/scalar~ but no longer linked from the nav.
 
 ** About page
 
@@ -1695,7 +1695,7 @@ button so a misclick can't silently rewrite the middle of the history.
 
 #+begin_src elm
 type alias Preferences =
-    { theme : Theme                       -- Modern / Dark / Auto / Accessible
+    { theme : Theme                       -- Modern / Dark / Accessible
     , cardDensity : CardDensity           -- Compact / Normal / Spacious
     , soundEnabled : Bool
     , autoScrollActiveCard : Bool
@@ -1707,12 +1707,12 @@ type alias Preferences =
 
 Wire status today:
 
-- *Theme* — four variants, all live in the AppBar ⚙ settings popover and in CSS:
+- *Theme* — three variants, all live in the AppBar ⚙ settings popover and in
+  CSS.  Each sets ~color-scheme~.  Native widgets follow the theme and not the
+  operating system:
   - *Modern* (~:root~ defaults) — Linear/Vercel-style light palette, Inter for
     UI + JetBrains Mono for numerics, Modern button polish tokens.
   - *Dark* (~[data-theme="dark"]~) — classic dark palette, system font stack.
-  - *Auto* — resolves to Modern or Dark per OS ~prefers-color-scheme~ via
-    media-query override.
   - *Accessible* (~[data-theme="accessible"]~) — WCAG AAA- target high-contrast
     palette, bumped font sizes across every panel + stat block + dice panel + CR
     calc, B&W creature-card buttons with black-fill / white-text on hover, 24px

@@ -453,8 +453,7 @@ mouseMoveDecoder toMsg =
 
 {-| Render the user's theme choice as the `data-theme` attribute
 value on the `.app-shell` div. CSS picks it up via attribute
-selectors in `style.css`; `auto` defers to the OS pref via the
-embedded `@media (prefers-color-scheme: dark)` block.
+selectors in `style.css`.
 
 Delegates to `Update.Preferences.themeKey` so the wire format
 (localStorage value, HTML attribute, port payload) all share a
@@ -510,7 +509,7 @@ profileFromFlag raw =
   - `theme` — user's previously-saved theme (read from
     `localStorage` before Elm boots) so the first render matches
     the FOUC pre-set on `<html data-theme>`. Unknown / missing
-    strings fall back to `Auto`, matching the JS-side default.
+    strings fall back to `Modern`, matching the JS-side default.
   - `localEncounter` — raw JSON snapshot of the live encounter
     read from `localStorage` at boot, used for anonymous-mode
     sessions. Stashed verbatim on the model until the auth probe

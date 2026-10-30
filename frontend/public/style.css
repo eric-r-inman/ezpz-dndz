@@ -29,7 +29,9 @@
    explicit `[data-theme="modern"]` selector below so the Dark
    theme keeps its classic system stack. */
 :root {
-  color-scheme: light dark;
+  /* Native widgets follow the chosen theme and not the operating
+     system.  Each theme block names its own scheme. */
+  color-scheme: light;
 
   /* Surfaces */
   --color-bg: #fafafa;
@@ -328,6 +330,7 @@
    separately so adding a future :root override here (e.g. a
    neutral baseline) doesn't accidentally drag Modern with it. */
 [data-theme="modern"] {
+  color-scheme: light;
   --color-bg: #fafafa;
   --color-surface: #ffffff;
   --color-surface-2: #f4f4f5;
@@ -412,6 +415,7 @@
  * which is the whole viewport.
  */
 [data-theme="dark"] {
+  color-scheme: dark;
   /* A card surface is lighter here than the page, so the outline
      needs less contrast than the light themes ask for. */
   --card-outline-bd: #6b7280;
@@ -534,6 +538,7 @@
    *all* themes — even Modern / Dark users get the no-transition
    variant if their OS asks for it. */
 [data-theme="accessible"] {
+  color-scheme: light;
   --card-outline-bd: var(--color-border);
   --color-bg: #ffffff;
   --color-surface: #ffffff;
