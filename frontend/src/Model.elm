@@ -692,8 +692,9 @@ reaimWhere stale model =
         target =
             defaultTarget model
 
+        -- An editor already on the target keeps everything.
         reaim wrap fresh aimed surface =
-            if stale aimed then
+            if stale aimed && aimed /= target then
                 wrap (fresh target)
 
             else
@@ -710,8 +711,10 @@ reaimWhere stale model =
                 SurfaceCondition ui ->
                     reaim SurfaceCondition UiCondition.fresh ui.target surface
 
+                -- A half-built chain is the GM's work in progress.  It
+                -- follows the new target.
                 SurfaceSaveChain ui ->
-                    reaim SurfaceSaveChain Ui.SaveChain.fresh ui.target surface
+                    reaim SurfaceSaveChain (\t -> { ui | target = t }) ui.target surface
 
                 SurfaceInitiative ui ->
                     reaim SurfaceInitiative Ui.Initiative.fresh ui.target surface
@@ -1674,6 +1677,12 @@ type alias Model =
     -- something happens" recipes.  Persisted under
     -- `localStorage.saveChainPresets`.
     , saveChainPresets : Dict String SaveChain
+
+    -- Each area marker's chain by name.  It is the chain as the form
+    -- held it.  A marker's later saves resolve against it before any
+    -- preset.  It lasts the session.  After a reload a marker falls
+    -- back to the preset of its name.
+    , areaChains : Dict String SaveChain
 
     -- User-authored Lore groupings for the Random Encounter
     -- generator's _Lore-leaning_ toggle.  Bundled groups

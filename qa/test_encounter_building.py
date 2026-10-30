@@ -370,7 +370,7 @@ def test_reset_restores_full_hp_and_clears_conditions_and_status(app):
     ogre = app.card("Ogre")
     assert (ogre.hp(), app.round_number()) == (48, 2)
     expect(ogre.root.get_by_role("button", name="Temp HP for Ogre")).to_be_visible()
-    expect(ogre.root.get_by_role("button", name="Prone")).to_be_visible()
+    expect(ogre.root.get_by_role("button", name="Prone", exact=True)).to_be_visible()
     expect(ogre.root.get_by_role("button", name="Clear dodging for Ogre")).to_be_visible()
     expect(ogre.root.get_by_role("button", name="Action Readied")).to_be_visible()
     expect(ogre.root.get_by_role("button", name=re.compile("^Reaction spent"))).to_be_visible()
@@ -384,7 +384,7 @@ def test_reset_restores_full_hp_and_clears_conditions_and_status(app):
     assert (ogre.hp(), ogre.max_hp()) == (68, 68)
     assert app.card_names() == ["Goblin Warrior", "Ogre"]
     expect(ogre.root.get_by_role("button", name="Temp HP for Ogre")).to_have_count(0)
-    expect(ogre.root.get_by_role("button", name="Prone")).to_have_count(0)
+    expect(ogre.root.get_by_role("button", name="Prone", exact=True)).to_have_count(0)
     expect(ogre.root.get_by_role("button", name=re.compile("^Clear "))).to_have_count(0)
     expect(ogre.root.get_by_role("button", name="Ready an Action")).to_be_visible()
     expect(ogre.root.get_by_role("button", name=re.compile("^Reaction available"))).to_be_visible()
@@ -399,7 +399,7 @@ def test_cancelling_reset_leaves_the_wounds_in_place(app):
     app.page.get_by_role("button", name=re.compile("^Reset every creature")).click()
     confirm_dialog(app, "Reset Encounter").get_by_role("button", name="Cancel").click()
     assert app.card("Ogre").hp() == 48
-    expect(app.card("Ogre").root.get_by_role("button", name="Prone")).to_be_visible()
+    expect(app.card("Ogre").root.get_by_role("button", name="Prone", exact=True)).to_be_visible()
 
 
 # Encounter Difficulty.

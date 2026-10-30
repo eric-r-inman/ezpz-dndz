@@ -934,7 +934,7 @@ ids aren't in the bundle are preserved across the merge.
 -}
 currentBundledVersion : Int
 currentBundledVersion =
-    4
+    5
 
 
 type alias LocalCompendiumSnapshot =

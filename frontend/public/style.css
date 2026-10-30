@@ -8690,7 +8690,10 @@ button.creature-card__lifecycle--dead:focus-visible {
     -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  max-width: 360px;
+  /* Whose roll it is matters more than the formula.  The row unfolds
+     to show the formula in full.  The share is a judgment call. */
+  flex-shrink: 0;
+  max-width: 60%;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;

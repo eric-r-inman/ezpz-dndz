@@ -117,6 +117,7 @@ The suite did not cover these:
 
 *** QA-TURN-03: Removing the active creature skips the turn rules
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Remove the active creature in each of three setups.  In the first,
   the next creature is inactive.  In the second, the next creature has spent its
@@ -128,9 +129,7 @@ The suite did not cover these:
   ~test_removing_the_active_creature_passes_over_an_inactive_successor~,
   ~test_removing_the_active_creature_starts_the_successors_turn~ and
   ~test_removing_the_last_creature_on_its_turn_starts_the_next_round~
-- Action :: When the removed creature is the active one, advance through the
-  ~Lifecycle.nextTurn~ walk.  Do not take the next name in
-  ~Roster.removeCreature~.
+- Action :: Fixed.  Removing the creature whose turn it is runs Next turn first.
 
 *** QA-TURN-04: A readied action never lapses
 
@@ -174,12 +173,13 @@ The suite did not cover these:
 
 *** QA-TURN-07: Tied numbered copies sort as text
 
+- Status :: fixed
 - Severity :: cosmetic
 - Steps :: Quick Add 10 Goblin Warriors.
 - Expected :: Goblin Warrior, then 2, 3 and on to 10.
 - Actual :: Goblin Warrior, then 10, then 2.
 - Evidence :: ~test_tied_copies_keep_their_numbered_order~
-- Action :: Compare the trailing number of a tied name as a number.
+- Action :: Fixed.  A tied name's trailing copy number sorts as a number.
 
 *** QA-TURN-08: Turn controls a keyboard or screen reader cannot use
 
@@ -230,21 +230,24 @@ The suite did not cover these:
 
 *** QA-TURN-11: The column's dice log clips whose roll it is
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: In the narrow column an initiative roll's source shrinks to "Ir".
   The DM cannot tell whose roll is whose without unfolding each row.
 - Evidence :: The screenshot from
   ~test_advantage_keeps_the_higher_d20_and_disadvantage_the_lower~.
-- Action :: Put the creature's name before the formula or let the source wrap.
+- Action :: Fixed.  The source keeps its width.  The formula gives way.  The row
+  unfolds to show it in full.
 
 *** QA-TURN-12: A dead creature still offers Death Saves
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: After the DOWN badge marks a creature dead, its card shows the DEAD
   badge with a Death Saves button beside it.
 - Evidence :: The screenshot from
   ~test_three_rounds_with_skipped_downed_and_dead_creatures_stay_coherent~.
-- Action :: Hide the Death Saves button once the creature is dead.
+- Action :: Fixed.  A dead creature's card offers no Death Saves.
 
 ** The editor column, dice, layout and accessibility
 
@@ -955,24 +958,27 @@ The suite did not cover these:
 
 *** QA-FIGHT-02: The card's AC field opens without focus
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Click a card's AC.  Type 16 and press Enter.
 - Expected :: AC becomes 16.
 - Actual :: The keys go nowhere and the field stays open in both browsers.  This
   is the same fault as QA-TURN-09.
 - Evidence :: ~test_typing_straight_after_clicking_the_armor_class_edits_it~
-- Action :: Focus the field from ~HpEditStart~ with the existing
-  ~Effects.focusField~.
+- Action :: Fixed.  The field takes focus when it opens.  It opens empty with
+  the value as its placeholder.  Typing replaces it.
 
 *** QA-FIGHT-03: A natural 20 revival is not marked Bloodied
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Drop a Goblin Warrior to 0.  Begin death saves.  Roll a natural 20.
 - Expected :: Its 1 of 10 hit points shows as Bloodied.
 - Actual :: It shows in green.  ~Update.DeathSave.applyResult~ sets HP without
   working out Bloodied.
 - Evidence :: ~test_a_creature_revived_by_a_natural_twenty_is_bloodied~
-- Action :: Write the 1 HP through ~HpChange.setCurrentHp~.
+- Action :: Fixed.  The revival writes its hit point through
+  ~HpChange.setCurrentHp~.
 
 *** QA-FIGHT-04: Damage at 0 HP adds no failure and massive damage never kills
 
@@ -1013,15 +1019,18 @@ The suite did not cover these:
 
 *** QA-FIGHT-07: The bundled Black Pudding names its Split reaction Parry
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: In ~crates/lib/data/bundled-creatures.json~ the pudding's reaction
   holds Split's text under the name Parry.  Parry is on the list of plain
   reactions.  The card shows no badge for it.  The Ochre Jelly's Split shows.
 - Evidence :: ~test_the_black_pudding_shows_its_split_reaction~
-- Action :: Rename the reaction to Split in the bundle.
+- Action :: Fixed.  The bundle names the reaction Split and flags the pudding as
+  having one.  The bundle version is now 5.
 
 *** QA-FIGHT-08: The halves of a Bloodied pudding are not Bloodied
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Bring a pudding to 33 of 68.  Split it with Duplicate's Pudding mode.
 - Expected :: Both halves at 16 of 34 show Bloodied.
@@ -1029,7 +1038,8 @@ The suite did not cover these:
   split also ignores the 2024 rule that the pudding must have at least 10 HP and
   be Medium or larger.
 - Evidence :: ~test_the_halves_of_a_bloodied_pudding_are_bloodied~
-- Action :: Work out Bloodied after halving.
+- Action :: Fixed.  Bloodied is worked out after halving.  The split's size and
+  hit point rule is still the DM's call.
 
 *** QA-FIGHT-09: Begin combat can open on a creature that is down
 
@@ -1060,6 +1070,7 @@ The suite did not cover these:
 
 *** QA-FIGHT-11: An unsaved area Save Chain never resolves
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Build an area chain without saving it.  Mark a creature in the area.
   Advance to its turn.
@@ -1068,11 +1079,13 @@ The suite did not cover these:
   same.  From the code, an edited chain also resolves from the saved preset and
   not the form.
 - Evidence :: ~test_an_area_chain_resolves_without_being_saved_as_a_preset~
-- Action :: Store the chain on the marker.  Failing that, disable "Mark in area"
-  until the chain is saved and say why.
+- Action :: Fixed.  Each marked chain is remembered as it was applied.  Its
+  marker resolves against that.  After a reload a marker falls back to the
+  preset of its name.
 
 *** QA-FIGHT-12: Next turn wipes a half-built condition or chain
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Half fill the Condition/Effect or Save Chain form.  Press Next turn.
 - Expected :: The form survives.
@@ -1080,17 +1093,20 @@ The suite did not cover these:
   ~Model.aimEditorsAtTarget~ rebuilds every editor from scratch.
 - Evidence :: ~test_a_condition_being_built_survives_the_next_turn~ and
   ~test_a_chain_being_built_survives_the_next_turn~
-- Action :: Re-aim the editor but keep the form.
+- Action :: Fixed.  An editor whose target stays keeps its form.  Save Chain
+  keeps its form when the target changes too.
 
 *** QA-FIGHT-13: The beginning and end toggle is out of keyboard reach
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: This is the QA-TURN-08 fault in the Condition/Effect and Save Chain
   duration rows.  ~style.css~ hides the radios with ~display: none~.
-- Action :: Fix it with QA-TURN-08.
+- Action :: Fixed with QA-TURN-08.
 
 *** QA-FIGHT-14: Fight controls lack names
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The card's AC field has no name.  Condition/Effect's Custom and Note
   fields have labels with no ~for~.  The "turns of" picker has no name.  Save
@@ -1098,8 +1114,9 @@ The suite did not cover these:
   condition" without the condition.  Two groups of "Manual" radios share a name
   with no group label.  The death-save controls omit the creature.  Bloodied
   shows only by colour.
-- Action :: Tie labels with ~for~ and ~id~.  Put the names into the labels.  Use
-  fieldsets for radio groups.
+- Action :: Fixed.  Labels are tied to their fields.  The chip ×, the death-save
+  controls and the AC field name what they act on.  The radio rows are named
+  groups.  Bloodied is spoken beside the hit points.
 
 *** QA-FIGHT-15: Roll saves applies a formula's average damage
 
@@ -1150,10 +1167,11 @@ The suite did not cover these:
 
 *** QA-FIGHT-21: The damage hint stays in warning colour
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: Save Chain's "req. to apply dmg" stays in warning colour after an
   amount is typed.
-- Action :: Show the hint only while the amount is empty.
+- Action :: Fixed.  The hint shows only while the amount is empty.
 
 ** The compendium and custom creatures
 

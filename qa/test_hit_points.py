@@ -277,8 +277,7 @@ def test_card_armor_class_commits_on_enter_and_cancels_on_escape(app):
     app.add("Ogre")
     ogre = app.card("Ogre")
     ac = ogre.root.get_by_role("button", name=re.compile("^Armor Class \\d+ for Ogre"))
-    # The inline edit field has no accessible name.
-    field = ogre.root.locator("input.hp-display__edit")
+    field = ogre.root.get_by_role("spinbutton", name="Armor Class for Ogre")
 
     ac.click()
     field.fill("17")
@@ -298,10 +297,6 @@ def test_card_armor_class_commits_on_enter_and_cancels_on_escape(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-02: clicking the card's AC opens a field without focus, so typing goes nowhere",
-)
 def test_typing_straight_after_clicking_the_armor_class_edits_it(app):
     app.add("Ogre")
     ogre = app.card("Ogre")

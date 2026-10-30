@@ -1082,7 +1082,7 @@ conditionChip flashConditions creature cond =
             , stopPropagationOn "click"
                 (Decode.succeed ( ConditionRemoveChip target cond.id, True ))
             , Tooltips.attr Tooltips.chipRemoveModalRow
-            , attribute "aria-label" "Remove condition"
+            , attribute "aria-label" ("Remove " ++ cond.name ++ " from " ++ target)
             ]
             [ text "×" ]
         ]
@@ -1272,6 +1272,13 @@ hpDisplay creature =
                 "hp-display__current"
             )
             ("Current HP for " ++ creature.name)
+
+        -- Bloodied otherwise shows only as the number's colour.
+        , if creature.bloodied then
+            span [ class "visually-hidden" ] [ text "Bloodied" ]
+
+          else
+            text ""
         , span [ class "hp-display__sep" ] [ text "/" ]
         , hpOpener creature (String.fromInt creature.maxHp) "hp-display__max" ("Max HP for " ++ creature.name)
         , maxHpOriginal creature
@@ -1370,16 +1377,19 @@ hpEditable creature hpEdit field current cls =
     in
     if isEditing then
         input
-            [ class "hp-display__edit"
+            [ id Ui.HpChange.editInputId
+            , class "hp-display__edit"
             , type_ "number"
             , Attr.min "0"
             , Attr.max "9999"
             , value (Maybe.withDefault "" (Maybe.map .text hpEdit))
+            , Attr.placeholder (String.fromInt current)
             , onInput HpEditChange
             , Html.Events.onBlur HpEditCommit
             , Html.Events.on "keydown" hpEditKeyDecoder
             , keepMouseDownInside
             , autofocus True
+            , attribute "aria-label" ("Armor Class for " ++ creature.name)
             ]
             []
 
@@ -1392,7 +1402,7 @@ hpEditable creature hpEdit field current cls =
         button
             [ class (cls ++ " hp-display__editable")
             , type_ "button"
-            , onClick (HpEditStart creature.name field current)
+            , onClick (HpEditStart creature.name field)
             , Tooltips.attr Tooltips.clickToEdit
             , attribute "aria-label"
                 (acFieldAriaLabel creature.name current)
@@ -1583,11 +1593,10 @@ turnArrow isActive name =
 {-| The 5e death-save tracker, laid out along the card's top
 border beside the lifecycle badge.
 
-Visibility is keyed off `currentHp == 0` exclusively — the moment
-the creature is back above 0 HP they're conscious, and the tracker
-shouldn't be on screen at all. The HP-change engine already resets
-the counts on heal-to-positive, so a re-appearing strip starts
-fresh.
+Visibility is keyed off `currentHp == 0`. A creature back above 0
+HP is conscious and shows no tracker. The HP-change engine resets
+the counts on a heal to positive. A strip that reappears starts
+fresh. A creature already marked dead shows no row.
 
 Resolution is not final: clearing a pip back below three
 returns the roll, so a misread save costs nothing.
@@ -1596,6 +1605,10 @@ returns the roll, so a misread save costs nothing.
 deathSaveRow : Creature -> Maybe (Html Msg)
 deathSaveRow creature =
     if creature.currentHp /= 0 then
+        Nothing
+
+    else if Encounter.isDeathSaveDead creature.deathSaves && not creature.acceptingDeathSaves then
+        -- A creature already marked dead has no saves left to begin.
         Nothing
 
     else if not creature.acceptingDeathSaves then
@@ -1635,7 +1648,7 @@ deathSaveRow creature =
                         [ class "death-saves__roll"
                         , onClick (DeathSaveRoll creature.name)
                         , Tooltips.attr Tooltips.deathRoll
-                        , attribute "aria-label" "Roll death save"
+                        , attribute "aria-label" ("Roll death save for " ++ creature.name)
                         ]
                         [ text "🎲" ]
                     ]
@@ -1649,7 +1662,7 @@ deathSaveRow creature =
             (div
                 [ class "death-saves"
                 , attribute "role" "group"
-                , attribute "aria-label" "Death saving throws"
+                , attribute "aria-label" ("Death saving throws for " ++ creature.name)
                 ]
                 (roll
                     ++ span [ class "death-saves__mark death-saves__mark--success" ] [ text "✓" ]

@@ -690,7 +690,7 @@ type Msg
     | SaveChainRollSaves SaveChainRollMode
     | SaveChainSavesRolled (List ( String, Dice.Roll ))
       -- Inline HP edit on the creature card
-    | HpEditStart String HpField Int
+    | HpEditStart String HpField
     | HpEditChange String
     | HpEditCommit
     | HpEditCancel

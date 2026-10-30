@@ -57,6 +57,20 @@
 29. On a phone the app bar takes two rows and keeps every link and the settings
     button on the screen.  No action needed.
 30. Toasts appear below the app bar instead of over it.  No action needed.
+31. Removing the creature whose turn it is passes the turn on as Next turn does.
+    No action needed.
+32. Numbered copies of a creature keep their numbered order in the queue.  No
+    action needed.
+33. Natural-20 revivals and split pudding halves show Bloodied when they are.
+    No action needed.
+34. The bundled Black Pudding shows its Split reaction badge.  No action needed.
+35. An area Save Chain resolves without first being saved as a preset.  No
+    action needed.
+36. A half-built Save Chain survives Next turn.  No action needed.
+37. The card's AC field takes typing straight after a click.  No action needed.
+38. Screen readers hear names for the fight's fields, buttons and Bloodied.  No
+    action needed.
+39. A dead creature no longer offers Death Saves.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 2. The sign-in throttle reads =X-Forwarded-For= only with

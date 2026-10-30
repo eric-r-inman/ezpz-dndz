@@ -86,8 +86,8 @@ landingIndex from gap =
 
 5e ties are normally broken by Dexterity score; we use the
 recorded `initiativeBonus` as a stand-in (it's effectively the
-modifier the roll added). If both are equal we fall back to
-creature name for a stable, alphabetic tiebreaker.
+modifier the roll added). If both are equal the name breaks the tie.
+A trailing copy number compares as a number.
 
 `activeName` is preserved across the sort, so a re-sort
 mid-combat doesn't reset whose turn it is.
@@ -97,9 +97,24 @@ sortByInitiative : Encounter -> Encounter
 sortByInitiative enc =
     let
         sortKey c =
-            ( negate c.initiative, negate c.initiativeBonus, c.name )
+            ( ( negate c.initiative, negate c.initiativeBonus ), copyKey c.name )
     in
     { enc | creatures = List.sortBy sortKey enc.creatures }
+
+
+{-| A name with its copy number split off. "Goblin Warrior 10" then
+sorts after "Goblin Warrior 2". An unnumbered name is the first copy.
+-}
+copyKey : String -> ( String, Int )
+copyKey name =
+    case List.reverse (String.words name) of
+        last :: ((_ :: _) as rest) ->
+            String.toInt last
+                |> Maybe.map (\n -> ( String.join " " (List.reverse rest), n ))
+                |> Maybe.withDefault ( name, 1 )
+
+        _ ->
+            ( name, 1 )
 
 
 {-| Remove the named creature from the queue.
@@ -242,17 +257,7 @@ unchanged (so `"Goblin Boss"` stays `"Goblin Boss"`).
 -}
 instanceBaseName : String -> String
 instanceBaseName name =
-    case List.reverse (String.words name) of
-        last :: rest ->
-            case String.toInt last of
-                Just _ ->
-                    String.join " " (List.reverse rest)
-
-                Nothing ->
-                    name
-
-        [] ->
-            name
+    Tuple.first (copyKey name)
 
 
 insertAfter : String -> Creature -> List Creature -> List Creature

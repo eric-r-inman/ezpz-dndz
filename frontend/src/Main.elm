@@ -682,6 +682,7 @@ init flags url key =
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Encounter.SaveChain.Bundled.defaults
+        , areaChains = Dict.empty
         , userLoreGroups =
             flags.localUserLoreGroups
                 |> Maybe.andThen
@@ -1308,8 +1309,8 @@ updateInner msg model =
         SaveChainSavesRolled results ->
             Update.SaveChain.savesRolled results model
 
-        HpEditStart name field current ->
-            Update.HpChange.editStart name field current model
+        HpEditStart name field ->
+            Update.HpChange.editStart name field model
 
         HpEditChange text ->
             Update.HpChange.editChange text model
