@@ -512,19 +512,23 @@ single 401 ~"Invalid email or password"~ response so timing / error-text
 differences don't leak account-existence information.  A request with no session
 gets its own 401, ~"Sign in required"~.  A wrong current password on ~POST
 /api/auth/password~ gets a 403, so the frontend does not read it as a lost
-session.
+session.  A password change signs every other session out.
 
 ** Session and middleware
 
 Sessions ride on ~tower-sessions~ via foundation's runner (~MemoryStore~ today;
 restarting the server logs everyone out).  The session cookie is ~SameSite=Lax~
-and ~Secure~ in production builds.  ~user_id~ is the only key the app stores.
+and ~Secure~ in production builds.  The app stores two keys: ~user_id~ and
+~password_stamp~.  The stamp is a digest of the password hash the session signed
+in with.  A password change gives the hash a fresh salt, so every older stamp
+goes stale.
 
 ~users::require_auth~ is the middleware layered over the protected ApiRouter: it
 pulls ~user_id~ off the session, looks up the ~User~ via
 ~UserStore::find_by_id~, and inserts a ~CurrentUser(User)~ extension on the
 request.  Handlers that need the user extract ~Extension<CurrentUser>~ alongside
-their other inputs.  No session, no user → 401 with a JSON body.
+their other inputs.  A request with no session, no user or a stale stamp gets a
+401 with a JSON body.
 
 ** Per-user data shapes
 

@@ -7,11 +7,14 @@
 //! - `POST /api/auth/logout`   — clear the session.
 //! - `GET  /api/auth/me`       — return the current user, or 401.
 //!
-//! Session shape: a single `user_id` string is stored in
-//! `tower_sessions::Session` under [`SESSION_KEY_USER_ID`].  The
-//! `require_auth` middleware extracts that key, looks up the `User`
-//! record, and inserts a [`CurrentUser`] into request extensions
-//! for downstream handlers.
+//! Session shape: the `user_id` string is stored in
+//! `tower_sessions::Session` under [`SESSION_KEY_USER_ID`].  The stamp
+//! of the password the session signed in with sits under
+//! [`SESSION_KEY_PASSWORD_STAMP`].  The `require_auth` middleware
+//! extracts both, looks up the `User` record, and inserts a
+//! [`CurrentUser`] into request extensions for downstream handlers.  A
+//! stale stamp means the session signed in before a password change.
+//! Such a session is refused.
 
 use aide::axum::ApiRouter;
 use axum::{
@@ -33,6 +36,10 @@ use crate::web_base::AppState;
 
 /// Session key under which the authenticated `UserId` is stored.
 pub const SESSION_KEY_USER_ID: &str = "user_id";
+
+/// Session key under which the stamp of the password a session signed
+/// in with is stored.
+pub const SESSION_KEY_PASSWORD_STAMP: &str = "password_stamp";
 
 /// Request extension carrying the authenticated `User` so downstream
 /// handlers don't have to re-load from disk.  Set by the
@@ -90,10 +97,7 @@ async fn register_handler(
       .await?;
     // Successful registration also logs the user in — saves a
     // round trip and matches what every "sign up" form does.
-    session
-      .insert(SESSION_KEY_USER_ID, user.id.0.clone())
-      .await
-      .map_err(|e| AuthHttpError::Session(e.to_string()))?;
+    sign_in(&session, &user).await?;
     Ok((StatusCode::CREATED, Json(UserPublic::from(&user))))
   }
   .await;
@@ -120,10 +124,7 @@ async fn login_handler(
       .cycle_id()
       .await
       .map_err(|e| AuthHttpError::Session(e.to_string()))?;
-    session
-      .insert(SESSION_KEY_USER_ID, user.id.0.clone())
-      .await
-      .map_err(|e| AuthHttpError::Session(e.to_string()))?;
+    sign_in(&session, &user).await?;
     Ok(Json(UserPublic::from(&user)))
   }
   .await;
@@ -143,17 +144,48 @@ async fn logout_handler(session: Session) -> Response {
   StatusCode::NO_CONTENT.into_response()
 }
 
-/// Resolve the `UserId` from the session cookie.  Mirrors what
-/// `me_handler` does — used by the authenticated `/api/auth/*`
-/// endpoints that aren't covered by the `require_auth` layer (the
-/// `users::router()` is merged outside the protected subtree so
-/// unauthenticated clients can hit `/register` / `/login`).
-async fn current_user_id(session: &Session) -> Result<UserId, AuthHttpError> {
-  let id: Option<String> = session
-    .get(SESSION_KEY_USER_ID)
+/// The password stamp a session carries.  A password change gives the
+/// hash a fresh salt, so every older session's stamp stops matching.
+/// The digest keeps the hash itself out of the session store.
+fn password_stamp(user: &User) -> String {
+  crate::digest::sha256_hex(user.password_hash.as_bytes())
+}
+
+/// Attach `user` to the session.  The session carries the stamp of
+/// their current password.
+async fn sign_in(session: &Session, user: &User) -> Result<(), AuthHttpError> {
+  session
+    .insert(SESSION_KEY_USER_ID, user.id.0.clone())
     .await
     .map_err(|e| AuthHttpError::Session(e.to_string()))?;
-  id.map(UserId).ok_or(AuthHttpError::SignInRequired)
+  session
+    .insert(SESSION_KEY_PASSWORD_STAMP, password_stamp(user))
+    .await
+    .map_err(|e| AuthHttpError::Session(e.to_string()))
+}
+
+/// The user the session signed in as.  Every authenticated path
+/// resolves through here: the `require_auth` layer and the
+/// `/api/auth/*` endpoints merged outside it.
+async fn session_user(
+  state: &AppState,
+  session: &Session,
+) -> Result<User, AuthHttpError> {
+  let id: String = session
+    .get(SESSION_KEY_USER_ID)
+    .await
+    .map_err(|e| AuthHttpError::Session(e.to_string()))?
+    .ok_or(AuthHttpError::SignInRequired)?;
+  let stamp: Option<String> = session
+    .get(SESSION_KEY_PASSWORD_STAMP)
+    .await
+    .map_err(|e| AuthHttpError::Session(e.to_string()))?;
+  state
+    .user_store
+    .find_by_id(&UserId(id))
+    .await?
+    .filter(|user| stamp.as_deref() == Some(password_stamp(user).as_str()))
+    .ok_or(AuthHttpError::SignInRequired)
 }
 
 async fn update_profile_handler(
@@ -162,10 +194,10 @@ async fn update_profile_handler(
   Json(body): Json<UpdateProfileRequest>,
 ) -> Response {
   let result: Result<Json<UserPublic>, AuthHttpError> = async {
-    let id = current_user_id(&session).await?;
+    let user = session_user(&state, &session).await?;
     let updated = state
       .user_store
-      .update_display_name(&id, &body.display_name)
+      .update_display_name(&user.id, &body.display_name)
       .await?;
     Ok(Json(UserPublic::from(&updated)))
   }
@@ -182,11 +214,19 @@ async fn change_password_handler(
   Json(body): Json<ChangePasswordRequest>,
 ) -> Response {
   let result: Result<StatusCode, AuthHttpError> = async {
-    let id = current_user_id(&session).await?;
+    let user = session_user(&state, &session).await?;
     state
       .user_store
-      .change_password(&id, &body.current_password, &body.new_password)
+      .change_password(&user.id, &body.current_password, &body.new_password)
       .await?;
+    // The new hash signs every other session out.  This one takes
+    // its new stamp and stays signed in.
+    let changed = state
+      .user_store
+      .find_by_id(&user.id)
+      .await?
+      .ok_or(AuthHttpError::SignInRequired)?;
+    sign_in(&session, &changed).await?;
     Ok(StatusCode::NO_CONTENT)
   }
   .await;
@@ -200,20 +240,10 @@ async fn me_handler(
   State(state): State<AppState>,
   session: Session,
 ) -> Response {
-  let result: Result<Json<UserPublic>, AuthHttpError> = async {
-    let user_id: Option<String> = session
-      .get(SESSION_KEY_USER_ID)
+  let result: Result<Json<UserPublic>, AuthHttpError> =
+    session_user(&state, &session)
       .await
-      .map_err(|e| AuthHttpError::Session(e.to_string()))?;
-    let id = user_id.ok_or(AuthHttpError::SignInRequired)?;
-    let user = state
-      .user_store
-      .find_by_id(&UserId(id))
-      .await?
-      .ok_or(AuthHttpError::SignInRequired)?;
-    Ok(Json(UserPublic::from(&user)))
-  }
-  .await;
+      .map(|user| Json(UserPublic::from(&user)));
   match result {
     Ok(ok) => ok.into_response(),
     Err(e) => e.into_response(),
@@ -223,36 +253,22 @@ async fn me_handler(
 // ── middleware ─────────────────────────────────────────────────────────────
 
 /// Layer to wrap around any router that requires an authenticated
-/// session.  Returns 401 with a JSON body when there is no session
-/// or the session points at a missing user; on success, the
-/// looked-up `User` is inserted into `Request::extensions` as
-/// [`CurrentUser`].
+/// session.  Returns 401 with a JSON body when `session_user` refuses
+/// the session.  On success, the looked-up `User` is inserted into
+/// `Request::extensions` as [`CurrentUser`].
 pub async fn require_auth(
   State(state): State<AppState>,
   session: Session,
   mut request: Request,
   next: Next,
 ) -> Response {
-  let user_id_opt: Option<String> = match session.get(SESSION_KEY_USER_ID).await
-  {
-    Ok(v) => v,
-    Err(e) => {
-      return AuthHttpError::Session(e.to_string()).into_response();
+  match session_user(&state, &session).await {
+    Ok(user) => {
+      request.extensions_mut().insert(CurrentUser(user));
+      next.run(request).await
     }
-  };
-
-  let Some(id) = user_id_opt else {
-    return AuthHttpError::SignInRequired.into_response();
-  };
-
-  let user = match state.user_store.find_by_id(&UserId(id)).await {
-    Ok(Some(user)) => user,
-    Ok(None) => return AuthHttpError::SignInRequired.into_response(),
-    Err(e) => return AuthHttpError::from(e).into_response(),
-  };
-
-  request.extensions_mut().insert(CurrentUser(user));
-  next.run(request).await
+    Err(e) => e.into_response(),
+  }
 }
 
 // ── router ─────────────────────────────────────────────────────────────────

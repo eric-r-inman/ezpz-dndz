@@ -53,7 +53,7 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
     QA-TURN-04 and QA-TURN-05.  Done.  QA-TURN-05 is declined.
 13. Harden sign-in and sessions.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
     QA-ACCT-09.  Done as far as this repository reaches.  The rest needs
-    rust-template.  QA-ACCT-05 is a question.
+    rust-template.  So does QA-ACCT-05.
 14. Keep random encounters inside their budget and scale.  See QA-BUILD-04,
     QA-BUILD-05 and QA-BUILD-06.  Done.
 15. Fit the phone layout.  See QA-UI-01.  Done.
@@ -591,8 +591,9 @@ The suite did not cover these:
   localhost.  ~docs/DEPLOY.org~ documents HTTPS through Caddy.  A DM serving the
   app to a table on a home network would still hit this.
 - Evidence :: ~test_signing_in_over_plain_http_on_a_home_network_works~
-- Action :: Set Secure from the scheme of ~--base-url~.  Failing that, say so
-  when the cookie does not stick.
+- Action :: Decided.  Secure comes from the scheme of ~--base-url~.  The
+  foundation's ~listen~ sets Secure on every scheme and offers no hook.  The fix
+  waits on rust-template.  See the session-store entry in ~tasks.org~.
 
 *** QA-ACCT-06: A server restart signs every DM out and loses edits quietly
 
@@ -662,11 +663,13 @@ The suite did not cover these:
 
 *** QA-ACCT-11: A password change leaves other devices signed in
 
+- Status :: fixed
 - Severity :: question
 - Actual :: After a change on one device, the other device's session still
   works.
 - Evidence :: ~test_changing_the_password_signs_out_other_devices~
-- Action :: Decide on a policy.  Ending the other sessions is the usual default.
+- Action :: Fixed.  A password change signs out every other session.  The device
+  that made the change stays signed in.
 
 *** QA-ACCT-12: A request with no session hears "Invalid email or password"
 

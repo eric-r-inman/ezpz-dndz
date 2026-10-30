@@ -925,6 +925,70 @@ async fn test_auth_wrong_password_unauthorized() {
   assert_eq!(bad_login.status(), StatusCode::UNAUTHORIZED);
 }
 
+async fn me_status(app: &Router, cookie: &str) -> StatusCode {
+  app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/auth/me")
+        .header("cookie", cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap()
+    .status()
+}
+
+#[tokio::test]
+async fn test_auth_password_change_signs_out_every_other_session() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let desk = register_and_get_cookie(&app).await;
+  let login = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("POST")
+        .uri("/api/auth/login")
+        .header("content-type", "application/json")
+        .body(Body::from(
+          r#"{"email":"alice@example.com","password":"hunter2hunter"}"#,
+        ))
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  let laptop = extract_session_cookie(&login).expect("login cookie");
+
+  let change = send_json(
+    &app,
+    &desk,
+    "POST",
+    "/api/auth/password",
+    serde_json::json!({
+      "current_password": "hunter2hunter",
+      "new_password": "a brand new password",
+    }),
+  )
+  .await;
+  assert_eq!(change.status(), StatusCode::NO_CONTENT);
+  assert_eq!(me_status(&app, &laptop).await, StatusCode::UNAUTHORIZED);
+  assert_eq!(me_status(&app, &desk).await, StatusCode::OK);
+
+  let stale_encounter = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter")
+        .header("cookie", &laptop)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(stale_encounter.status(), StatusCode::UNAUTHORIZED);
+}
+
 // ── compendium groups ───────────────────────────────────────────────────────
 
 #[tokio::test]

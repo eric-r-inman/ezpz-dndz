@@ -26,6 +26,8 @@
 12. Loading an encounter from a file asks before it replaces the fight.  No
     action needed.
 ** Breaking
+1. A password change signs the account out on every other device.  Sign in again
+   there with the new password.
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.
 ** Security
