@@ -734,8 +734,8 @@ type Msg
     | StatusApplySelected
     | StatusLogToggle
     | StatusUndoLatest
-      -- Initiative.  Manual entry and the auto-roll batch land
-      -- through the same re-sort.
+      -- Initiative.  Manual entry and the auto-roll batch move only
+      -- the creatures they change.
     | InitiativeOpenFor String
     | InitiativeCustomChanged String
     | InitiativeQuickSort

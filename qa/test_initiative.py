@@ -234,6 +234,20 @@ def test_quick_sort_puts_a_dragged_queue_back_in_initiative_order(app):
     assert app.card_names() == ["Goblin Warrior", "Wolf", "Ogre"]
 
 
+def test_an_initiative_edit_moves_only_that_creature(app):
+    app.add("Goblin Warrior")
+    app.add("Ogre")
+    app.add("Wolf")
+    set_initiatives(app, {"Goblin Warrior": 15, "Wolf": 10, "Ogre": 5})
+    drag_card(app, "Ogre", onto="Goblin Warrior", half="upper")
+
+    set_initiatives(app, {"Wolf": 20})
+    assert app.card_names() == ["Wolf", "Ogre", "Goblin Warrior"]
+
+    Initiative(app).quick_sort()
+    assert app.card_names() == ["Wolf", "Goblin Warrior", "Ogre"]
+
+
 def test_resorting_mid_fight_keeps_whose_turn_it_is(app):
     app.add("Goblin Warrior")
     app.add("Ogre")

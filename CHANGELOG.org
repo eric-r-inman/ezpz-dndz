@@ -6,6 +6,8 @@
 ** Fixes
 1. A legendary pool's hover text says that a click at 0 refills it.  No action
    needed.
+2. A dragged queue keeps its order when creatures join or an initiative changes.
+   No action needed.
 ** Breaking
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.

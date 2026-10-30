@@ -415,12 +415,12 @@ def test_a_dragged_order_decides_who_acts_next(app):
 
 
 @pytest.mark.cross_browser
-def test_quick_add_mid_fight_puts_a_dragged_queue_back_in_initiative_order(app):
+def test_quick_add_mid_fight_keeps_a_dragged_order(app):
     fight(app)
     app.begin_combat()
     drag_card(app, "Ogre", onto="Goblin Warrior 2", half="lower")
     app.add("Skeleton")
-    assert app.card_names() == [*ORDER, "Skeleton"]
+    assert app.card_names() == ["Goblin Warrior 2", "Ogre", "Wolf", "Goblin Warrior", "Skeleton"]
     assert app.active_name() == "Goblin Warrior 2"
 
 

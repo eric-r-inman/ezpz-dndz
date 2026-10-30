@@ -161,6 +161,7 @@ The suite did not cover these:
 
 *** QA-TURN-06: A re-sort mid-fight drops the DM's manual order
 
+- Status :: fixed
 - Severity :: question
 - Steps :: Drag a card to break a tie.  Then Quick Add a reinforcement.  In a
   second fight, raise the initiative of a creature that has not acted so it
@@ -169,12 +170,13 @@ The suite did not cover these:
   moves.  A DM may not expect a reinforcement to cause that sort.
 - Actual :: The queue re-sorts and the drag is gone.  The raised creature sits
   out the rest of the round.
-- Evidence ::
-  ~test_quick_add_mid_fight_puts_a_dragged_queue_back_in_initiative_order~ and
-  ~test_resorting_mid_fight_keeps_whose_turn_it_is~.  Both pass.  They record
-  what the app does today.
-- Action :: Decide whether a drag should stick.  If it should, insert newcomers
-  in place or keep the drag as a tiebreaker.
+- Evidence :: ~test_quick_add_mid_fight_keeps_a_dragged_order~,
+  ~test_an_initiative_edit_moves_only_that_creature~ and
+  ~test_resorting_mid_fight_keeps_whose_turn_it_is~
+- Action :: Fixed.  A drag sticks.  A newcomer slots in by initiative.  An
+  initiative edit moves only the creature it changed.  Quick Sort Encounter
+  still re-sorts everyone.  A creature raised above the active one still waits
+  for the next round.
 
 *** QA-TURN-07: Tied numbered copies sort as text
 

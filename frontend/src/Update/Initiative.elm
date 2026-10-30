@@ -14,8 +14,8 @@ module Update.Initiative exposing
 specific creature, custom-value entry, the "sort by current
 initiative" shortcut, the auto-roll batch (target / all /
 selected), and the result handler that stamps rolled values onto
-creatures and re-sorts the queue. Applying leaves the editor
-open, as the other drawer editors do.
+creatures and moves them to their new slots. Applying leaves the
+editor open, as the other drawer editors do.
 -}
 
 import Dice
@@ -151,9 +151,10 @@ scopeCreatures scope model =
 
 {-| Fold each (creature name, roll) pair into a fresh `Model`:
 stamp the rolled total onto the creature's initiative, push the
-roll into the dice history. Then sort the queue and persist all
-the rolls server-side. `mapCreature` silently
-no-ops on unknown names so a stale roll (defensive) won't blow up.
+roll into the dice history. Then move the rolled creatures to
+their new slots and persist all the rolls server-side.
+`mapCreature` silently no-ops on unknown names so a stale roll
+won't blow up.
 -}
 rollsLanded : List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
 rollsLanded results model =
@@ -179,7 +180,7 @@ rollsLanded results model =
         rolls =
             List.map Tuple.second results
     in
-    ( { m1 | encounter = Encounter.Roster.sortByInitiative m1.encounter }
+    ( { m1 | encounter = Encounter.Roster.reslot (List.map Tuple.first results) m1.encounter }
     , Cmd.batch
         (List.map Effects.persistDiceRoll rolls ++ broadcastCmds)
     )
@@ -256,8 +257,8 @@ source name =
 
 
 {-| Custom-initiative apply path: parse the editor's text input, set
-each named creature's initiative to that value and sort the
-queue. An unparseable text is silently discarded, the same way
+each named creature's initiative to that value and move each to its
+new slot. An unparseable text is silently discarded, the same way
 the card's inline HP edit treats one.
 -}
 applyCustomInitiative : List String -> InitiativeUi -> Model -> Model
@@ -276,7 +277,7 @@ applyCustomInitiative names ui model =
                 m1 =
                     List.foldl applyOne model names
             in
-            { m1 | encounter = Encounter.Roster.sortByInitiative m1.encounter }
+            { m1 | encounter = Encounter.Roster.reslot names m1.encounter }
 
         Nothing ->
             model
