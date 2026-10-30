@@ -54,10 +54,6 @@ def test_a_malformed_expression_says_it_could_not_be_read_and_rolls_nothing(app,
     expect(dice.root.get_by_text("Couldn't parse")).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-06: 0d6 and 1d0 roll a d6 and a d1 instead of failing",
-)
 @pytest.mark.parametrize("typed", ["0d6", "1d0"])
 def test_an_impossible_die_is_refused_rather_than_rolled_as_something_else(app, typed):
     dice = Dice(app).open()
@@ -169,10 +165,6 @@ def test_the_reroll_menu_repeats_a_roll_with_or_without_its_modifier(app):
     app.shot("rerolls")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-07: an open re-roll menu jumps to whichever roll lands next",
-)
 def test_an_open_reroll_menu_stays_with_the_roll_it_was_opened_on(app):
     dice = Dice(app).open()
     dice.roll("2d6+5")
@@ -189,10 +181,6 @@ def test_an_open_reroll_menu_stays_with_the_roll_it_was_opened_on(app):
         assert dice.row()["formula"] == "2d6+5"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-08: Esc folds the whole Dice Roller instead of closing the re-roll menu",
-)
 def test_escape_closes_the_reroll_menu_and_leaves_the_roller_open(app):
     dice = Dice(app).open()
     dice.roll("1d6")
@@ -205,10 +193,6 @@ def test_escape_closes_the_reroll_menu_and_leaves_the_roller_open(app):
     expect(dice.root.get_by_role("menu")).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-08: a click elsewhere leaves the re-roll menu open",
-)
 def test_a_click_elsewhere_closes_the_reroll_menu(app):
     dice = Dice(app).open()
     dice.roll("1d6")
@@ -268,6 +252,12 @@ def test_the_column_d20_rolls_straight_advantage_and_disadvantage_at_once(app):
         "d20 Adv: 1d20",
         "d20 Dis: 1d20",
     ]
+    # An ellipsis leaves the chip's text whole in the DOM.
+    # Only its width shows the cut.
+    clipped = dice.root.locator(".dice-history__source").evaluate_all(
+        "els => els.filter(e => e.scrollWidth > e.clientWidth).map(e => e.textContent)"
+    )
+    assert clipped == [], clipped
     assert consistent(rows[0], 20)
     assert set(rows[1]["kept"]) == {max(rows[1]["faces"])}
     assert set(rows[2]["kept"]) == {min(rows[2]["faces"])}

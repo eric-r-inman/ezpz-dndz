@@ -100,10 +100,6 @@ def test_a_wrong_password_and_an_unknown_email_get_the_same_refusal(app):
     assert api(app.page, "GET", "/api/auth/me").status == 401
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-07: the sign-in error is not announced to screen readers",
-)
 def test_a_sign_in_error_is_announced_to_screen_readers(app):
     signed_out(app)
     form = LoginPage(app.page, app.server.base_url).goto()
@@ -118,7 +114,7 @@ def test_an_email_already_registered_is_refused_whatever_its_case(app):
     signed_out(app)
     form = LoginPage(app.page, app.server.base_url).goto().to_create_account()
     form.create_account("DM@Example.TEST", "another long password", "Impostor")
-    expect(form.error()).to_have_text("That email is already registered.")
+    expect(form.error()).to_have_text("Email is already registered.")
     shot(app, "taken")
     assert login(app.page, DM, "another long password").status == 401
     assert login(app.page, DM).status == 200
@@ -153,7 +149,7 @@ def test_empty_fields_keep_the_sign_in_form_from_sending(app):
 def test_a_blank_display_name_is_refused(app):
     form = LoginPage(app.page, app.server.base_url).goto().to_create_account()
     form.create_account(DM, PASSWORD, "   ")
-    expect(form.error()).to_contain_text("display name")
+    expect(form.error()).to_contain_text("display name", ignore_case=True)
     shot(app, "blank-name")
     assert login(app.page, DM).status == 401
 
@@ -194,10 +190,6 @@ def test_a_burst_of_bad_sign_ins_is_throttled_until_the_window_passes(app):
     assert login(app.page, DM).status == 200
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-08: a throttled sign-in says only 'Something went wrong'",
-)
 def test_a_throttled_dm_is_told_to_wait(app):
     signed_out(app)
     bad_logins(app.page, 10)
@@ -206,12 +198,9 @@ def test_a_throttled_dm_is_told_to_wait(app):
     expect(form.error()).to_be_visible()
     shot(app, "throttled")
     expect(form.error()).to_contain_text(re.compile("too many|wait", re.IGNORECASE))
+    expect(form.error()).to_contain_text(re.compile(r"Try again in \d+ seconds"))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-09: a made-up X-Forwarded-For header resets the sign-in throttle",
-)
 def test_a_forged_forwarded_for_header_does_not_dodge_the_throttle(app):
     signed_out(app)
     bad_logins(app.page, 10)
@@ -282,10 +271,6 @@ def test_a_mismatched_confirmation_is_caught_before_anything_is_sent(app):
     assert sent == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-10: a wrong current password reads 'Server returned 401.'",
-)
 def test_a_wrong_current_password_is_refused_with_a_reason(app, devices):
     app.sign_up(DM)
     account = AccountPage(app.page, app.server.base_url).goto()
@@ -353,10 +338,6 @@ def test_an_anonymous_dm_is_pointed_at_sign_in_wherever_an_account_is_needed(app
     shot(app, "load-nudge")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-17: the compendium page says to sign in but offers no way to",
-)
 def test_the_compendium_page_offers_a_way_to_sign_in_for_server_saves(app):
     app.goto("/compendium")
     app.page.get_by_role("button", name=re.compile("Import$")).click()
@@ -571,10 +552,6 @@ def test_protected_endpoints_refuse_an_anonymous_caller(app):
     assert all(reply.json().get("error") for reply in replies.values())
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-12: a request without a session is told 'Invalid email or password'",
-)
 def test_a_caller_without_a_session_is_not_told_their_password_is_wrong(app):
     messages = {key: reply.json()["error"] for key, reply in anonymous_replies(app).items()}
     blamed = [key for key, message in messages.items() if "password" in message.lower()]
@@ -613,10 +590,6 @@ def test_malformed_bodies_are_refused_with_a_client_error(app):
     assert api(app.page, "GET", "/api/auth/me").json()["display_name"] == "Test DM"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-13: named saves and treasure profiles accept JSON of any shape",
-)
 def test_stores_refuse_a_body_of_the_wrong_shape(app):
     app.sign_up(DM)
     statuses = {

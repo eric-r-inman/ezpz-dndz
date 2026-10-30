@@ -11,6 +11,7 @@ shift when the seed changes.
 -}
 
 import Encounter
+import Encounter.Concentration as Concentration
 import Encounter.DeathSaves as DeathSaves
 import Expect
 import HpChange
@@ -323,11 +324,63 @@ dyingSuite =
         ]
 
 
+concentrationSuite : Test
+concentrationSuite =
+    let
+        concentrating =
+            { fixture | concentrating = True }
+
+        encounterOf creature =
+            let
+                empty =
+                    Encounter.empty
+            in
+            { empty | creatures = [ creature ] }
+
+        owedAfter damage creature =
+            Concentration.savesOwed (encounterOf creature)
+                (encounterOf (HpChange.apply (HpChange.Damage damage) creature))
+    in
+    describe "Concentration under damage"
+        [ test "a creature dropped to 0 stops concentrating" <|
+            \_ ->
+                concentrating
+                    |> HpChange.apply (HpChange.Damage 30)
+                    |> .concentrating
+                    |> Expect.equal False
+        , test "a creature set to 0 stops concentrating" <|
+            \_ ->
+                concentrating
+                    |> HpChange.setCurrentHp 0
+                    |> .concentrating
+                    |> Expect.equal False
+        , test "a creature still standing keeps concentrating" <|
+            \_ ->
+                concentrating
+                    |> HpChange.apply (HpChange.Damage 5)
+                    |> .concentrating
+                    |> Expect.equal True
+        , test "the save is DC 10 for light damage" <|
+            \_ -> owedAfter 5 concentrating |> Expect.equal [ { name = "Test", dc = 10 } ]
+        , test "the save is half the damage when that is higher" <|
+            \_ -> owedAfter 24 concentrating |> Expect.equal [ { name = "Test", dc = 12 } ]
+        , test "damage temporary hit points soak still calls for a save" <|
+            \_ -> owedAfter 6 { concentrating | tempHp = 10 } |> Expect.equal [ { name = "Test", dc = 10 } ]
+        , test "a creature dropped to 0 owes no save" <|
+            \_ -> owedAfter 30 concentrating |> Expect.equal []
+        , test "a creature not concentrating owes no save" <|
+            \_ -> owedAfter 5 fixture |> Expect.equal []
+        , test "the DC stops at 30" <|
+            \_ -> Concentration.saveDc 100 |> Expect.equal 30
+        ]
+
+
 suite : Test
 suite =
     describe "HpChange (pure HP arithmetic)"
         [ damageSuite
         , dyingSuite
+        , concentrationSuite
         , healSuite
         , tempHpSuite
         , setHpSuite

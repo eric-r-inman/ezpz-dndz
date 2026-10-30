@@ -23,6 +23,12 @@ log_format = "text"  # Options: text, json
 # database_url = "sqlite:///var/lib/ezpz-dndz/ezpz-dndz.db"
 # database_url = "postgres://ezpz:secret@localhost/ezpz_dndz"
 
+# Key the sign-in throttle on the client address a reverse proxy
+# writes into X-Forwarded-For.  Set this only behind a proxy like
+# Caddy that writes it.  Without one, any client could forge the
+# header.  Default: false.
+# trust_forwarded_for = true
+
 # OIDC single sign-on.  Leave these commented to run without it.
 # Deployments behind Authelia, Keycloak, or similar set all four
 # fields.  See docs/ARCHITECTURE.org for the deployment notes.

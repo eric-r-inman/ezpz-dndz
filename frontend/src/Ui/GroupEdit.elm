@@ -201,12 +201,11 @@ Returns `Err msg` for the first failure (caller surfaces it
 on the form); `Ok g` carries the canonical group.
 
 The returned id is the draft's id when editing, otherwise a
-new id derived from the name. Caller is responsible for
-ensuring uniqueness if needed.
+fresh id that no grouping in `existing` holds.
 
 -}
-validateLoreDraft : LoreDraft -> Result String Lore.Group
-validateLoreDraft draft =
+validateLoreDraft : List Lore.Group -> LoreDraft -> Result String Lore.Group
+validateLoreDraft existing draft =
     if String.isEmpty (String.trim draft.name) then
         Err "Lore grouping needs a name."
 
@@ -217,12 +216,7 @@ validateLoreDraft draft =
         validateLoreMembers draft.members
             |> Result.map
                 (\members ->
-                    { id =
-                        Maybe.withDefault
-                            ("user-"
-                                ++ slugify draft.name
-                            )
-                            draft.id
+                    { id = Maybe.withDefault (freshLoreId existing draft.name) draft.id
                     , name = String.trim draft.name
                     , weight = clamp 1 10 draft.weight
                     , source = Lore.UserCurated
@@ -230,6 +224,24 @@ validateLoreDraft draft =
                     , description = String.trimRight draft.description
                     }
                 )
+
+
+{-| An id for a new grouping. Two groupings may share a name, so
+the id takes the first free number after the name's slug.
+-}
+freshLoreId : List Lore.Group -> String -> String
+freshLoreId existing name =
+    let
+        base =
+            "user-" ++ slugify name
+
+        taken =
+            List.map .id existing
+    in
+    (base :: List.map (\n -> base ++ "-" ++ String.fromInt n) (List.range 2 (List.length taken + 2)))
+        |> List.filter (\id -> not (List.member id taken))
+        |> List.head
+        |> Maybe.withDefault base
 
 
 validateLoreMembers : List LoreMemberDraft -> Result String (List Lore.Slot)

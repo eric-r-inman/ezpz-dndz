@@ -61,7 +61,7 @@ import Html.Attributes as Attr
         , type_
         , value
         )
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, preventDefaultOn)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Set
@@ -75,6 +75,7 @@ import Ui.GroupEdit as GroupEdit
         , LoreMemberDraft
         , LoreSection
         )
+import Util.Keyboard
 import View.Compendium.Pane
 import View.Tooltips as Tooltips
 
@@ -152,6 +153,7 @@ initiativeSection ui =
         , div
             [ class "group-edit__radio-group"
             , attribute "role" "radiogroup"
+            , attribute "aria-label" "Initiative"
             ]
             (List.map (initiativeRadio ui.initiativeMode)
                 Group.initiativeModeAllValues
@@ -769,6 +771,7 @@ loreWeightRow draft =
             , step "1"
             , value (String.fromInt draft.weight)
             , onInput GroupEditLoreDraftWeightChanged
+            , attribute "aria-label" "Weight"
             ]
             []
         , span [ class "group-edit__lore-weight-hint" ]
@@ -910,6 +913,7 @@ loreAddResultRow c =
     li
         [ class "group-edit__lore-add-result"
         , onClick (GroupEditLoreDraftMemberAdd c.name)
+        , preventDefaultOn "keydown" (Util.Keyboard.buttonKeys (GroupEditLoreDraftMemberAdd c.name))
         , attribute "role" "button"
         , attribute "tabindex" "0"
         ]

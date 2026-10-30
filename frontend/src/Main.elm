@@ -92,6 +92,7 @@ import Update.Compendium.Edit
 import Update.Compendium.Group
 import Update.Compendium.Lore
 import Update.Compendium.Paste
+import Update.Concentration
 import Update.Condition
 import Update.CrCalculator
 import Update.DeathSave
@@ -232,6 +233,15 @@ subscriptions model =
                 _ ->
                     []
 
+        rerunMenuSubs =
+            if model.dice.rerunMenuOpenFor /= Nothing then
+                [ Browser.Events.onKeyDown (escKey DiceRerunMenuClose)
+                , Browser.Events.onMouseDown (Decode.succeed DiceRerunMenuClose)
+                ]
+
+            else
+                []
+
         timerPresetLoadMenuSubs =
             case model.surface of
                 Just (SurfaceTimerSetup ui) ->
@@ -328,17 +338,19 @@ subscriptions model =
                 Just (SurfaceTreasureTable _) ->
                     Browser.Events.onKeyDown (escKey TreasureTableClose)
 
+                -- The compendium page never shows the column, so its
+                -- own keys come first.  A popover owns Esc while open.
                 _ ->
-                    case Model.newestShowing model of
-                        Just ( _, panel ) ->
-                            drawerEscSub panel.surface
+                    if model.route == Compendium then
+                        Browser.Events.onKeyDown compendiumKeyDecoder
 
-                        Nothing ->
-                            if model.route == Compendium then
-                                Browser.Events.onKeyDown compendiumKeyDecoder
+                    else if Model.anyPopoverOpen model then
+                        Sub.none
 
-                            else
-                                Sub.none
+                    else
+                        Model.newestShowing model
+                            |> Maybe.map (\( _, panel ) -> drawerEscSub panel.surface)
+                            |> Maybe.withDefault Sub.none
     in
     Sub.batch
         (primary
@@ -350,6 +362,7 @@ subscriptions model =
             :: settingsSubs
             ++ encounterMenuSubs
             ++ clearMenuSubs
+            ++ rerunMenuSubs
             ++ conditionPresetLoadMenuSubs
             ++ timerPresetLoadMenuSubs
             ++ loginEscSubs
@@ -534,6 +547,7 @@ type alias Flags =
     , localParty : Maybe Decode.Value
     , localUserLoreGroups : Maybe Decode.Value
     , localUserTreasureTable : Maybe Decode.Value
+    , localTreasureProfiles : Maybe Decode.Value
     }
 
 
@@ -637,6 +651,7 @@ init flags url key =
         , encounterMenuOpen = False
         , toasts = []
         , nextToastId = 0
+        , sessionLost = False
         , rollPopups = []
         , nextRollPopupId = 0
         , preferences = prefs
@@ -680,6 +695,7 @@ init flags url key =
                         >> Result.toMaybe
                     )
                 |> Maybe.withDefault Encounter.SaveChain.Bundled.defaults
+        , areaChains = Dict.empty
         , userLoreGroups =
             flags.localUserLoreGroups
                 |> Maybe.andThen
@@ -693,7 +709,13 @@ init flags url key =
                     (Decode.decodeValue Encounter.Treasure.TableWire.decodeTable
                         >> Result.toMaybe
                     )
-        , userTreasureProfiles = Dict.empty
+        , userTreasureProfiles =
+            flags.localTreasureProfiles
+                |> Maybe.andThen
+                    (Decode.decodeValue Encounter.Treasure.ProfileWire.decodeProfiles
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
         , userTreasureProfileNameDraft = ""
         }
       -- The auth-dependent data fetches (encounter, compendium,
@@ -732,11 +754,13 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
         -- A hit on a creature may owe a save to one of its
-        -- conditions, so every message's result passes through the
-        -- damage check before anything else reads it.
+        -- conditions or to its concentration.  Every message's
+        -- result passes through both damage checks before anything
+        -- else reads it.
         ( next, innerCmd ) =
             updateInner msg model
                 |> Update.Condition.damageTriggered msg model
+                |> Update.Concentration.savePrompts msg model
                 |> Tuple.mapFirst Model.dropStaleConditionEdit
 
         encounterCmd =
@@ -883,7 +907,10 @@ update msg model =
                             )
 
                     _ ->
-                        Cmd.none
+                        Ports.persistLocalTreasureProfiles
+                            (Encounter.Treasure.ProfileWire.encodeProfiles
+                                next.userTreasureProfiles
+                            )
 
             else
                 Cmd.none
@@ -1304,8 +1331,8 @@ updateInner msg model =
         SaveChainSavesRolled results ->
             Update.SaveChain.savesRolled results model
 
-        HpEditStart name field current ->
-            Update.HpChange.editStart name field current model
+        HpEditStart name field ->
+            Update.HpChange.editStart name field model
 
         HpEditChange text ->
             Update.HpChange.editChange text model
@@ -1711,7 +1738,7 @@ updateInner msg model =
             Update.Compendium.Group.select groupId model
 
         CompendiumGroupDelete groupId ->
-            Update.Compendium.Group.delete groupId model
+            Update.Compendium.Bulk.groupDeleteRequested groupId model
 
         CompendiumGroupEditOpenExisting groupId ->
             Update.Compendium.Group.openExisting groupId model
@@ -1732,7 +1759,7 @@ updateInner msg model =
             Update.Compendium.Lore.select id model
 
         CompendiumLoreDelete id ->
-            Update.Compendium.Lore.delete id model
+            Update.Compendium.Bulk.loreDeleteRequested id model
 
         CompendiumLoreAdd id ->
             Update.Compendium.Lore.add id model
@@ -2421,6 +2448,9 @@ updateInner msg model =
         CompendiumEditSubmit ->
             Update.Compendium.Edit.submit model
 
+        CompendiumEditLocalStamped creature now ->
+            Update.Compendium.Edit.localStamped creature now model
+
         CompendiumEditSubmitResponse result ->
             Update.Compendium.Edit.submitResponse result model
 
@@ -2655,9 +2685,6 @@ updateInner msg model =
         QuickAddOpen ->
             Update.QuickAdd.open model
 
-        QuickAddOpenForReplace oldName ->
-            Update.QuickAdd.openForReplace oldName model
-
         QuickAddSortToggle ->
             Update.QuickAdd.sortToggle model
 
@@ -2698,7 +2725,7 @@ updateInner msg model =
             Update.Compendium.Bulk.resetClick model
 
         CompendiumDeleteFromBrowser id displayName ->
-            Update.Compendium.Bulk.deleteFromBrowser id displayName model
+            Update.Compendium.Bulk.deleteRequested id displayName model
 
         CompendiumPendingCancel ->
             Update.Compendium.Bulk.pendingCancel model

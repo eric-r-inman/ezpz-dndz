@@ -7,7 +7,7 @@ module Encounter.Treasure exposing
     , kindLabel, kindOptions
     , suggestedBracket
     , totalArtValue, totalCoinValueGp, totalGemValue
-    , ArmorItem, Category(..), CategoryToggles, CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, MundaneItem, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), WeaponItem, armorItemsFor, armorRollFor, artNamesFor, bracketFromWire, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultHoardToggles, defaultIndividualToggles, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, mundaneItemsFor, mundaneRollFor, removeArmorItem, removeArt, removeGem, removeMagic, removeMundaneItem, removeWeaponItem, scrollSpellsFor, setArmorItems, setArmorRoll, setArtNames, setGemNames, setHoardRows, setIndividualRows, setMagicNames, setMundaneItems, setMundaneRoll, setScrollSpells, setWeaponsItems, setWeaponsRoll, togglesFor, totalArmorValue, totalMundaneValue, totalWeaponsValue, valueAdjustFromWire, valueAdjustWire, weaponsItemsFor, weaponsRollFor
+    , ArmorItem, Category(..), CategoryToggles, CoinFormulas, CountAdjust(..), CreatureContribution, EnemyInfo, MundaneItem, RollContext, RowSource, TreasureSettings, TreasureTable, ValueAdjust(..), WeaponItem, armorItemsFor, armorRollFor, artNamesFor, bracketFromWire, bracketWire, bundledTable, categoryLabel, clearCoin, countAdjustFromWire, countAdjustWire, defaultHoardToggles, defaultIndividualToggles, defaultSettings, gemNamesFor, generateRerollCategory, hoardRowsFor, individualRowsFor, magicNamesFor, mundaneItemsFor, mundaneRollFor, removeArmorItem, removeArt, removeGem, removeMagic, removeMundaneItem, removeWeaponItem, scrollSpellsFor, setArmorItems, setArmorRoll, setArtNames, setGemNames, setHoardRows, setIndividualRows, setMagicNames, setMundaneItems, setMundaneRoll, setScrollSpells, setWeaponsItems, setWeaponsRoll, togglesFor, totalArmorValue, totalMundaneValue, totalWeaponsValue, valueAdjustFromWire, valueAdjustWire, weaponsItemsFor, weaponsRollFor, withCategoryFrom
     )
 
 {-| Treasure-roll domain.
@@ -613,36 +613,87 @@ sourceFromHoard row =
 -}
 removeGem : Int -> TreasureRoll -> TreasureRoll
 removeGem index roll =
-    { roll | gems = dropIndex index roll.gems }
+    { roll
+        | gems = dropIndex index roll.gems
+        , contributions = dropFromOwner .gems (\items c -> { c | gems = items }) index roll.contributions
+    }
 
 
 {-| Drop the art object at `index` from the rolled list.
 -}
 removeArt : Int -> TreasureRoll -> TreasureRoll
 removeArt index roll =
-    { roll | art = dropIndex index roll.art }
+    { roll
+        | art = dropIndex index roll.art
+        , contributions = dropFromOwner .art (\items c -> { c | art = items }) index roll.contributions
+    }
 
 
 {-| Drop the magic item at `index` from the rolled list.
 -}
 removeMagic : Int -> TreasureRoll -> TreasureRoll
 removeMagic index roll =
-    { roll | magic = dropIndex index roll.magic }
+    { roll
+        | magic = dropIndex index roll.magic
+        , contributions = dropFromOwner .magic (\items c -> { c | magic = items }) index roll.contributions
+    }
 
 
 removeMundaneItem : Int -> TreasureRoll -> TreasureRoll
 removeMundaneItem index roll =
-    { roll | mundane = dropIndex index roll.mundane }
+    { roll
+        | mundane = dropIndex index roll.mundane
+        , contributions = dropFromOwner .mundane (\items c -> { c | mundane = items }) index roll.contributions
+    }
 
 
 removeWeaponItem : Int -> TreasureRoll -> TreasureRoll
 removeWeaponItem index roll =
-    { roll | weapons = dropIndex index roll.weapons }
+    { roll
+        | weapons = dropIndex index roll.weapons
+        , contributions = dropFromOwner .weapons (\items c -> { c | weapons = items }) index roll.contributions
+    }
 
 
 removeArmorItem : Int -> TreasureRoll -> TreasureRoll
 removeArmorItem index roll =
-    { roll | armor = dropIndex index roll.armor }
+    { roll
+        | armor = dropIndex index roll.armor
+        , contributions = dropFromOwner .armor (\items c -> { c | armor = items }) index roll.contributions
+    }
+
+
+{-| Drop the item at `index` of a roll's list from the creature that
+rolled it. An individual roll's list is its creatures' lists joined
+in order, so the index walks them. A hoard has no creatures.
+-}
+dropFromOwner :
+    (CreatureContribution -> List a)
+    -> (List a -> CreatureContribution -> CreatureContribution)
+    -> Int
+    -> List CreatureContribution
+    -> List CreatureContribution
+dropFromOwner get set index contributions =
+    contributions
+        |> List.foldl
+            (\c ( offset, kept ) ->
+                let
+                    items =
+                        get c
+                in
+                ( offset + List.length items
+                , (if index >= offset && index < offset + List.length items then
+                    set (dropIndex (index - offset) items) c
+
+                   else
+                    c
+                  )
+                    :: kept
+                )
+            )
+            ( 0, [] )
+        |> Tuple.second
+        |> List.reverse
 
 
 {-| Zero out one denomination on the coin stack. `wire` is the
@@ -651,31 +702,85 @@ denomination key matching the view's slug ("copper", "silver",
 -}
 clearCoin : String -> TreasureRoll -> TreasureRoll
 clearCoin wire roll =
+    { roll
+        | coins = zeroCoin wire roll.coins
+        , contributions = List.map (\c -> { c | coins = zeroCoin wire c.coins }) roll.contributions
+    }
+
+
+zeroCoin : String -> Coins -> Coins
+zeroCoin wire c =
+    case wire of
+        "copper" ->
+            { c | copper = 0 }
+
+        "silver" ->
+            { c | silver = 0 }
+
+        "electrum" ->
+            { c | electrum = 0 }
+
+        "gold" ->
+            { c | gold = 0 }
+
+        "platinum" ->
+            { c | platinum = 0 }
+
+        _ ->
+            c
+
+
+{-| Take one category from a fresh roll and keep the rest of
+`existing`. The breakdown follows when the fresh roll was made for
+the same creatures. Otherwise it no longer describes the roll and is
+dropped.
+-}
+withCategoryFrom : Category -> TreasureRoll -> TreasureRoll -> TreasureRoll
+withCategoryFrom category fresh existing =
     let
-        c =
-            roll.coins
-
-        nextCoins =
-            case wire of
-                "copper" ->
-                    { c | copper = 0 }
-
-                "silver" ->
-                    { c | silver = 0 }
-
-                "electrum" ->
-                    { c | electrum = 0 }
-
-                "gold" ->
-                    { c | gold = 0 }
-
-                "platinum" ->
-                    { c | platinum = 0 }
-
-                _ ->
-                    c
+        merged =
+            takeCategory category fresh existing
     in
-    { roll | coins = nextCoins }
+    { merged
+        | contributions =
+            if List.map .creatureName fresh.contributions == List.map .creatureName existing.contributions then
+                List.map2 (takeCategory category) fresh.contributions existing.contributions
+
+            else
+                []
+    }
+
+
+{-| Copy one category from `from` onto `to`. Works on a whole roll
+and on one creature's share alike.
+-}
+takeCategory :
+    Category
+    -> { a | coins : Coins, gems : List GemItem, art : List ArtItem, magic : List MagicItem, mundane : List MundaneItem, weapons : List WeaponItem, armor : List ArmorItem }
+    -> { a | coins : Coins, gems : List GemItem, art : List ArtItem, magic : List MagicItem, mundane : List MundaneItem, weapons : List WeaponItem, armor : List ArmorItem }
+    -> { a | coins : Coins, gems : List GemItem, art : List ArtItem, magic : List MagicItem, mundane : List MundaneItem, weapons : List WeaponItem, armor : List ArmorItem }
+takeCategory category from to =
+    case category of
+        CoinsCategory ->
+            { to | coins = from.coins }
+
+        GemsCategory ->
+            { to | gems = from.gems }
+
+        ArtCategory ->
+            { to | art = from.art }
+
+        MagicCategory ->
+            { to | magic = from.magic }
+
+        MundaneCategory ->
+            { to | mundane = from.mundane }
+
+        WeaponsCategory ->
+            { to | weapons = from.weapons }
+
+        ArmorCategory ->
+            { to | armor = from.armor }
 
 
 dropIndex : Int -> List a -> List a

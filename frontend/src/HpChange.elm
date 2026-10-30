@@ -121,7 +121,9 @@ apply change c =
                 Drain n ->
                     applyDrain n c
     in
-    recomputeBloodied afterChange
+    afterChange
+        |> recomputeBloodied
+        |> endConcentrationAtZero
 
 
 {-| Drain: the damage lands as damage does, then the maximum falls
@@ -273,7 +275,9 @@ setCurrentHp n c =
         clamped =
             Basics.max 0 (Basics.min c.maxHp n)
     in
-    recomputeBloodied { c | currentHp = clamped }
+    { c | currentHp = clamped }
+        |> recomputeBloodied
+        |> endConcentrationAtZero
 
 
 {-| Write `currentHp` with the maximum carried up to meet it
@@ -353,6 +357,18 @@ restoreHp before c =
             , currentHp = Basics.max 0 (Basics.min newMax before.hp)
             , tempHp = Basics.max 0 before.tempHp
         }
+
+
+{-| A creature at 0 hit points is unconscious, which ends its
+concentration.
+-}
+endConcentrationAtZero : Creature -> Creature
+endConcentrationAtZero c =
+    if c.currentHp == 0 then
+        { c | concentrating = False }
+
+    else
+        c
 
 
 {-| Recompute the bloodied flag from current vs. max HP.

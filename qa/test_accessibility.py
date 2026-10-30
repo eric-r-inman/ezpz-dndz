@@ -102,10 +102,6 @@ def test_tab_walks_the_app_bar_then_the_column_then_the_cards_in_order(app):
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-15: the app bar's title link shows no focus ring",
-)
 @pytest.mark.cross_browser
 def test_every_tab_stop_shows_where_the_focus_is(app):
     app.add("Goblin Warrior")
@@ -164,10 +160,6 @@ def test_a_modal_takes_focus_and_keeps_tab_inside_it(app):
     expect(dialog).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-16: closing a modal drops focus to the page, not to the control that opened it",
-)
 @pytest.mark.cross_browser
 def test_closing_a_modal_returns_focus_to_what_opened_it(app):
     trigger = app.page.get_by_role("button", name="Set the round number")
