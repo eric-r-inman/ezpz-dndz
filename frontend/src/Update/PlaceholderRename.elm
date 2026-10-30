@@ -12,6 +12,7 @@ user types, then Enter or blur commits via
 
 -}
 
+import Effects
 import Encounter.Roster
 import Model exposing (Model)
 import Msg exposing (Msg)
@@ -24,7 +25,9 @@ rather than blank the field.
 -}
 open : String -> Model -> ( Model, Cmd Msg )
 open name model =
-    ( { model | placeholderRename = Just (Rename.fresh name) }, Cmd.none )
+    ( { model | placeholderRename = Just (Rename.fresh name) }
+    , Effects.focusField Rename.inputId
+    )
 
 
 {-| `onInput` handler: track the in-progress text. No commit yet.

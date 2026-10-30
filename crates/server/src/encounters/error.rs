@@ -73,6 +73,10 @@ pub enum EncounterStoreError {
   /// describing the rule that fired.
   #[error("Saved encounter name is invalid: {reason}")]
   SaveNameInvalid { reason: &'static str },
+
+  /// A named save's body holds no `creatures` list.
+  #[error("Saved encounter body must be an object with a creatures list")]
+  SaveBodyInvalid,
 }
 
 impl IntoResponse for EncounterStoreError {
@@ -83,7 +87,8 @@ impl IntoResponse for EncounterStoreError {
       }
       EncounterStoreError::SaveAlreadyExists => StatusCode::CONFLICT,
       EncounterStoreError::SaveNotFound => StatusCode::NOT_FOUND,
-      EncounterStoreError::SaveNameInvalid { .. } => StatusCode::BAD_REQUEST,
+      EncounterStoreError::SaveNameInvalid { .. }
+      | EncounterStoreError::SaveBodyInvalid => StatusCode::BAD_REQUEST,
       EncounterStoreError::LiveRowsRead { .. }
       | EncounterStoreError::LiveRowsWrite { .. }
       | EncounterStoreError::LiveRowDecode { .. }
