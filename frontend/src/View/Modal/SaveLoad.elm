@@ -11,8 +11,9 @@ and the GM's own machine behind a file picker.
 -}
 
 import Auth
+import Effects
 import Encounter.Wire exposing (SavedEncounterMeta)
-import Html exposing (Html, a, button, div, input, li, p, span, text, ul)
+import Html exposing (Html, button, div, input, li, p, span, text, ul)
 import Html.Attributes
     exposing
         ( attribute
@@ -20,13 +21,13 @@ import Html.Attributes
         , class
         , disabled
         , for
-        , href
         , id
         , maxlength
+        , tabindex
         , type_
         , value
         )
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, preventDefaultOn)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..), SaveStorage(..))
 import Ui.SaveLoad as SaveLoadUi
@@ -247,7 +248,7 @@ savesBody ui =
                 [ class "quick-add__list quick-add__list--docked"
                 , attribute "role" "listbox"
                 ]
-                (List.map (saveListRow ui picked) metas)
+                (saveListRows ui picked metas)
             , actions ui picked
             ]
 
@@ -268,25 +269,57 @@ pickedSave ui metas =
             )
 
 
+{-| Each row knows its neighbours for the arrow keys. One row is a
+tab stop. It is the picked save. With none picked, it is the
+first.
+-}
+saveListRows : SaveLoadUi -> Maybe String -> List SavedEncounterMeta -> List (Html Msg)
+saveListRows ui picked metas =
+    let
+        tabStop =
+            case picked of
+                Just _ ->
+                    picked
+
+                Nothing ->
+                    List.head metas |> Maybe.map .name
+    in
+    Util.Keyboard.neighbours metas
+        |> List.map
+            (\n ->
+                saveListRow ui
+                    picked
+                    { tabStop = tabStop == Just n.option.name
+                    , previous = Maybe.map .name n.previous
+                    , next = Maybe.map .name n.next
+                    }
+                    n.option
+            )
+
+
+type alias Neighbours =
+    { tabStop : Bool, previous : Maybe String, next : Maybe String }
+
+
 {-| One save. The row being renamed becomes its own name field,
 so the name is edited where the GM picked it.
 -}
-saveListRow : SaveLoadUi -> Maybe String -> SavedEncounterMeta -> Html Msg
-saveListRow ui picked meta =
+saveListRow : SaveLoadUi -> Maybe String -> Neighbours -> SavedEncounterMeta -> Html Msg
+saveListRow ui picked neighbours meta =
     case ui.renaming of
         Just draft ->
             if draft.original == meta.name then
                 renameRow draft.draft
 
             else
-                readRow picked meta
+                readRow picked neighbours meta
 
         Nothing ->
-            readRow picked meta
+            readRow picked neighbours meta
 
 
-readRow : Maybe String -> SavedEncounterMeta -> Html Msg
-readRow picked meta =
+readRow : Maybe String -> Neighbours -> SavedEncounterMeta -> Html Msg
+readRow picked neighbours meta =
     let
         isPicked =
             picked == Just meta.name
@@ -299,7 +332,22 @@ readRow picked meta =
              else
                 "quick-add__row"
             )
+        , id (Effects.saveRowId meta.name)
+        , tabindex
+            (if neighbours.tabStop then
+                0
+
+             else
+                -1
+            )
         , onClick (SaveLoadSelect meta.name)
+        , preventDefaultOn "keydown"
+            (Util.Keyboard.listboxOptionKeys
+                { pick = SaveLoadSelect meta.name
+                , previous = Maybe.map SaveLoadSelect neighbours.previous
+                , next = Maybe.map SaveLoadSelect neighbours.next
+                }
+            )
         , attribute "role" "option"
         , attribute "aria-selected"
             (if isPicked then
@@ -424,7 +472,7 @@ signInNotice : String -> Html Msg
 signInNotice why =
     div [ class "save-load__device" ]
         [ p [ class "cond-section__caption" ] [ text why ]
-        , a [ class "action-btn action-btn--blue", href "/login" ] [ text "Sign in" ]
+        , View.Modal.signInLink
         ]
 
 

@@ -265,6 +265,16 @@ sortByInitiativeSuite =
                 Roster.sortByInitiative scrambled
                     |> .activeName
                     |> Expect.equal "B"
+        , test "tied copies keep their numbered order" <|
+            \_ ->
+                { threeCreatures
+                    | creatures =
+                        List.map (\n -> mkCreature n 0)
+                            [ "Goblin 10", "Goblin 2", "Goblin", "Goblin 9" ]
+                }
+                    |> Roster.sortByInitiative
+                    |> names
+                    |> Expect.equal [ "Goblin", "Goblin 2", "Goblin 9", "Goblin 10" ]
         ]
 
 

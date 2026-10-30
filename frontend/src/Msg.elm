@@ -42,6 +42,7 @@ import Encounter.Xp exposing (XpScope)
 import File exposing (File)
 import Http
 import Json.Decode as Decode
+import Time
 import Url exposing (Url)
 
 
@@ -539,6 +540,9 @@ type Msg
       -- the receiving handler decodes and replaces
       -- `model.encounter` in place.  No re-broadcast.
     | EncounterFromOtherTab Decode.Value
+      -- A peer tab's compendium changed.  The payload is
+      -- `Compendium.Wire.encodeTabSync`'s.  No re-broadcast.
+    | CompendiumFromOtherTab Decode.Value
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())
@@ -687,7 +691,7 @@ type Msg
     | SaveChainRollSaves SaveChainRollMode
     | SaveChainSavesRolled (List ( String, Dice.Roll ))
       -- Inline HP edit on the creature card
-    | HpEditStart String HpField Int
+    | HpEditStart String HpField
     | HpEditChange String
     | HpEditCommit
     | HpEditCancel
@@ -1080,6 +1084,9 @@ type Msg
     | CompendiumEditSpellcastingInnateUsesChanged Int String
     | CompendiumEditSpellcastingInnateSpellsChanged Int String
     | CompendiumEditSubmit
+      -- A signed-out submit, with the time it happened.  The server
+      -- stamps a signed-in one.
+    | CompendiumEditLocalStamped Compendium.Creature Time.Posix
     | CompendiumEditSubmitResponse (Result Http.Error Compendium.Creature)
     | CompendiumEditDelete
     | CompendiumEditDeleteResponse String (Result Http.Error ())
@@ -1181,10 +1188,6 @@ type Msg
       -- Quick Add modal — one-click "drop a creature into the
       -- encounter" picker (alphabetical / CR sort, click-a-row).
     | QuickAddOpen
-      -- Open the picker in "swap this creature" mode.  The pick
-      -- handler then replaces the named creature in place with
-      -- the chosen one, preserving the old initiative.
-    | QuickAddOpenForReplace String
     | QuickAddSortToggle
     | QuickAddSearchChanged String
     | QuickAddPick String
@@ -1279,7 +1282,7 @@ type Msg
     | AuthLoginDisplayNameChanged String
     | AuthLoginModeChanged Auth.LoginMode
     | AuthLoginSubmit
-    | AuthLoginResponse (Result Http.Error Auth.User)
+    | AuthLoginResponse (Result Auth.SubmitError Auth.User)
     | AuthLogout
     | AuthLogoutDone (Result Http.Error ())
       -- Anonymous-mode nudge: gated controls (Save to Server, etc.)

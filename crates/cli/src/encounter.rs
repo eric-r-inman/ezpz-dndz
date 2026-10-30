@@ -68,7 +68,7 @@ async fn read_value(
   args: &DbArgs,
   email: &str,
 ) -> Result<Value, EncounterCliError> {
-  let db = db::connect(args).await?;
+  let db = db::connect_existing(args).await?;
   let user = db::user_by_email(&db, email).await?;
   EncounterStore::new(db)
     .read(&user.id)

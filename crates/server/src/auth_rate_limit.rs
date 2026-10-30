@@ -15,10 +15,9 @@
 //! deployments that is plenty; switch to `tower-governor` or a
 //! distributed limiter if you ever federate across hosts.
 //!
-//! Client-IP resolution honours `X-Forwarded-For` when the
-//! request came through a reverse proxy (Caddy / nginx) and
-//! falls back to the TCP peer otherwise.  See
-//! [`client_ip`].
+//! The bucket key comes from `X-Forwarded-For` only when the
+//! operator says a reverse proxy writes it.  See
+//! [`AuthRateLimiter::client_ip`].
 
 use std::{
   collections::HashMap,
@@ -35,14 +34,10 @@ use axum::{
   Json,
 };
 use tokio::sync::Mutex;
+use tracing::warn;
 
-/// Sentinel IP used as the bucket key when no `X-Forwarded-For`
-/// header is present.  In a production deployment Caddy/nginx
-/// add the header on every request, so this fallback only kicks
-/// in for direct-to-server traffic (development, internal
-/// curl).  Falling back to a single shared bucket is preferable
-/// to disabling the limit entirely, since the goal is to keep
-/// the limiter behavioural on every code path.
+/// The bucket key for a request whose client the limiter cannot
+/// name.  One shared bucket is better than no limit at all.
 const DIRECT_FALLBACK_IP: IpAddr =
   IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0));
 
@@ -68,6 +63,7 @@ const SWEEP_THRESHOLD: usize = 1024;
 #[derive(Clone)]
 pub struct AuthRateLimiter {
   inner: Arc<Mutex<HashMap<IpAddr, BucketState>>>,
+  trust_forwarded_for: bool,
 }
 
 #[derive(Debug)]
@@ -77,9 +73,47 @@ struct BucketState {
 }
 
 impl AuthRateLimiter {
-  pub fn new() -> Self {
+  /// `trust_forwarded_for` says a reverse proxy writes
+  /// `X-Forwarded-For` on every request.
+  pub fn new(trust_forwarded_for: bool) -> Self {
     Self {
       inner: Arc::new(Mutex::new(HashMap::new())),
+      trust_forwarded_for,
+    }
+  }
+
+  /// The client a request's attempts count against.
+  ///
+  /// Behind a trusted proxy it is the last `X-Forwarded-For` entry.
+  /// The proxy wrote that one.  Any earlier entry came from the
+  /// client and could be forged.  Without a trusted proxy the header
+  /// is ignored.  Every client then shares one bucket.  The
+  /// foundation's listener does not hand the peer address on.
+  fn client_ip(&self, headers: &HeaderMap) -> IpAddr {
+    if self.trust_forwarded_for {
+      headers
+        .get("x-forwarded-for")
+        .and_then(|value| {
+          value
+            .to_str()
+            .inspect_err(|error| {
+              warn!(%error, "X-Forwarded-For is not text; using the shared bucket");
+            })
+            .ok()
+        })
+        .and_then(|text| text.rsplit(',').next())
+        .and_then(|last| {
+          last
+            .trim()
+            .parse::<IpAddr>()
+            .inspect_err(|error| {
+              warn!(%error, entry = last, "X-Forwarded-For entry is not an address; using the shared bucket");
+            })
+            .ok()
+        })
+        .unwrap_or(DIRECT_FALLBACK_IP)
+    } else {
+      DIRECT_FALLBACK_IP
     }
   }
 
@@ -124,12 +158,6 @@ impl AuthRateLimiter {
   }
 }
 
-impl Default for AuthRateLimiter {
-  fn default() -> Self {
-    Self::new()
-  }
-}
-
 #[derive(Debug)]
 pub struct TooMany {
   /// Number of seconds the client should wait before retrying.
@@ -148,7 +176,7 @@ pub async fn middleware(
   request: Request,
   next: Next,
 ) -> Response {
-  let ip = client_ip(&headers);
+  let ip = limiter.client_ip(&headers);
   match limiter.record_and_check(ip).await {
     Ok(()) => next.run(request).await,
     Err(too_many) => (
@@ -168,22 +196,41 @@ pub async fn middleware(
   }
 }
 
-/// Resolve the originating client's IP from request headers.
-///
-/// In the documented production setup
-/// (`docs/DEPLOY.org`), Caddy adds `X-Forwarded-For` containing
-/// the real client IP; we trust the first hop.  For direct
-/// connections without a reverse proxy (development, `curl
-/// localhost`) the limiter shares a single fallback bucket
-/// keyed by [`DIRECT_FALLBACK_IP`].  That keeps the limit
-/// behavioural on every code path; the cost is that a busy
-/// dev session can self-throttle, which is a useful smoke test
-/// that the limiter is active.
-fn client_ip(headers: &HeaderMap) -> IpAddr {
-  headers
-    .get("x-forwarded-for")
-    .and_then(|value| value.to_str().ok())
-    .and_then(|text| text.split(',').next())
-    .and_then(|first| first.trim().parse::<IpAddr>().ok())
-    .unwrap_or(DIRECT_FALLBACK_IP)
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  fn forwarded(value: &str) -> HeaderMap {
+    HeaderMap::from_iter([(
+      axum::http::HeaderName::from_static("x-forwarded-for"),
+      value.parse().unwrap(),
+    )])
+  }
+
+  #[test]
+  fn an_untrusted_header_is_ignored() {
+    let limiter = AuthRateLimiter::new(false);
+    assert_eq!(
+      limiter.client_ip(&forwarded("203.0.113.7")),
+      DIRECT_FALLBACK_IP
+    );
+  }
+
+  #[test]
+  fn a_trusted_header_counts_the_entry_the_proxy_wrote() {
+    let limiter = AuthRateLimiter::new(true);
+    assert_eq!(
+      limiter.client_ip(&forwarded("203.0.113.7, 198.51.100.2")),
+      "198.51.100.2".parse::<IpAddr>().unwrap()
+    );
+  }
+
+  #[test]
+  fn a_trusted_but_unreadable_header_falls_back_to_the_shared_bucket() {
+    let limiter = AuthRateLimiter::new(true);
+    assert_eq!(
+      limiter.client_ip(&forwarded("not an address")),
+      DIRECT_FALLBACK_IP
+    );
+  }
 }

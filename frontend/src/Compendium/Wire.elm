@@ -2,7 +2,7 @@ module Compendium.Wire exposing
     ( fetchAll, fetchAllPublic
     , decodeCreature, encodeCreature, encodeDraft
     , defaultSpeed, defaultAbilities, defaultSenses
-    , LocalCompendiumSnapshot, SavedCompendiumMeta, currentBundledVersion, decodeLocalCompendiumSnapshot, deleteCompendiumSaveCmd, encodeLocalCompendiumSnapshot, getCompendiumSaveCmd, listCompendiumSavesCmd, mergeCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
+    , LocalCompendiumSnapshot, SavedCompendiumMeta, currentBundledVersion, decodeLocalCompendiumSnapshot, decodeTabSync, deleteCompendiumSaveCmd, encodeLocalCompendiumSnapshot, encodeTabSync, getCompendiumSaveCmd, listCompendiumSavesCmd, mergeCmd, putCompendiumSaveCmd, renameCompendiumSaveCmd
     )
 
 {-| Wire format + HTTP client for the compendium domain.
@@ -934,7 +934,7 @@ ids aren't in the bundle are preserved across the merge.
 -}
 currentBundledVersion : Int
 currentBundledVersion =
-    4
+    5
 
 
 type alias LocalCompendiumSnapshot =
@@ -974,6 +974,24 @@ decodeLocalCompendiumSnapshot =
             , D.succeed 0
             ]
         )
+
+
+{-| What one tab posts to the others when its compendium changes:
+the snapshot, under the owner from `Auth.owner`.
+-}
+encodeTabSync : String -> LocalCompendiumSnapshot -> E.Value
+encodeTabSync owner snap =
+    E.object
+        [ ( "owner", E.string owner )
+        , ( "snapshot", encodeLocalCompendiumSnapshot snap )
+        ]
+
+
+decodeTabSync : D.Decoder ( String, LocalCompendiumSnapshot )
+decodeTabSync =
+    D.map2 Tuple.pair
+        (D.field "owner" D.string)
+        (D.field "snapshot" decodeLocalCompendiumSnapshot)
 
 
 {-| `POST /api/compendium/merge` adds a signed-out session's creatures
