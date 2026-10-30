@@ -214,10 +214,6 @@ def test_ties_go_to_the_higher_initiative_bonus(app):
     assert app.card_names() == ["Adult Red Dragon", "Goblin Warrior", "Placeholder 1", "Ogre"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-07: tied numbered copies sort as text, so 10 comes before 2",
-)
 def test_tied_copies_keep_their_numbered_order(app):
     app.add("Goblin Warrior", count=10)
     expected = ["Goblin Warrior"] + [f"Goblin Warrior {n}" for n in range(2, 11)]

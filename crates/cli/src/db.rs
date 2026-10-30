@@ -6,7 +6,11 @@
 //! (both flags also read the matching `ezpz_dndz_*` env vars, so a
 //! single environment covers both binaries).  Opening the database
 //! runs the embedded migrations, which is what makes the CLI safe
-//! to point at a data dir the server has never booted against.
+//! to point at a database the server has not migrated yet.
+//!
+//! A subcommand that only reads opens the database with
+//! [`connect_existing`].  A mistyped `--data-dir` then fails instead
+//! of answering from a fresh, empty database.
 //!
 //! The CLI is otherwise blocking; only database access is async.
 //! [`block_on`] builds a single-thread tokio runtime local to the
@@ -94,6 +98,15 @@ where
 pub async fn connect(args: &DbArgs) -> Result<Db, DbCliError> {
   let url = args.url();
   Db::connect(&url)
+    .await
+    .map_err(|source| DbCliError::Open { url, source })
+}
+
+/// Open the database the arguments resolve to, refusing one that
+/// does not exist yet.  Subcommands that only read call this.
+pub async fn connect_existing(args: &DbArgs) -> Result<Db, DbCliError> {
+  let url = args.url();
+  Db::connect_existing(&url)
     .await
     .map_err(|source| DbCliError::Open { url, source })
 }

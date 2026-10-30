@@ -1,5 +1,5 @@
 module Ui.Timer exposing
-    ( TimerSetupUi, fresh
+    ( TimerSetupUi, fresh, turnsInputId
     , TimerPreset, toPreset, applyPreset
     )
 
@@ -15,7 +15,7 @@ later. Per-application context (`target`) is excluded from the
 preset; the form's transient menu / save-name / loaded-name
 flags also live on `TimerSetupUi` rather than the preset.
 
-@docs TimerSetupUi, fresh
+@docs TimerSetupUi, fresh, turnsInputId
 @docs TimerPreset, toPreset, applyPreset
 
 -}
@@ -33,6 +33,13 @@ type alias TimerSetupUi =
     , pendingSaveName : Maybe String
     , loadedPresetName : Maybe String
     }
+
+
+{-| DOM id of the turn-count field the editor opens on.
+-}
+turnsInputId : String
+turnsInputId =
+    "timer-turns-input"
 
 
 fresh : String -> TimerSetupUi

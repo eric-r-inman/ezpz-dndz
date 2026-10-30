@@ -14,7 +14,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, Standing(..), conditionLevel, creatureNamed, damageReminders, damageRolls, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, standing, unsavedChanges
+    , AreaTracker, DamageTrigger(..), RechargeAbility, Standing(..), conditionLevel, creatureNamed, damageReminders, damageRolls, damageTaken, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, standing, unsavedChanges
     )
 
 {-| Domain layer for the encounter manager.
@@ -93,6 +93,7 @@ import Encounter.DeathSaves
 import Encounter.SaveNotice
 import Encounter.Treasure
 import Set exposing (Set)
+import Util.Number
 
 
 
@@ -602,6 +603,16 @@ creatureNamed name enc =
     enc.creatures
         |> List.filter (\c -> c.name == name)
         |> List.head
+
+
+{-| The hit points a creature lost since `before`. Temporary hit
+points count. A creature not in `before` lost none.
+-}
+damageTaken : Encounter -> Creature -> Int
+damageTaken before now =
+    creatureNamed now.name before
+        |> Maybe.map (\was -> (was.currentHp + was.tempHp) - (now.currentHp + now.tempHp))
+        |> Maybe.withDefault 0
 
 
 {-| Whether a creature is one the party is fighting. The badge is
@@ -1128,16 +1139,7 @@ describeDuration duration =
                         AtEnd ->
                             "end"
             in
-            String.fromInt n ++ " " ++ whose ++ pluralizeTurns n ++ " (" ++ phaseWord ++ ")"
-
-
-pluralizeTurns : Int -> String
-pluralizeTurns n =
-    if n == 1 then
-        "turn"
-
-    else
-        "turns"
+            String.fromInt n ++ " " ++ whose ++ Util.Number.pluralize "turn" "turns" n ++ " (" ++ phaseWord ++ ")"
 
 
 allConditionIds : Encounter -> List Int

@@ -10,17 +10,15 @@
 //! server is stopped — the same SQL-backed `UserStore` the server
 //! uses is opened directly against the database.  The CLI does
 //! **not** go through the HTTP API, so this still works when the
-//! server is down.  The database is resolved exactly like the
-//! server's: `--database-url` wins, otherwise
-//! `sqlite://<data_dir>/ezpz-dndz.db`.
-
-use std::path::PathBuf;
+//! server is down.  The database is resolved through the shared
+//! [`DbArgs`], exactly like the server's.
 
 use clap::Subcommand;
-use ezpz_dndz_lib::db::{default_sqlite_url, Db, DbError};
-use ezpz_dndz_lib::users::{UserStore, UserStoreError};
+use ezpz_dndz_lib::users::{validate_new_password, UserStore, UserStoreError};
 use thiserror::Error;
 use tracing::info;
+
+use crate::db::{self, DbArgs, DbCliError};
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum UsersCommand {
@@ -46,30 +44,15 @@ pub enum UsersCommand {
     #[arg(long)]
     new_password: Option<String>,
 
-    /// Database connection URL (`sqlite:…` or `postgres:…`).
-    /// Defaults to `sqlite://<data_dir>/ezpz-dndz.db` resolved
-    /// from `--data-dir` or the `ezpz_dndz_data_dir` env var —
-    /// the same rule the server applies.
-    #[arg(long, env = "ezpz_dndz_database_url")]
-    database_url: Option<String>,
-
-    /// Root of the runtime data dir.  Used only when
-    /// `--database-url` is absent; mirrors the server's
-    /// `--data-dir` flag so a single env-var setup covers both
-    /// binaries.
-    #[arg(long, env = "ezpz_dndz_data_dir", default_value = ".")]
-    data_dir: PathBuf,
+    #[command(flatten)]
+    db: DbArgs,
   },
 }
 
 #[derive(Debug, Error)]
 pub enum UsersCliError {
-  #[error("Failed to open the database at {url}: {source}")]
-  DbOpen {
-    url: String,
-    #[source]
-    source: DbError,
-  },
+  #[error("Database access failed: {0}")]
+  Db(#[from] DbCliError),
 
   #[error("Failed to reset the password: {0}")]
   Reset(#[source] UserStoreError),
@@ -90,10 +73,8 @@ impl UsersCommand {
       Self::ResetPassword {
         email,
         new_password,
-        database_url,
-        data_dir,
+        db,
       } => {
-        let url = database_url.unwrap_or_else(|| default_sqlite_url(&data_dir));
         let password = match new_password {
           Some(p) => p,
           None => prompt_for_password()?,
@@ -101,7 +82,8 @@ impl UsersCommand {
         if password.is_empty() {
           return Err(UsersCliError::EmptyPassword);
         }
-        run_reset(&url, &email, &password)
+        validate_new_password(&password).map_err(UsersCliError::Reset)?;
+        db::block_on(run_reset(&db, &email, &password))
       }
     }
   }
@@ -121,39 +103,26 @@ fn prompt_for_password() -> Result<String, UsersCliError> {
   Ok(first)
 }
 
-/// Spin up a single-thread tokio runtime just for this command.
-/// The CLI is otherwise blocking; only the database access needs
-/// async.  Keeping the runtime local to the subcommand avoids
-/// forcing `#[tokio::main]` on every other path.
-fn run_reset(
-  url: &str,
+/// Reset the password of an account that must already exist.  The
+/// lookup names an unknown email.  The store's own error would
+/// blame a password instead.
+async fn run_reset(
+  args: &DbArgs,
   email: &str,
   new_password: &str,
 ) -> Result<(), UsersCliError> {
-  let rt = tokio::runtime::Builder::new_current_thread()
-    .enable_all()
-    .build()
-    .map_err(UsersCliError::Prompt)?;
-
-  rt.block_on(async {
-    let db =
-      Db::connect(url)
-        .await
-        .map_err(|source| UsersCliError::DbOpen {
-          url: url.to_string(),
-          source,
-        })?;
-    let user = UserStore::new(db)
-      .admin_reset_password(email, new_password)
-      .await
-      .map_err(UsersCliError::Reset)?;
-    info!(
-      user_id = user.id.as_str(),
-      email = %user.email,
-      display_name = %user.display_name,
-      "Password reset"
-    );
-    println!("Reset password for {} <{}>", user.display_name, user.email);
-    Ok(())
-  })
+  let db = db::connect(args).await?;
+  let account = db::user_by_email(&db, email).await?;
+  let user = UserStore::new(db)
+    .admin_reset_password(&account.email, new_password)
+    .await
+    .map_err(UsersCliError::Reset)?;
+  info!(
+    user_id = user.id.as_str(),
+    email = %user.email,
+    display_name = %user.display_name,
+    "Password reset"
+  );
+  println!("Reset password for {} <{}>", user.display_name, user.email);
+  Ok(())
 }

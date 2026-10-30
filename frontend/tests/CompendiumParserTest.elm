@@ -60,6 +60,10 @@ goblinSuite =
     describe "Goblin (canonical SRD form)"
         [ test "parses without error" <|
             \_ -> expectOk input
+        , test "a block with no Initiative line rolls initiative off DEX" <|
+            \_ ->
+                expectFields input
+                    (\c -> c.initiativeBonus |> Expect.equal 2)
         , test "name + size + race + subrace + alignment" <|
             \_ ->
                 expectFields input

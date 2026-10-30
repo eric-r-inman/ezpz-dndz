@@ -10,6 +10,7 @@ reason.
 
 -}
 
+import Effects
 import Encounter.Xp exposing (XpScope)
 import Model exposing (Model)
 import Msg exposing (Msg)
@@ -22,7 +23,9 @@ answer.
 -}
 scopeSet : XpScope -> Model -> ( Model, Cmd Msg )
 scopeSet scope model =
-    ( { model | xpScope = scope }, Cmd.none )
+    ( { model | xpScope = scope }
+    , Effects.focusField (Effects.xpScopeOptionId scope)
+    )
 
 
 {-| Fold the tally that shows the total's working away or back.

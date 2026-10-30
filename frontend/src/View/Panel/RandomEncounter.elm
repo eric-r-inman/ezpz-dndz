@@ -53,11 +53,12 @@ import Html.Attributes as Attr
         , type_
         , value
         )
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (onClick, onInput, preventDefaultOn)
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg(..))
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.RandomEncounter exposing (RandomEncounterUi, RollState(..))
+import Util.Keyboard
 import View.Inline.Field as Field
 import View.Panel
 import View.Tooltips as Tooltips
@@ -361,12 +362,19 @@ creatureTypeSlot { isFirst, index, current } =
 minionsRow : RandomEncounterUi -> Html Msg
 minionsRow ui =
     div [ class "cond-row" ]
-        [ Field.checkbox
-            { checked = ui.includeMinions
-            , msg = RandomEncounterMinionsToggle
-            , label = "Include minions"
-            , extra = []
-            }
+        [ if RE.minionsFit ui.scale ui.pinned then
+            Field.checkbox
+                { checked = ui.includeMinions
+                , msg = RandomEncounterMinionsToggle
+                , label = "Include minions"
+                , extra = []
+                }
+
+          else
+            Field.unavailableCheckbox
+                { label = "Include minions"
+                , reason = "This scale leaves no room for minions beside the pinned creatures"
+                }
         , span [ class "cond-section__caption" ]
             [ text "(adds 2–6 low-CR creatures from the same habitat)" ]
         ]
@@ -723,6 +731,7 @@ excludeResultRow c =
     li
         [ class "random-encounter__pin-result"
         , onClick (RandomEncounterExcludeAdd c.id)
+        , preventDefaultOn "keydown" (Util.Keyboard.buttonKeys (RandomEncounterExcludeAdd c.id))
         , attribute "role" "button"
         , attribute "tabindex" "0"
         ]
@@ -737,6 +746,7 @@ pinResultRow c =
     li
         [ class "random-encounter__pin-result"
         , onClick (RandomEncounterPinAdd c.id)
+        , preventDefaultOn "keydown" (Util.Keyboard.buttonKeys (RandomEncounterPinAdd c.id))
         , attribute "role" "button"
         , attribute "tabindex" "0"
         ]

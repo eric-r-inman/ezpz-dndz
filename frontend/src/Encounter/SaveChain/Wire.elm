@@ -32,9 +32,15 @@ encodePresets presets =
         |> E.object
 
 
+{-| The server answers `null` for an account that has saved no
+presets yet.
+-}
 decodePresets : D.Decoder (Dict String SaveChain)
 decodePresets =
-    D.dict decode
+    D.oneOf
+        [ D.null Dict.empty
+        , D.dict decode
+        ]
 
 
 
