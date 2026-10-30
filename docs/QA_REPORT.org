@@ -744,12 +744,16 @@ The suite did not cover these:
 
 *** QA-ACCT-19: Sign-in timing reveals which emails have accounts
 
+- Status :: fixed
 - Severity :: question
 - Actual :: A wrong password for a known email took about 15 ms.  An unknown
   email took about 3 ms because the hash check is skipped.  Registration already
-  reveals a taken email with a 409.  The impact is small.  No test covers it.  A
-  timing test would be flaky.
-- Action :: Check unknown emails against a dummy hash or note the leak.
+  reveals a taken email with a 409.  The impact is small.
+- Evidence :: ~an_unknown_email_takes_as_long_as_a_wrong_password~ in
+  ~crates/lib/src/users/store.rs~.  It allows a fourfold gap and passed eight
+  runs in a row.
+- Action :: Fixed.  An unknown email is checked against a stand-in hash built
+  with the same parameters.  Registration still reveals a taken email.
 
 *** QA-ACCT-20: The CLI exits 0 when it did nothing
 

@@ -31,6 +31,8 @@
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.
 ** Security
+1. Sign-in takes as long for an unknown email as for a wrong password.  No
+   action needed.
 * v0.38.0
 ** Added
 1. The Condition/Effect editor has a New condition button while it edits one.
