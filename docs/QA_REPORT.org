@@ -639,9 +639,11 @@ The suite did not cover these:
 
 *** QA-ACCT-10: A wrong current password reads "Server returned 401."
 
+- Status :: fixed
 - Severity :: minor
 - Evidence :: ~test_a_wrong_current_password_is_refused_with_a_reason~
-- Action :: Say "Current password is incorrect."
+- Action :: Fixed.  The server answers a wrong current password with a 403 and
+  "Current password is incorrect".  The account page shows that.
 
 *** QA-ACCT-11: A password change leaves other devices signed in
 
@@ -653,57 +655,68 @@ The suite did not cover these:
 
 *** QA-ACCT-12: A request with no session hears "Invalid email or password"
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: All 21 protected endpoints answer 401.  That is right.  Each one
   blames a password nobody typed.
 - Evidence ::
   ~test_a_caller_without_a_session_is_not_told_their_password_is_wrong~
-- Action :: Give the unauthorized case its own message.  "Sign in required"
-  would do.
+- Action :: Fixed.  A request with no session hears "Sign in required".
 
 *** QA-ACCT-13: Some stores accept JSON of any shape
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A ~PUT~ of ~{"zzz":1}~ succeeds on the encounter saves, the
   compendium saves and the treasure profiles.  Malformed JSON is refused well
   everywhere.  No request gave a 500 or logged an error.
 - Evidence :: ~test_stores_refuse_a_body_of_the_wrong_shape~
-- Action :: Check save bodies the way ~PUT /api/encounter~ already does.
+- Action :: Fixed.  A named save needs a ~creatures~ list.  A compendium save
+  may also be the bare list older saves used.  Each treasure profile must be an
+  object.
 
 *** QA-ACCT-14: CLI reset-password blames the password for an unknown email
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: ~users reset-password~ for an unknown email says "Invalid email or
   password".  The other subcommands name the missing user.  The exit code is 1.
   That is right.
 - Evidence :: ~test_reset_password_for_an_unknown_email_names_the_problem~
-- Action :: Reuse ~db::user_by_email~ here.
+- Action :: Fixed.  The command names the unknown email.  It still checks the
+  password's length first.
 
 *** QA-ACCT-15: Importing a draft file twice imports it twice
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The CLI's help says a re-import changes nothing.  A file of drafts
   without ids gets fresh ids on each run.  The second run adds copies.
 - Evidence :: ~test_importing_a_draft_file_twice_does_not_duplicate_it~
-- Action :: Skip drafts that match an existing creature or correct the help.
+- Action :: Fixed.  The import skips a creature that matches an existing one
+  apart from its id and timestamps.  The help says so.
 
 *** QA-ACCT-16: A mistyped data dir makes an empty database
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: ~compendium count --data-dir ./typo~ makes the folder and a new
   database.  It prints 0 and exits 0.  An operator could think the data is gone.
 - Evidence ::
   ~test_inspecting_a_mistyped_data_dir_fails_instead_of_creating_one~
-- Action :: Make the read-only subcommands refuse a missing database.
+- Action :: Fixed.  The read-only subcommands refuse a missing database and
+  create nothing.  Import, dice clear and reset-password still create one.
 
 *** QA-ACCT-17: The compendium page asks for sign-in but offers no link
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The Server option says to sign in.  The compendium page has no app
   bar and no link.  Server is also picked by default for an anonymous DM.
 - Evidence ::
   ~test_the_compendium_page_offers_a_way_to_sign_in_for_server_saves~
-- Action :: Reuse the sign-in link from ~View.Modal.SaveLoad~.
+- Action :: Fixed.  Both compendium modals show the Sign in link beside the
+  nudge.  Server stays the default.
 
 *** QA-ACCT-18: Leave feedback mails an address with no domain
 
@@ -820,20 +833,24 @@ The suite did not cover these:
 
 *** QA-BUILD-07: By creature keeps loot that was removed or re-rolled
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Roll treasure for three goblins.  Remove a coin row.
 - Expected :: The breakdown matches the totals.
 - Actual :: The totals drop the row.  Each creature still lists it.
 - Evidence :: ~test_removing_a_coin_row_updates_the_by_creature_breakdown~
-- Action :: Rebuild or drop the breakdown whenever the roll changes.
+- Action :: Fixed.  Removing a row takes it from the creature that rolled it.  A
+  re-roll replaces each creature's share, or drops the breakdown when the
+  creatures have changed.
 
 *** QA-BUILD-08: An anonymous DM's Tune profiles vanish on reload
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Save is offered with no warning.  The profiles live only in memory.
   Every other anonymous preset is kept in localStorage.
 - Evidence :: ~test_an_anonymous_dms_named_profile_survives_a_reload~
-- Action :: Keep them in localStorage or say that saving needs an account.
+- Action :: Fixed.  An anonymous DM's profiles are kept in localStorage.
 
 *** QA-BUILD-09: Revert to bundled comes undone on reload
 
@@ -877,21 +894,24 @@ The suite did not cover these:
 
 *** QA-BUILD-12: A JSON file that is not an encounter floods the error
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Loading a compendium file fills the Load dialog with stat block
   text.  The reason sits at the very end.
 - Evidence ::
   ~test_a_json_file_that_is_not_an_encounter_fails_with_a_short_message~
-- Action :: Show a fixed "not an encounter file" message.
+- Action :: Fixed.  The dialog says the file is not an encounter file.
 
 *** QA-BUILD-13: A refused save or rename shows only a status code
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A rename to a taken name says "Server returned 409."  A save named
   "Act 1/Scene 2" says "Server returned 400."  The server knows the reason in
   both cases.
 - Evidence :: ~test_a_refused_save_name_says_why~
-- Action :: Map these to plain messages.
+- Action :: Fixed.  A taken name and a name the server cannot store each get a
+  plain message.
 
 *** QA-BUILD-14: A keyboard user cannot pick a saved encounter
 
@@ -1454,26 +1474,30 @@ The suite did not cover these:
 
 *** QA-COMP-26: A request with no session hears "Invalid email or password"
 
+- Status :: fixed
 - Severity :: question
 - Actual :: This is QA-ACCT-12.
+- Action :: Fixed with QA-ACCT-12.
 
 ** Infrastructure
 
 *** QA-INFRA-01: A server built with Nix had no database migrations
 
+- Status :: fixed
 - Severity :: blocker
 - Actual :: The flake's source filter dropped the ~.sql~ files that
   ~sqlx::migrate!~ embeds.  The build still passed.  The server stopped at
   startup on a fresh data dir with "no such table: schema_meta".  On an existing
   database it would skip every newer migration.  The template's new Flake checks
   job caught it.
-- Action :: Fixed in v0.35.0.  The filter keeps ~.sql~ files now.  Check which
-  build the homelab runs.
+- Action :: Fixed.  In v0.35.0 the filter keeps ~.sql~ files.  Check which build
+  the homelab runs.
 
 *** QA-INFRA-02: A fresh data dir logs a misleading warning
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The first boot warns that edits to bundled creatures need to be made
   again.  A fresh data dir has no edits.  The check in ~compendium::store~ fires
   when creatures were added.  It should fire only when they were refreshed.
-- Action :: Warn only when ~counts.refreshed~ is above 0.
+- Action :: Fixed.  The warning fires only when creatures were refreshed.

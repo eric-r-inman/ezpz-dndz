@@ -220,7 +220,8 @@ impl CompendiumStore {
       hashes: fresh_hashes,
     })?;
 
-    if first_migration && (counts.refreshed > 0 || counts.added > 0) {
+    // Only a refresh can overwrite an edit.  A fresh data dir only adds.
+    if first_migration && counts.refreshed > 0 {
       warn!(
         added = counts.added,
         refreshed = counts.refreshed,

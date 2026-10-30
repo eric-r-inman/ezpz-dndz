@@ -547,6 +547,7 @@ type alias Flags =
     , localParty : Maybe Decode.Value
     , localUserLoreGroups : Maybe Decode.Value
     , localUserTreasureTable : Maybe Decode.Value
+    , localTreasureProfiles : Maybe Decode.Value
     }
 
 
@@ -708,7 +709,13 @@ init flags url key =
                     (Decode.decodeValue Encounter.Treasure.TableWire.decodeTable
                         >> Result.toMaybe
                     )
-        , userTreasureProfiles = Dict.empty
+        , userTreasureProfiles =
+            flags.localTreasureProfiles
+                |> Maybe.andThen
+                    (Decode.decodeValue Encounter.Treasure.ProfileWire.decodeProfiles
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
         , userTreasureProfileNameDraft = ""
         }
       -- The auth-dependent data fetches (encounter, compendium,
@@ -900,7 +907,10 @@ update msg model =
                             )
 
                     _ ->
-                        Cmd.none
+                        Ports.persistLocalTreasureProfiles
+                            (Encounter.Treasure.ProfileWire.encodeProfiles
+                                next.userTreasureProfiles
+                            )
 
             else
                 Cmd.none

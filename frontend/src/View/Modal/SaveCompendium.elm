@@ -176,8 +176,11 @@ errorBanner auth ui =
         -- a prior submit attempt with the friendlier sign-in
         -- hint.  Anonymous Server is a precondition failure, not
         -- a server error.
-        p [ class "save-modal__error save-modal__error--auth" ]
-            [ text "Sign in to save your compendium to the eZpZ-dndZ server." ]
+        div [ class "save-load__device" ]
+            [ p [ class "save-modal__error save-modal__error--auth" ]
+                [ text "Sign in to save your compendium to the eZpZ-dndZ server." ]
+            , View.Modal.signInLink
+            ]
 
     else
         case ui.error of

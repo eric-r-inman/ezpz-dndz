@@ -192,7 +192,9 @@ async fn put_save(
   Query(query): Query<PutSaveQuery>,
   Json(body): Json<Value>,
 ) -> Response {
-  let name = match saves::validate_save_name(&raw_name) {
+  let name = match saves::validate_save_name(&raw_name)
+    .and_then(|name| saves::validate_save_body(&body).map(|()| name))
+  {
     Ok(n) => n,
     Err(e) => return e.into_response(),
   };

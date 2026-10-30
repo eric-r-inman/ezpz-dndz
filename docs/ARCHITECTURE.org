@@ -509,7 +509,10 @@ verification, self-service" model lives at ~/api/auth/*~ and is ours.
 
 The credential-error variants (no such email, wrong password) collapse to a
 single 401 ~"Invalid email or password"~ response so timing / error-text
-differences don't leak account-existence information.
+differences don't leak account-existence information.  A request with no session
+gets its own 401, ~"Sign in required"~.  A wrong current password on ~POST
+/api/auth/password~ gets a 403, so the frontend does not read it as a lost
+session.
 
 ** Session and middleware
 

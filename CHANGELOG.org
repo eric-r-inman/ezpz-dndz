@@ -96,12 +96,36 @@
     action needed.
 54. Screen readers hear what each treasure and compendium control belongs to.
     No action needed.
+55. A wrong current password on the account page says "Current password is
+    incorrect."  No action needed.
+56. A request without a session hears "Sign in required" instead of a password
+    complaint.  No action needed.
+57. Named saves and treasure profiles refuse a body of the wrong shape.  No
+    action needed.
+58. =users reset-password= names an email that has no account.  No action
+    needed.
+59. Importing the same file of drafts twice no longer adds copies.  No action
+    needed.
+60. The compendium's save and load dialogs offer a Sign in link to a signed-out
+    DM.  No action needed.
+61. A fresh data dir no longer logs a warning about lost edits.  No action
+    needed.
+62. The By creature breakdown follows removed and re-rolled treasure.  No action
+    needed.
+63. A signed-out DM's Tune your rolls profiles survive a reload.  No action
+    needed.
+64. Loading a file that is not an encounter shows one short message.  No action
+    needed.
+65. A refused save or rename says why.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 2. The sign-in throttle reads =X-Forwarded-For= only with
    =--trust-forwarded-for= or =trust_forwarded_for = true=.  Behind Caddy or
    another reverse proxy, add it.  Without it every client shares one throttle
    bucket.
+3. The CLI's list, count, show and tail subcommands refuse a data dir with no
+   database instead of creating an empty one.  Point =--data-dir= or
+   =--database-url= at the server's data before running them.
 ** Maintenance
 1. =just qa= no longer fails now and then when a scenario types a note right
    after picking a condition.  No action needed.

@@ -166,10 +166,6 @@ def contribution_coins(rows):
     return totals
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-07: By creature keeps showing loot the DM removed or re-rolled",
-)
 def test_removing_a_coin_row_updates_the_by_creature_breakdown(app):
     app.add("Goblin Warrior", count=3)
     panel = treasure_panel(app)
@@ -177,6 +173,7 @@ def test_removing_a_coin_row_updates_the_by_creature_breakdown(app):
     roll(panel, "All (individual loot)")
     panel.root.get_by_role("button", name=re.compile("By creature")).click()
     rows = panel.root.locator(".treasure__contributions-row")
+    expect(rows).to_have_count(3)
     assert contribution_coins(rows) == coins(panel.root)
 
     first = section(panel, "Coins").get_by_role("listitem").first
@@ -426,10 +423,6 @@ def test_a_signed_in_dm_saves_loads_and_deletes_a_named_profile(app):
     expect(panel.root.get_by_text("(none saved yet)")).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-08: an anonymous DM's named profiles vanish on reload",
-)
 def test_an_anonymous_dms_named_profile_survives_a_reload(app):
     app.add("Ogre")
     panel = treasure_panel(app)
@@ -623,7 +616,13 @@ def test_a_reverted_table_stays_reverted_after_a_reload(app):
     save_one_extra_mundane_item(app)
     dialog = open_table(app)
     dialog.get_by_role("button", name="↺ Revert").click()
-    dialog.get_by_role("button", name="Confirm Revert").click()
+    # A reload before the server has dropped the table would bring it back.
+    with app.page.expect_response(
+        lambda response: response.url.endswith("/api/treasure-table")
+        and response.request.method == "DELETE"
+    ) as reverted:
+        dialog.get_by_role("button", name="Confirm Revert").click()
+    assert reverted.value.ok
     expect(dialog.get_by_role("button", name="↺ Revert")).to_have_count(0)
 
     app.reload()

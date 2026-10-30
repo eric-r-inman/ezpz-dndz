@@ -146,6 +146,16 @@ try {
   }
 } catch (_) {}
 
+// Named Tune your rolls profiles.  Anonymous mode only.  Authed
+// sessions pull from /api/treasure-profiles instead.
+var localTreasureProfiles = null;
+try {
+  var profilesRaw = localStorage.getItem("treasureProfiles");
+  if (profilesRaw) {
+    localTreasureProfiles = JSON.parse(profilesRaw);
+  }
+} catch (_) {}
+
 // One-time clearance of the obsolete user-tables list from
 // the prior PR #39 model (a list of named UserTables).  The
 // new singular-table feature doesn't translate the old shape;
@@ -173,6 +183,7 @@ var app = Elm.Main.init({
     localParty: localParty,
     localUserLoreGroups: localUserLoreGroups,
     localUserTreasureTable: localUserTreasureTable,
+    localTreasureProfiles: localTreasureProfiles,
   },
 });
 
@@ -336,6 +347,15 @@ if (app.ports && app.ports.persistLocalUserTreasureTable) {
         "userTreasureTable",
         JSON.stringify(value),
       );
+    } catch (_) {}
+  });
+}
+
+// Named Tune your rolls profiles.  Fires on every save or delete.
+if (app.ports && app.ports.persistLocalTreasureProfiles) {
+  app.ports.persistLocalTreasureProfiles.subscribe(function (value) {
+    try {
+      localStorage.setItem("treasureProfiles", JSON.stringify(value));
     } catch (_) {}
   });
 }
