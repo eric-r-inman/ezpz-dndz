@@ -168,7 +168,10 @@ def initiatives(app):
 
 def turn_arrow(app, name):
     return app.card(name).root.get_by_role(
-        "button", name=re.compile(f"^(Set as active creature|{re.escape(ACTIVE_MARKER)})$")
+        "button",
+        name=re.compile(
+            f"^(Make {re.escape(name)} the active creature|It is {re.escape(name)}'s turn)$"
+        ),
     )
 
 
@@ -192,7 +195,9 @@ def change_hp(app, name, verb, amount):
 
 
 def knock_down(app, name):
-    change_hp(app, name, "Damage", 999)
+    # Damage left over past 0 that meets the maximum would kill outright.
+    current = int(hp_button(app.card(name), "Current").inner_text())
+    change_hp(app, name, "Damage", current)
     expect(hp_button(app.card(name), "Current")).to_have_text("0")
 
 
@@ -212,7 +217,7 @@ def reaction(app, name):
 
 def readied(app, name):
     return app.card(name).root.get_by_role(
-        "button", name=re.compile("^(Ready an Action|Action Readied)$")
+        "button", name=re.compile(f"^(Ready an Action|Action Readied) for {re.escape(name)}$")
     )
 
 

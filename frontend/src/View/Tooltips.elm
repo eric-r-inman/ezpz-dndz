@@ -30,11 +30,6 @@ module View.Tooltips exposing
     , compendiumEditBundled
     , compendiumEditClearUsage
     , compendiumEditDeleteCreature
-    , compendiumEditRemoveEntry
-    , compendiumEditRemoveSave
-    , compendiumEditRemoveSection
-    , compendiumEditRemoveSkill
-    , compendiumEditRemoveTag
     , compendiumEditorClose
     , compendiumExport
     , compendiumExportDirty
@@ -226,7 +221,7 @@ attr s =
 
 appBarSettings : String
 appBarSettings =
-    "Set Theme"
+    "Settings"
 
 
 appBarAccount : String
@@ -721,12 +716,12 @@ compendiumInstanceCount =
 
 compendiumAddToEncounter : String
 compendiumAddToEncounter =
-    "Roll initiative and add to the encounter"
+    "Add to the encounter at initiative 0"
 
 
 compendiumAddSelected : String
 compendiumAddSelected =
-    "Roll initiative for every checked creature and add them all"
+    "Add every checked creature to the encounter at initiative 0"
 
 
 compendiumEdit : String
@@ -806,7 +801,7 @@ compendiumReset =
 
 compendiumImport : String
 compendiumImport =
-    "Replace the current Compenidum with a saved Compendium file"
+    "Replace the current Compendium with a saved Compendium file"
 
 
 compendiumEditorClose : String
@@ -838,39 +833,14 @@ compendiumClearTagFilter =
 -- ── COMPENDIUM EDIT MODAL ────────────────────────────────────────────────────
 
 
-compendiumEditRemoveSave : String
-compendiumEditRemoveSave =
-    "Remove this save"
-
-
-compendiumEditRemoveSkill : String
-compendiumEditRemoveSkill =
-    "Remove this skill"
-
-
-compendiumEditRemoveEntry : String
-compendiumEditRemoveEntry =
-    "Remove this entry"
-
-
 compendiumEditClearUsage : String
 compendiumEditClearUsage =
     "Clear Usage (keeps the action)"
 
 
-compendiumEditRemoveSection : String
-compendiumEditRemoveSection =
-    "Remove this section"
-
-
 compendiumEditDeleteCreature : String
 compendiumEditDeleteCreature =
     "Delete this creature from Compendium"
-
-
-compendiumEditRemoveTag : String
-compendiumEditRemoveTag =
-    "Remove this tag"
 
 
 
@@ -1032,19 +1002,19 @@ logRowFold =
     "Fold the entry back to one line"
 
 
-drawerPinPanel : String
-drawerPinPanel =
-    "Pin to the top of the column"
+drawerPinPanel : String -> String
+drawerPinPanel title =
+    "Pin " ++ title ++ " to the top of the column"
 
 
-drawerUnpinPanel : String
-drawerUnpinPanel =
-    "Unpin from the top of the column"
+drawerUnpinPanel : String -> String
+drawerUnpinPanel title =
+    "Unpin " ++ title ++ " from the top of the column"
 
 
-drawerCollapse : String
-drawerCollapse =
-    "Fold this panel away, or open it back up"
+drawerCollapse : String -> String
+drawerCollapse title =
+    "Fold " ++ title ++ " away, or open it back up"
 
 
 

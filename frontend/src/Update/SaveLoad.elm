@@ -323,7 +323,7 @@ persistResponse name result model =
                 (\ui ->
                     { ui
                         | busy = False
-                        , error = Just (Util.Http.errorToString err)
+                        , error = Just (nameRefusal name err)
                     }
                 )
                 model
@@ -518,12 +518,31 @@ renameResponse { from, to } result model =
                 (\ui ->
                     { ui
                         | busy = False
-                        , error = Just (Util.Http.errorToString err)
+                        , error = Just (nameRefusal to err)
                     }
                 )
                 model
             , Cmd.none
             )
+
+
+{-| What a refused save or rename tells the DM. The server checks
+the name. A taken name and a name it cannot store each get their
+own message.
+-}
+nameRefusal : String -> Http.Error -> String
+nameRefusal name err =
+    case err of
+        Http.BadStatus 409 ->
+            "A save named \"" ++ name ++ "\" already exists."
+
+        Http.BadStatus 400 ->
+            "A save name can't be blank, run past "
+                ++ String.fromInt SaveLoadUi.maxNameLength
+                ++ " characters or contain a slash."
+
+        _ ->
+            Util.Http.errorToString err
 
 
 loadRequested : String -> Model -> ( Model, Cmd Msg )
@@ -608,12 +627,13 @@ deviceFileRead raw model =
                 "Loaded encounter from file."
                 (close next)
 
-        Err err ->
+        -- The decoder's own report quotes the whole file back.
+        Err _ ->
             ( withUi
                 (\ui ->
                     { ui
                         | error =
-                            Just ("Couldn't parse file: " ++ Decode.errorToString err)
+                            Just "Couldn't parse file: it is not an encounter file."
                     }
                 )
                 model

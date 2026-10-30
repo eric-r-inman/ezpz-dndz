@@ -175,7 +175,9 @@ def test_set_as_active_moves_the_marker_without_a_new_round(app):
     app.begin_combat()
     make_active(app, "Ogre")
     assert (app.round_number(), app.active_name()) == (1, "Ogre")
-    expect(turn_arrow(app, "Goblin Warrior 2")).to_have_accessible_name("Set as active creature")
+    expect(turn_arrow(app, "Goblin Warrior 2")).to_have_accessible_name(
+        "Make Goblin Warrior 2 the active creature"
+    )
     expect(turn_arrow(app, "Ogre")).to_have_accessible_name(ACTIVE_MARKER)
 
     app.next_turn()
@@ -230,10 +232,6 @@ def test_removing_the_active_creature_passes_the_turn_on(app):
     assert app.card_names() == ORDER[1:]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-03: removing the active creature hands the turn to an inactive one",
-)
 def test_removing_the_active_creature_passes_over_an_inactive_successor(app):
     fight(app)
     app.begin_combat()
@@ -242,10 +240,6 @@ def test_removing_the_active_creature_passes_over_an_inactive_successor(app):
     assert app.active_name() == "Goblin Warrior"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-03: removing the active creature starts no turn for its successor",
-)
 def test_removing_the_active_creature_starts_the_successors_turn(app):
     fight(app)
     app.begin_combat()
@@ -256,10 +250,6 @@ def test_removing_the_active_creature_starts_the_successors_turn(app):
     expect(reaction(app, "Wolf")).to_have_attribute("aria-pressed", "false")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-03: removing the last creature on its turn wraps without a new round",
-)
 def test_removing_the_last_creature_on_its_turn_starts_the_next_round(app):
     fight(app)
     app.begin_combat()
@@ -303,7 +293,7 @@ def test_reactions_come_back_at_the_start_of_their_own_turn(app):
         reaction(app, name).click()
         app.settle()
         expect(reaction(app, name)).to_have_attribute("aria-pressed", "true")
-        expect(reaction(app, name)).to_have_accessible_name("Reaction spent — click to refund")
+        expect(reaction(app, name)).to_have_accessible_name(f"Reaction spent for {name}")
     app.shot("reactions-spent")
 
     app.next_turn()
@@ -320,16 +310,14 @@ def test_reactions_come_back_at_the_start_of_their_own_turn(app):
     expect(reaction(app, "Wolf")).to_have_attribute("aria-pressed", "false")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-TURN-04: a readied action never clears at the start of its next turn",
-)
 def test_a_readied_action_ends_at_the_start_of_its_next_turn(app):
     fight(app)
     app.begin_combat()
     readied(app, "Goblin Warrior 2").click()
     app.settle()
-    expect(readied(app, "Goblin Warrior 2")).to_have_accessible_name("Action Readied")
+    expect(readied(app, "Goblin Warrior 2")).to_have_accessible_name(
+        "Action Readied for Goblin Warrior 2"
+    )
     expect(readied(app, "Goblin Warrior 2")).to_have_attribute("aria-pressed", "true")
 
     advance(app, 3)

@@ -146,6 +146,16 @@ try {
   }
 } catch (_) {}
 
+// Named Tune your rolls profiles.  Anonymous mode only.  Authed
+// sessions pull from /api/treasure-profiles instead.
+var localTreasureProfiles = null;
+try {
+  var profilesRaw = localStorage.getItem("treasureProfiles");
+  if (profilesRaw) {
+    localTreasureProfiles = JSON.parse(profilesRaw);
+  }
+} catch (_) {}
+
 // One-time clearance of the obsolete user-tables list from
 // the prior PR #39 model (a list of named UserTables).  The
 // new singular-table feature doesn't translate the old shape;
@@ -173,6 +183,7 @@ var app = Elm.Main.init({
     localParty: localParty,
     localUserLoreGroups: localUserLoreGroups,
     localUserTreasureTable: localUserTreasureTable,
+    localTreasureProfiles: localTreasureProfiles,
   },
 });
 
@@ -340,6 +351,15 @@ if (app.ports && app.ports.persistLocalUserTreasureTable) {
   });
 }
 
+// Named Tune your rolls profiles.  Fires on every save or delete.
+if (app.ports && app.ports.persistLocalTreasureProfiles) {
+  app.ports.persistLocalTreasureProfiles.subscribe(function (value) {
+    try {
+      localStorage.setItem("treasureProfiles", JSON.stringify(value));
+    } catch (_) {}
+  });
+}
+
 // Treasure table eraser.  Fires when the GM reverts to the
 // bundled table.
 if (app.ports && app.ports.clearLocalUserTreasureTable) {
@@ -442,6 +462,9 @@ if (app.ports && app.ports.openCompendiumTab) {
   var portal = document.createElement("div");
   portal.id = "tooltip-portal";
   portal.setAttribute("role", "tooltip");
+  // Nothing points a screen reader here.  The text a reader needs
+  // rides each control's own label instead.
+  portal.setAttribute("aria-hidden", "true");
   document.body.appendChild(portal);
 
   var showTimer = null;
@@ -507,7 +530,9 @@ if (app.ports && app.ports.openCompendiumTab) {
     portal.style.top = "0";
     portal.style.left = "0";
     requestAnimationFrame(function () {
-      if (currentTarget !== target) return;
+      // A trigger gone from the page measures as an empty box at the
+      // top-left corner.
+      if (currentTarget !== target || !target.isConnected) return;
       place(target);
       portal.style.visibility = "visible";
       portal.style.opacity = "1";
@@ -548,6 +573,14 @@ if (app.ports && app.ports.openCompendiumTab) {
     if (related && trigger.contains(related)) return;
     hide();
   });
+
+  // Removing the hovered trigger fires no mouseout.  The tooltip goes
+  // with it instead.
+  try {
+    new MutationObserver(function () {
+      if (currentTarget && !currentTarget.isConnected) hide();
+    }).observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
 
   document.addEventListener("focusin", function (e) {
     var trigger = findTrigger(e.target);
@@ -622,6 +655,74 @@ document.addEventListener(
       ) {
         var btn = document.getElementById("modal-close-btn");
         if (btn) btn.focus();
+      }
+    },
+    true,
+  );
+})();
+
+// Closing a modal hands focus back to the control that opened it.
+// The focused close button leaves with the modal.  Focus then drops
+// to the page, and a keyboard user would start over from the top.
+// When the modal opens, focus may already have moved inside it.  The
+// last focus outside any modal then names the opener.
+(function () {
+  var open = false;
+  var opener = null;
+  var lastOutside = null;
+
+  document.addEventListener("focusin", function (e) {
+    if (!(e.target.closest && e.target.closest(".modal-backdrop"))) {
+      lastOutside = e.target;
+    }
+  });
+
+  function track() {
+    var backdrop = document.querySelector(".modal-backdrop");
+    if (backdrop && !open) {
+      open = true;
+      var active = document.activeElement;
+      opener = backdrop.contains(active) ? lastOutside : active;
+    } else if (!backdrop && open) {
+      open = false;
+      var lost =
+        !document.activeElement || document.activeElement === document.body;
+      if (lost && opener && opener.isConnected) opener.focus();
+      opener = null;
+    }
+  }
+
+  try {
+    new MutationObserver(track).observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  } catch (_) {}
+})();
+
+// A modal closes on a click on its backdrop.  A resize that ends
+// past the modal's edge also fires a click there.  The browser
+// targets the backdrop because it holds both the press and the
+// release.  Only a press that began on the backdrop closes it.
+(function () {
+  var pressedOn = null;
+  document.addEventListener(
+    "mousedown",
+    function (e) {
+      pressedOn = e.target;
+    },
+    true,
+  );
+  document.addEventListener(
+    "click",
+    function (e) {
+      if (
+        e.target &&
+        e.target.classList &&
+        e.target.classList.contains("modal-backdrop") &&
+        pressedOn !== e.target
+      ) {
+        e.stopPropagation();
       }
     },
     true,

@@ -53,6 +53,7 @@ pub async fn main(
     db,
     &config.paths,
     config.compendium_claim_user.as_deref(),
+    config.trust_forwarded_for,
   )
   .await?;
   let auth_state = app_state.clone();

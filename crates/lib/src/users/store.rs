@@ -34,6 +34,9 @@ pub enum UserStoreError {
   #[error("Invalid email or password")]
   InvalidCredentials,
 
+  #[error("Current password is incorrect")]
+  CurrentPasswordIncorrect,
+
   #[error("Password must be at least 8 characters")]
   PasswordTooShort,
 
@@ -51,6 +54,16 @@ pub enum UserStoreError {
 /// that's a battle better fought with a passphrase mindset than with
 /// arbitrary character-class checks.
 pub const MIN_PASSWORD_LEN: usize = 8;
+
+/// Check a password a user is about to set.  Every path that sets one
+/// calls this, so the rule lives in one place.
+pub fn validate_new_password(password: &str) -> Result<(), UserStoreError> {
+  if password.len() < MIN_PASSWORD_LEN {
+    Err(UserStoreError::PasswordTooShort)
+  } else {
+    Ok(())
+  }
+}
 
 pub struct UserStore {
   db: Db,
@@ -83,9 +96,7 @@ impl UserStore {
     if display_name.is_empty() {
       return Err(UserStoreError::DisplayNameEmpty);
     }
-    if password.len() < MIN_PASSWORD_LEN {
-      return Err(UserStoreError::PasswordTooShort);
-    }
+    validate_new_password(password)?;
 
     let user = User {
       id: UserId::new(),
@@ -213,9 +224,7 @@ impl UserStore {
     email: &str,
     new_password: &str,
   ) -> Result<User, UserStoreError> {
-    if new_password.len() < MIN_PASSWORD_LEN {
-      return Err(UserStoreError::PasswordTooShort);
-    }
+    validate_new_password(new_password)?;
     let user = self
       .find_by_email(email)
       .await?
@@ -230,18 +239,16 @@ impl UserStore {
 
   /// Verify the supplied `current_password` against the stored hash
   /// and, on success, replace the hash with a fresh Argon2id digest
-  /// of `new_password`.  Returns `InvalidCredentials` for both "user
-  /// missing" and "current password mismatch" so handlers can't leak
-  /// account-existence by inspecting the error.
+  /// of `new_password`.  The caller is already signed in, so a
+  /// mismatch says which password was wrong.  Naming it leaks
+  /// nothing about other accounts.
   pub async fn change_password(
     &self,
     id: &UserId,
     current_password: &str,
     new_password: &str,
   ) -> Result<(), UserStoreError> {
-    if new_password.len() < MIN_PASSWORD_LEN {
-      return Err(UserStoreError::PasswordTooShort);
-    }
+    validate_new_password(new_password)?;
     // Verify against the current hash BEFORE we touch anything in
     // the database — defence-in-depth against accidentally
     // clobbering an account when the wrong password is supplied.
@@ -249,7 +256,8 @@ impl UserStore {
       .find_by_id(id)
       .await?
       .ok_or(UserStoreError::InvalidCredentials)?;
-    verify_password(current_password, &user.password_hash)?;
+    verify_password(current_password, &user.password_hash)
+      .map_err(|_| UserStoreError::CurrentPasswordIncorrect)?;
 
     let new_hash = hash_password(new_password)?;
     self.set_password_hash(id, &new_hash).await
@@ -461,7 +469,7 @@ mod tests {
     let bad = store
       .change_password(&user.id, "not-the-password", "newpassword9")
       .await;
-    assert!(matches!(bad, Err(UserStoreError::InvalidCredentials)));
+    assert!(matches!(bad, Err(UserStoreError::CurrentPasswordIncorrect)));
 
     store
       .change_password(&user.id, "hunter2hunter", "newpassword9")

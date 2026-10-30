@@ -37,7 +37,7 @@ import Compendium
         , Usage(..)
         )
 import Dice
-import Html exposing (Html, a, button, div, em, hr, li, p, span, strong, text, ul)
+import Html exposing (Html, a, button, div, em, h3, hr, li, p, span, strong, text, ul)
 import Html.Attributes exposing (attribute, class, href, target)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
@@ -155,7 +155,7 @@ nameRow tagDisplay c =
     case tagDisplay of
         TagBadges ->
             div [ class "statblock__name-row" ]
-                [ div [ class "statblock__name" ] [ text c.name ]
+                [ h3 [ class "statblock__name" ] [ text c.name ]
                 , kindBadge c.kind
                 , bundledBadge c.isBundled
                 , tagBadges c.tags
@@ -163,7 +163,7 @@ nameRow tagDisplay c =
 
         TagBadgesOpenInNewTab ->
             div [ class "statblock__name-row" ]
-                [ div [ class "statblock__name" ] [ text c.name ]
+                [ h3 [ class "statblock__name" ] [ text c.name ]
                 , kindBadge c.kind
                 , bundledBadge c.isBundled
                 , div [ class "statblock__name-row-end" ]

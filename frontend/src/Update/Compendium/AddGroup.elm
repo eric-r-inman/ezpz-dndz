@@ -45,6 +45,7 @@ import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Toast exposing (ToastKind(..))
 import Update.Initiative
 import Update.Toast
+import Util.Number
 
 
 
@@ -108,13 +109,8 @@ materialise spawns rolls model =
                 toastMessage =
                     "Added group: "
                         ++ String.fromInt count
-                        ++ " creature"
-                        ++ (if count == 1 then
-                                ""
-
-                            else
-                                "s"
-                           )
+                        ++ " "
+                        ++ Util.Number.pluralize "creature" "creatures" count
             in
             { m1 | encounter = Encounter.Roster.appendCreatures instances m1.encounter }
                 |> Update.Toast.pushWith ToastSuccess
@@ -141,6 +137,7 @@ type alias Skeleton =
     { creatureId : String
     , displayName : String
     , maxHpOverride : Maybe Int
+    , initiativeBonus : Int
     }
 
 
@@ -201,6 +198,7 @@ entryToSkeletons entry source initialTaken initialAcc =
                     { creatureId = entry.creatureId
                     , displayName = displayName
                     , maxHpOverride = maxHpOverride
+                    , initiativeBonus = source.initiativeBonus
                     }
             in
             ( skeleton :: acc, displayName :: takenNames )
@@ -215,8 +213,8 @@ entryToSkeletons entry source initialTaken initialAcc =
 `CompendiumGroupAddMaterialise` directly — no dice roll, just
 copy the manual value into every spawn's initiative.
 
-`shared_rolled` rolls once with `Dice.batchRollCmd` (single
-spec) and the callback fans the result out across every spawn.
+`shared_rolled` rolls once with a single `Dice.batchRollCmd`
+spec. The callback fans the total out across every spawn.
 
 `each_rolls` rolls N times — one spec per skeleton — and the
 callback zips rolls to skeletons in order.
@@ -238,9 +236,8 @@ dispatchInitiative group skeletons =
                 (Task.succeed ())
 
         InitiativeSharedRolled ->
-            -- Use the FIRST skeleton's source name as the dice-
-            -- history label so the GM can attribute the roll;
-            -- everyone else just shares the resulting total.
+            -- The first skeleton names the roll in the dice history
+            -- and lends it its bonus.  Everyone shares the total.
             case skeletons of
                 first :: _ ->
                     Dice.batchRollCmd
@@ -262,21 +259,12 @@ dispatchInitiative group skeletons =
                                     -- unreachable.
                                     NoOp
                         )
-                        [ ( first.displayName
-                          , Update.Initiative.source first.displayName
-                          , Dice.generator
-                                (Update.Initiative.initiativeExpression 0)
-                          )
-                        ]
+                        [ skeletonSpec first ]
 
                 [] ->
                     Cmd.none
 
         InitiativeEachRolls ->
-            -- One roll per skeleton.  Carry the per-skeleton
-            -- initiative bonus by looking up the source creature
-            -- on each spec; if the source can't be resolved we
-            -- already filtered the skeleton out in expandSkeletons.
             Dice.batchRollCmd
                 (\rolls ->
                     let
@@ -300,13 +288,7 @@ skeletonSpec : Skeleton -> ( String, Dice.Source, Random.Generator Dice.Roll )
 skeletonSpec skel =
     ( skel.displayName
     , Update.Initiative.source skel.displayName
-      -- We don't know the source creature's initiative bonus at
-      -- this point without another lookup.  Use 0 as a safe
-      -- default — the per-creature add path used `source.initiativeBonus`,
-      -- but for groups the GM is usually rolling them as a
-      -- coarse cluster so a flat d20 is acceptable for v1.  A
-      -- follow-up can plumb the bonus through if it matters.
-    , Dice.generator (Update.Initiative.initiativeExpression 0)
+    , Dice.generator (Update.Initiative.initiativeExpression skel.initiativeBonus)
     )
 
 

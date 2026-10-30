@@ -34,6 +34,7 @@ import Html.Attributes
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Msg exposing (Msg(..))
 import Ui.Login exposing (LoginUi)
+import View.Landmark
 
 
 {-| Sign-in / register screen.
@@ -48,7 +49,7 @@ theme, only this panel switches.
 -}
 view : LoginUi -> Html Msg
 view ui =
-    div
+    View.Landmark.mainRegion
         [ class "auth-login"
         , attribute "data-theme" "dark"
         ]
@@ -153,7 +154,7 @@ submitRow ui =
             [ text "Cancel" ]
         , case ui.error of
             Just message ->
-                p [ class "auth-login__error" ] [ text message ]
+                p [ class "auth-login__error", attribute "role" "alert" ] [ text message ]
 
             Nothing ->
                 text ""
