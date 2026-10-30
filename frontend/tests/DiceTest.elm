@@ -118,6 +118,16 @@ parserSuite =
                 [ "0d6", "1d0", "2d1" ]
                     |> List.filter (Dice.parse >> isOk)
                     |> Expect.equal []
+        , test "a word that names no damage type returns Err" <|
+            \_ ->
+                [ "2d6 bananas", "1d8 fire and ice", "3d4 cold-ish" ]
+                    |> List.filter (Dice.parse >> isOk)
+                    |> Expect.equal []
+        , test "every one of the 13 damage types parses in any case" <|
+            \_ ->
+                [ "Acid", "bludgeoning", "COLD", "fire", "force", "lightning", "necrotic", "piercing", "poison", "psychic", "radiant", "slashing", "thunder damage" ]
+                    |> List.filter (\word -> not (isOk (Dice.parse ("1d6 " ++ word))))
+                    |> Expect.equal []
         ]
 
 

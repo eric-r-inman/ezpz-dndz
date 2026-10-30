@@ -20,6 +20,8 @@
 8. Esc folds the panel opened most recently.  No action needed.
 9. Native controls follow the chosen theme on a dark operating system.  No
    action needed.
+10. A dice formula that ends in a word naming no damage type is refused.  No
+    action needed.
 ** Breaking
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.

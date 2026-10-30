@@ -501,9 +501,13 @@ The suite did not cover these:
 
 *** QA-UI-21: Any trailing word counts as a damage type
 
+- Status :: fixed
 - Severity :: question
 - Actual :: ~2d6 bananas~ rolls 2d6 with the damage type "bananas".
-- Action :: Decide whether the roller should accept only the 13 damage types.
+- Evidence ::
+  ~test_an_impossible_die_is_refused_rather_than_rolled_as_something_else~
+- Action :: Fixed.  A formula takes only the 13 damage types.  Any other word
+  leaves the formula unread like a malformed one.
 
 *** QA-UI-22: Small polish
 
