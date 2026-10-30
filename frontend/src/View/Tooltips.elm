@@ -30,11 +30,6 @@ module View.Tooltips exposing
     , compendiumEditBundled
     , compendiumEditClearUsage
     , compendiumEditDeleteCreature
-    , compendiumEditRemoveEntry
-    , compendiumEditRemoveSave
-    , compendiumEditRemoveSection
-    , compendiumEditRemoveSkill
-    , compendiumEditRemoveTag
     , compendiumEditorClose
     , compendiumExport
     , compendiumExportDirty
@@ -226,7 +221,7 @@ attr s =
 
 appBarSettings : String
 appBarSettings =
-    "Set Theme"
+    "Settings"
 
 
 appBarAccount : String
@@ -838,39 +833,14 @@ compendiumClearTagFilter =
 -- ── COMPENDIUM EDIT MODAL ────────────────────────────────────────────────────
 
 
-compendiumEditRemoveSave : String
-compendiumEditRemoveSave =
-    "Remove this save"
-
-
-compendiumEditRemoveSkill : String
-compendiumEditRemoveSkill =
-    "Remove this skill"
-
-
-compendiumEditRemoveEntry : String
-compendiumEditRemoveEntry =
-    "Remove this entry"
-
-
 compendiumEditClearUsage : String
 compendiumEditClearUsage =
     "Clear Usage (keeps the action)"
 
 
-compendiumEditRemoveSection : String
-compendiumEditRemoveSection =
-    "Remove this section"
-
-
 compendiumEditDeleteCreature : String
 compendiumEditDeleteCreature =
     "Delete this creature from Compendium"
-
-
-compendiumEditRemoveTag : String
-compendiumEditRemoveTag =
-    "Remove this tag"
 
 
 

@@ -866,15 +866,14 @@ html:has(.app-shell[data-theme="accessible"]) {
   font-size: 1.05rem;
 }
 
-/* CR Calculator modal: bump every text node so party rows,
+/* CR Calculator body: bump every text node so party rows,
    scope buttons, budget cells, result readouts all read at low
    vision.  `:not(.action-btn)` exempts the "+ Add character"
    button, which already sizes well via the shared `.action-btn`
-   rule. */
-[data-theme="accessible"] .panel-drawer--cr-calculator,
-[data-theme="accessible"]
-  .panel-drawer--cr-calculator
-  *:not(.action-btn):not(.action-btn *) {
+   rule.  The panel's header sits outside `.cr-calc` and keeps
+   the size every other header has. */
+[data-theme="accessible"] .cr-calc,
+[data-theme="accessible"] .cr-calc *:not(.action-btn):not(.action-btn *) {
   font-size: 1.1rem;
 }
 
@@ -1289,7 +1288,12 @@ body {
 .app-bar__title:hover,
 .app-bar__title:focus-visible {
   color: var(--color-accent, #4a90e2);
-  outline: none;
+}
+
+.app-bar__title:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 /* Italic "Sign in to keep changes." prompt sitting to the right
@@ -3257,6 +3261,12 @@ body {
 
 [data-theme="dark"] .treasure__rarity--legendary {
   color: #ef7777;
+}
+
+/* Gives the Accessible theme one root for the calculator's body.
+   It adds no box, so the drawer lays out the sections directly. */
+.cr-calc {
+  display: contents;
 }
 
 .cr-calc__blurb {
@@ -6895,6 +6905,7 @@ button.creature-card__lifecycle--dead:focus-visible {
 }
 
 .statblock__name {
+  margin: 0;
   font-weight: 700;
   font-size: 1.1rem;
 }
@@ -7482,7 +7493,8 @@ button.creature-card__lifecycle--dead:focus-visible {
      applies inline width / height / transform on top, capped by
      `max-width` / `max-height` and floored by `min-*`.  Position
      is `relative` so the 8 absolute-positioned resize handles
-     can hang off the perimeter. */
+     can hang off the perimeter.  The modal itself does not clip,
+     or the rounded corner would hide the corner handles. */
   position: relative;
   width: var(--modal-max-w, 640px);
   max-width: 95vw;
@@ -7491,7 +7503,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   min-height: 200px;
   display: flex;
   flex-direction: column;
+}
+
+/* Clips the header and body to the rounded corners.  The radius
+   is the modal's less its 1px border. */
+.modal__frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  border-radius: calc(var(--radius-lg) - 1px);
 }
 
 /* Drag-handle styling on the modal header: changes the cursor
@@ -7578,10 +7600,20 @@ button.creature-card__lifecycle--dead:focus-visible {
   width: calc(var(--handle-thick) * 2);
   height: calc(var(--handle-thick) * 2);
   cursor: nwse-resize;
-  /* Subtle 8px diagonal-stripe marker so this corner reads as
-     "the resize affordance" — discoverability without a full
-     drag-handle widget.  The other corners are silent to keep
-     the chrome calm. */
+}
+
+/* This subtle 8px diagonal-stripe marker shows that this corner
+   resizes the modal.  It needs no full drag-handle widget.  The
+   other corners are silent to keep the chrome calm.  Standing
+   5px in from the corner keeps it inside the rounded edge at
+   either theme's radius. */
+.modal__resize--se::after {
+  content: "";
+  position: absolute;
+  right: calc(var(--handle-thick) + 5px);
+  bottom: calc(var(--handle-thick) + 5px);
+  width: var(--handle-thick);
+  height: var(--handle-thick);
   background: linear-gradient(
     135deg,
     transparent 50%,

@@ -3,7 +3,7 @@ module Encounter.Roster exposing
     , sortByInitiative
     , removeCreature, duplicateCreature, insertCopyAfter
     , appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
-    , appendPlaceholder, renameCreature, replaceCreature, replaceWithPlaceholder
+    , appendPlaceholder, renameCreature, replaceCreature
     )
 
 {-| Queue-mutation helpers for the encounter manager.
@@ -22,7 +22,7 @@ mutations through these and lifecycle ticks through
 @docs sortByInitiative
 @docs removeCreature, duplicateCreature, insertCopyAfter
 @docs appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
-@docs appendPlaceholder, renameCreature, replaceCreature, replaceWithPlaceholder
+@docs appendPlaceholder, renameCreature, replaceCreature
 
 -}
 
@@ -512,31 +512,6 @@ replaceCreature oldName newCreature enc =
                         enc.activeName
             in
             { enc | creatures = swapped, activeName = newActive }
-
-
-{-| Swap the named creature for a fresh `Placeholder N` stub,
-preserving the old creature's initiative position. Used by the
-Quick Add modal's "Placeholder" entry when the modal was opened
-in replace mode.
-
-No-op when `oldName` isn't in the queue.
-
--}
-replaceWithPlaceholder : String -> Encounter -> Encounter
-replaceWithPlaceholder oldName enc =
-    let
-        otherNames =
-            enc.creatures
-                |> List.filter (\c -> c.name /= oldName)
-                |> List.map .name
-
-        placeholderName =
-            nextPlaceholderName otherNames
-
-        stub =
-            freshPlaceholder placeholderName
-    in
-    replaceCreature oldName stub enc
 
 
 freshPlaceholder : String -> Creature

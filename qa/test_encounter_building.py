@@ -128,10 +128,6 @@ def start_rename(app, name):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-01: the rename field opens without focus, so typing goes nowhere",
-)
 def test_clicking_a_placeholder_name_puts_the_cursor_in_the_rename_field(app):
     app.add_placeholder()
     field = start_rename(app, "Placeholder 1")
@@ -277,10 +273,6 @@ def test_replace_needs_a_pick_before_it_can_apply(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-02: Quick Add rows take focus but Enter does nothing",
-)
 def test_a_keyboard_dm_adds_a_creature_from_quick_add_with_enter(app):
     panel = app.panel("Quick Add").open()
     panel.root.get_by_role("searchbox", name="Filter Quick Add by name").fill("Ogre")
@@ -542,10 +534,6 @@ def test_encounter_xp_scope_and_calculations_tally(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-03: the Encounter XP scope options cannot be reached by keyboard",
-)
 def test_a_keyboard_dm_can_reach_the_encounter_xp_scope(app):
     panel = app.panel("Encounter XP").open()
     panel.fold_button().focus()

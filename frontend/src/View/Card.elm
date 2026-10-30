@@ -24,7 +24,7 @@ import Dict exposing (Dict)
 import Effects
 import Encounter exposing (Creature)
 import Html exposing (Html, article, button, div, input, p, span, text)
-import Html.Attributes as Attr exposing (attribute, autofocus, checked, class, id, maxlength, type_, value)
+import Html.Attributes as Attr exposing (attribute, checked, class, id, maxlength, type_, value)
 import Html.Events exposing (on, onBlur, onClick, onInput, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode
 import Model exposing (Surface(..))
@@ -607,10 +607,10 @@ placeholderName creature renameState =
         Just state ->
             if state.target == creature.name then
                 input
-                    [ class "creature-name creature-name--rename-input"
+                    [ id Rename.inputId
+                    , class "creature-name creature-name--rename-input"
                     , value state.draft
                     , Attr.maxlength Rename.maxNameLength
-                    , autofocus True
                     , attribute "aria-label" "Rename placeholder"
                     , onInput PlaceholderRenameChange
                     , onBlur PlaceholderRenameCommit
@@ -1388,7 +1388,6 @@ hpEditable creature hpEdit field current cls =
             , Html.Events.onBlur HpEditCommit
             , Html.Events.on "keydown" hpEditKeyDecoder
             , keepMouseDownInside
-            , autofocus True
             , attribute "aria-label" ("Armor Class for " ++ creature.name)
             ]
             []

@@ -71,6 +71,31 @@
 38. Screen readers hear names for the fight's fields, buttons and Bloodied.  No
     action needed.
 39. A dead creature no longer offers Death Saves.  No action needed.
+40. The first Tab on the encounter page reaches the skip link.  No action
+    needed.
+41. Manage HP and a placeholder's rename field take the cursor when they open.
+    No action needed.
+42. The dice roller refuses a die with no count or fewer than two faces.  No
+    action needed.
+43. The re-roll menu closes on Esc, on a click elsewhere and when a roll lands.
+    No action needed.
+44. Esc on a popover or menu closes only that popover or menu.  No action
+    needed.
+45. A new compendium tab answers "/" and Esc at once.  No action needed.
+46. A modal resizes from its visible corner and stays open when a resize ends
+    outside it.  No action needed.
+47. Closing a modal puts focus back on the control that opened it.  No action
+    needed.
+48. Every panel title is one size in the Accessible theme.  No action needed.
+49. The app bar's title link shows a focus ring.  No action needed.
+50. Screen readers announce sign-in and account errors.  No action needed.
+51. The settings button's tooltip says Settings.  No action needed.
+52. Quick Add, Random Encounter pins and lore member pickers answer Enter and
+    Space.  No action needed.
+53. The Encounter XP scope and the Replace picker work from the keyboard.  No
+    action needed.
+54. Screen readers hear what each treasure and compendium control belongs to.
+    No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 2. The sign-in throttle reads =X-Forwarded-For= only with

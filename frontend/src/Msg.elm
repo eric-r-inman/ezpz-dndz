@@ -1184,10 +1184,6 @@ type Msg
       -- Quick Add modal — one-click "drop a creature into the
       -- encounter" picker (alphabetical / CR sort, click-a-row).
     | QuickAddOpen
-      -- Open the picker in "swap this creature" mode.  The pick
-      -- handler then replaces the named creature in place with
-      -- the chosen one, preserving the old initiative.
-    | QuickAddOpenForReplace String
     | QuickAddSortToggle
     | QuickAddSearchChanged String
     | QuickAddPick String

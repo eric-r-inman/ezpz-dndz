@@ -233,6 +233,15 @@ subscriptions model =
                 _ ->
                     []
 
+        rerunMenuSubs =
+            if model.dice.rerunMenuOpenFor /= Nothing then
+                [ Browser.Events.onKeyDown (escKey DiceRerunMenuClose)
+                , Browser.Events.onMouseDown (Decode.succeed DiceRerunMenuClose)
+                ]
+
+            else
+                []
+
         timerPresetLoadMenuSubs =
             case model.surface of
                 Just (SurfaceTimerSetup ui) ->
@@ -329,17 +338,19 @@ subscriptions model =
                 Just (SurfaceTreasureTable _) ->
                     Browser.Events.onKeyDown (escKey TreasureTableClose)
 
+                -- The compendium page never shows the column, so its
+                -- own keys come first.  A popover owns Esc while open.
                 _ ->
-                    case Model.newestShowing model of
-                        Just ( _, panel ) ->
-                            drawerEscSub panel.surface
+                    if model.route == Compendium then
+                        Browser.Events.onKeyDown compendiumKeyDecoder
 
-                        Nothing ->
-                            if model.route == Compendium then
-                                Browser.Events.onKeyDown compendiumKeyDecoder
+                    else if Model.anyPopoverOpen model then
+                        Sub.none
 
-                            else
-                                Sub.none
+                    else
+                        Model.newestShowing model
+                            |> Maybe.map (\( _, panel ) -> drawerEscSub panel.surface)
+                            |> Maybe.withDefault Sub.none
     in
     Sub.batch
         (primary
@@ -351,6 +362,7 @@ subscriptions model =
             :: settingsSubs
             ++ encounterMenuSubs
             ++ clearMenuSubs
+            ++ rerunMenuSubs
             ++ conditionPresetLoadMenuSubs
             ++ timerPresetLoadMenuSubs
             ++ loginEscSubs
@@ -2659,9 +2671,6 @@ updateInner msg model =
 
         QuickAddOpen ->
             Update.QuickAdd.open model
-
-        QuickAddOpenForReplace oldName ->
-            Update.QuickAdd.openForReplace oldName model
 
         QuickAddSortToggle ->
             Update.QuickAdd.sortToggle model

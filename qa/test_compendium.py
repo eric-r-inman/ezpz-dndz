@@ -102,7 +102,7 @@ def test_deep_link_scrolls_the_chosen_row_into_view(app, bundled):
 
 def test_creature_page_shows_one_stat_block_and_names_a_missing_one(app, bundled):
     tab = library.open_at(app, "/compendium/creatures/" + bundled["Ogre"]["id"])
-    expect(tab.page.locator(".statblock__name")).to_have_text("Ogre")
+    expect(tab.page.get_by_role("heading", name="Ogre", exact=True)).to_be_visible()
     expect(tab.page.get_by_text("68 (8d10 + 24)")).to_be_visible()
     tab.shot("creature-page")
 
@@ -350,9 +350,6 @@ def test_newest_first_puts_a_creature_made_while_signed_in_on_top(app, signed_in
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-05: the hidden Manage HP panel swallows the page's slash key"
-)
 def test_slash_jumps_to_the_search_box(tab):
     tab.select("Ogre")
     tab.page.keyboard.press("/")
@@ -360,9 +357,6 @@ def test_slash_jumps_to_the_search_box(tab):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-05: the hidden Manage HP panel swallows the page's Esc key"
-)
 def test_escape_backs_out_of_the_reset_dialog(tab):
     tab.button("↺ Reset").click()
     expect(tab.dialog("Reset Compendium")).to_be_visible()
@@ -402,15 +396,10 @@ def add_feature(tab, legend, name, description):
 
 
 def picker_chip(tab, picker, option):
-    """One chip of a multi-select picker.
-
-    The three damage pickers repeat the same chip names with nothing to tell
-    them apart.  The picker is found by its label text.
-    """
+    """One chip of a multi-select picker."""
     return (
         tab.editor()
-        .locator(".edit-field--picker")
-        .filter(has_text=picker)
+        .get_by_role("group", name=picker, exact=True)
         .get_by_role("button", name=option, exact=True)
     )
 
@@ -434,12 +423,13 @@ def fill_marsh_troll(tab):
 
     saves = tab.section("Saving Throws")
     saves.get_by_role("button", name="+ Add Save").click()
-    saves.get_by_role("combobox").select_option(label="CON")
-    saves.get_by_role("spinbutton", name="Bonus").fill("8")
+    saves.get_by_role("combobox", name="Save ability").select_option(label="CON")
+    saves.get_by_role("spinbutton", name="CON save bonus").fill("8")
+    expect(saves.get_by_role("button", name="Remove save: CON")).to_be_visible()
 
     skills = tab.section("Skills")
     skills.get_by_role("button", name="+ Add Skill").click()
-    skills.get_by_placeholder("Skill name (e.g. Perception)").fill("Perception")
+    skills.get_by_role("textbox", name="Skill name").fill("Perception")
     skills.get_by_role("spinbutton", name="Bonus").fill("2")
 
     picker_chip(tab, "Damage Resistances", "Fire").click()
@@ -810,8 +800,8 @@ def test_advanced_sections_reach_the_stat_block_and_the_card(app, tab):
     spells.get_by_role("textbox", name="At will spells, comma-separated").fill(
         "Light, Thaumaturgy"
     )
-    add_row(spells, "+ Add Slot Level", spells.get_by_label("Level"))
-    spells.get_by_label("Level").fill("1")
+    add_row(spells, "+ Add Slot Level", spells.get_by_label("Level", exact=True))
+    spells.get_by_label("Level", exact=True).fill("1")
     spells.get_by_label("Slots").fill("2")
     spells.get_by_label("Spells (comma-separated)").first.fill("Bless")
     add_row(spells, "+ Add Innate Group", spells.get_by_label("Uses"))

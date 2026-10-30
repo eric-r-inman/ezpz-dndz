@@ -1,5 +1,5 @@
 module Ui.HpChange exposing
-    ( HpChangeUi, HpChangeEntry, HpEdit, editInputId, maxHpLogEntries, fresh
+    ( HpChangeUi, HpChangeEntry, HpEdit, amountInputId, editInputId, maxHpLogEntries, fresh
     , HpChangeTargetSnapshot, HpLogKind(..)
     )
 
@@ -10,7 +10,7 @@ The text fields mirror the `<input>` characters so a transient
 mid-typing state — the `2d` prefix of a formula in flight —
 doesn't get clobbered by the controlled input.
 
-@docs HpChangeUi, HpChangeEntry, HpEdit, editInputId, maxHpLogEntries, fresh
+@docs HpChangeUi, HpChangeEntry, HpEdit, amountInputId, editInputId, maxHpLogEntries, fresh
 @docs HpChangeTargetSnapshot, HpLogKind
 
 -}
@@ -129,6 +129,13 @@ type alias HpEdit =
     , field : HpField
     , text : String
     }
+
+
+{-| DOM id of Manage HP's amount field.
+-}
+amountInputId : String
+amountInputId =
+    "hp-amount"
 
 
 {-| DOM id of the card field an `HpEdit` opens. Only one edit is open at a

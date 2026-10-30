@@ -3,11 +3,11 @@ module Update.Replace exposing (apply, applySelected, logToggle, pick, searchCha
 {-| Update branches for the Replace editor: pick a compendium
 creature, then swap it in for the active creature (or every
 selected creature), preserving each old creature's queue
-position and initiative — the same core swap the Quick Add
-picker's replace mode performs.
+position and initiative.
 -}
 
 import Compendium
+import Effects
 import Encounter.Roster
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
@@ -35,7 +35,8 @@ searchChanged text model =
 
 
 {-| Clicking a list row picks (or re-clicking un-picks) the
-replacement creature.
+replacement creature. Focus follows the pick, so the arrow keys
+walk the list from there.
 -}
 pick : String -> Model -> ( Model, Cmd Msg )
 pick creatureId model =
@@ -51,7 +52,7 @@ pick creatureId model =
             }
         )
         model
-    , Cmd.none
+    , Effects.focusField (Effects.replaceRowId creatureId)
     )
 
 

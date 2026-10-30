@@ -227,7 +227,7 @@ def create_lore(tab, name, members, weight=None):
     expect(dialog).to_be_visible()
     dialog.get_by_placeholder("e.g. Kobold Skirmishers").fill(name)
     if weight is not None:
-        dialog.get_by_role("slider").fill(str(weight))
+        dialog.get_by_role("slider", name="Weight").fill(str(weight))
     for member in members:
         lore_member(dialog, *member)
     return dialog

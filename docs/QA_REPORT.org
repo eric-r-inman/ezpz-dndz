@@ -287,12 +287,14 @@ The suite did not cover these:
 
 *** QA-UI-04: The Manage HP field takes focus on load
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The HP field in ~View.Inline.HpChange~ has ~autofocus~.  The first
   Tab then lands in the roll field.  The skip link and the app bar are passed
   over.  A screen reader starts in the middle of the column.
 - Evidence :: ~test_the_first_tab_on_the_encounter_page_reaches_the_skip_link~
-- Action :: Focus the field only when the DM opens Manage HP.
+- Action :: Fixed.  Nothing takes focus on load.  Opening Manage HP puts the
+  caret in its amount field.
 
 *** QA-UI-05: axe finds serious faults in 11 of 15 page and theme pairs
 
@@ -321,34 +323,40 @@ The suite did not cover these:
 
 *** QA-UI-06: Impossible dice roll instead of failing
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: ~0d6~ rolls one d6.  ~1d0~ rolls a die that always shows 1.  ~200d6~
   quietly becomes 99d6.  The formula does show 99d6.
 - Evidence ::
   ~test_an_impossible_die_is_refused_rather_than_rolled_as_something_else~
-- Action :: Refuse a count below 1 and a die with fewer than 2 faces.
+- Action :: Fixed.  A count below 1 or a die with fewer than 2 faces is refused.
+  A count above 99 still becomes 99, and the formula says so.
 
 *** QA-UI-07: An open re-roll menu moves to the next roll
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Roll ~2d6+5~.  Open its ↻ menu.  Click d4.  Choose Reroll.
 - Expected :: ~2d6+5~ rolls again or the menu has closed.
 - Actual :: The d4 rolls again.  The menu is keyed by row position.
 - Evidence :: ~test_an_open_reroll_menu_stays_with_the_roll_it_was_opened_on~
-- Action :: Key the menu by the roll itself or close it when a roll lands.
+- Action :: Fixed.  The menu closes when a roll lands.
 
 *** QA-UI-08: The re-roll menu ignores Esc and clicks elsewhere
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Esc folds the whole Dice Roller instead.  A click elsewhere leaves
   the menu open.  The doc on ~rerunMenuClose~ names subscriptions that do not
   exist.
 - Evidence :: ~test_escape_closes_the_reroll_menu_and_leaves_the_roller_open~
   and ~test_a_click_elsewhere_closes_the_reroll_menu~
-- Action :: Add the subscriptions the doc describes.
+- Action :: Fixed.  Esc and a click elsewhere close the menu and leave the
+  roller open.  The doc names the real subscriptions.
 
 *** QA-UI-09: Esc on a popover also folds an editor
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Open the settings popover or the Encounter menu.  Press Esc.
 - Expected :: Only the popover closes.
@@ -356,11 +364,11 @@ The suite did not cover these:
   do it.
 - Evidence :: ~test_escape_on_the_settings_popover_closes_only_the_popover~ and
   ~test_escape_on_the_encounter_menu_closes_only_the_menu~
-- Action :: Let the column's Esc yield while a popover is open.  It already
-  yields to the Condition preset menu.
+- Action :: Fixed.  The column's Esc yields while any popover or menu is open.
 
 *** QA-UI-10: Resizing a modal can close it
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: ~overflow: hidden~ and the rounded corners clip the resize handles.
   Only a sliver of 2 to 4 pixels answers.  A press on the visible corner lands
@@ -369,8 +377,8 @@ The suite did not cover these:
 - Evidence ::
   ~test_pressing_on_the_very_corner_of_a_modal_resizes_rather_than_closes_it~
   and ~test_a_modal_shrinks_no_smaller_than_its_floor_and_stays_open~
-- Action :: Close only when the press also began on the backdrop.  Keep the
-  handles inside the clip.
+- Action :: Fixed.  A modal closes only when the press began on its backdrop.
+  The handles sit outside the rounded clip, so the corner itself resizes.
 
 *** QA-UI-11: Every new account gets an error toast
 
@@ -417,29 +425,33 @@ The suite did not cover these:
 
 *** QA-UI-15: The title link shows no focus ring
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The "eZpZ-dndZ" link's ~:focus-visible~ rule sets ~outline: none~.
   Only its colour changes.  Hover changes it the same way.
 - Evidence :: ~test_every_tab_stop_shows_where_the_focus_is~
-- Action :: Give it the focus ring the other controls use.
+- Action :: Fixed.  The link shows the focus ring the other controls use.
 
 *** QA-UI-16: Closing a modal drops focus to the page
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Open Round Set from the round button.  Press Esc.
 - Expected :: Focus returns to the round button.
 - Actual :: Focus goes to the page body.
 - Evidence :: ~test_closing_a_modal_returns_focus_to_what_opened_it~
-- Action :: Remember the opener and focus it again on close.
+- Action :: Fixed.  Closing a modal returns focus to the control that opened it.
 
 *** QA-UI-17: One panel title is oversized in the Accessible theme
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: The Encounter Difficulty title renders at 19.25 pixels.  The others
   render at 13.92 pixels.  It wraps.
 - Evidence :: ~test_every_panel_title_in_the_column_is_the_same_size~ in the
   Accessible theme.
-- Action :: Find the rule that scales that one title and drop it.
+- Action :: Fixed.  The Accessible theme's bump for that panel skips its header
+  row.
 
 *** QA-UI-18: Manage HP has no target before combat
 
@@ -484,11 +496,13 @@ The suite did not cover these:
 
 *** QA-UI-22: Small polish
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: The ⚙ tooltip still says "Set Theme".  The popover holds Profile
   too.  In the dice log the "d20" source chip shrinks to "d.." on advantage and
   disadvantage rows.
-- Action :: Rename the tooltip to "Settings".  Let the chip show its text.
+- Action :: Fixed.  The tooltip says Settings.  The chip keeps its width since
+  the turn sweep.  The column d20 scenario now checks it.
 
 ** Accounts, persistence and the CLI
 
@@ -586,11 +600,12 @@ The suite did not cover these:
 
 *** QA-ACCT-07: Form errors are not announced
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: A wrong password shows a paragraph with no role.  A screen reader
   says nothing.  The account page's errors are the same.
 - Evidence :: ~test_a_sign_in_error_is_announced_to_screen_readers~
-- Action :: Give the inline errors ~role="alert"~.
+- Action :: Fixed.  The sign-in and account errors carry ~role="alert"~.
 
 *** QA-ACCT-08: The sign-in form hides the server's reasons
 
@@ -737,6 +752,7 @@ The suite did not cover these:
 
 *** QA-BUILD-01: The placeholder rename field opens without focus
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Add a placeholder.  Click its name.
 - Expected :: The cursor is in the field.
@@ -745,23 +761,28 @@ The suite did not cover these:
   same fault as QA-TURN-09.
 - Evidence ::
   ~test_clicking_a_placeholder_name_puts_the_cursor_in_the_rename_field~
-- Action :: Focus the field from ~PlaceholderRenameOpen~.
+- Action :: Fixed.  Opening the rename focuses the field.  The AC editor and
+  Manage HP's amount field take focus the same way.
 
 *** QA-BUILD-02: Enter on a Quick Add row does nothing
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: The rows take focus but answer only clicks.  The Random Encounter
   pin and exclude rows are built the same way.
 - Evidence :: ~test_a_keyboard_dm_adds_a_creature_from_quick_add_with_enter~
-- Action :: Make them real buttons or handle Enter and Space.
+- Action :: Fixed.  Enter and Space press the Quick Add rows, the Random
+  Encounter pin and exclude rows, and the lore member pickers.
 
 *** QA-BUILD-03: The Encounter XP scope is out of keyboard reach
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Tab skips from the pin button to "Show calculations".  The Replace
   picker's options are built the same way.
 - Evidence :: ~test_a_keyboard_dm_can_reach_the_encounter_xp_scope~
-- Action :: Make the options focusable and give them key handling.
+- Action :: Fixed.  Both lists hold one tab stop.  Enter, Space and the arrow
+  keys pick, and focus follows the pick.
 
 *** QA-BUILD-04: Include minions adds none to small rolls but keeps their budget
 
@@ -895,21 +916,25 @@ The suite did not cover these:
 
 *** QA-BUILD-16: Treasure and result controls lack usable names
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Seven rows of Fewer, Normal and More buttons do not name their row
   or say which is pressed.  All seven switches are named "☐ None".  The profile
   delete button is named "🚫".  Every rolled row's button is "Remove this item".
   The table's coin fields have no names.  The results have no list or table
   structure.
-- Action :: Name each control with its context and its pressed state.
+- Action :: Fixed.  Each knob row is a named group whose buttons say which is
+  pressed.  Each switch, delete button and remove button names its row, profile
+  or item.  The table's coin fields carry names.  The results were already lists
+  in Chromium and Firefox.
 
 *** QA-BUILD-17: Quick Add's replace mode is unreachable
 
+- Status :: fixed
 - Severity :: cosmetic
 - Actual :: Commit 923e0ec removed the only button that opened it.  The Replace
   editor took over that job.
-- Action :: Delete the replace branches from Quick Add's state, update module
-  and message.
+- Action :: Fixed.  The replace branches are gone from Quick Add.
 
 *** QA-BUILD-18: The Quick Add search matches more than names
 
@@ -1222,6 +1247,7 @@ The suite did not cover these:
 
 *** QA-COMP-05: "/" and Esc do nothing in a new compendium tab
 
+- Status :: fixed
 - Severity :: minor
 - Steps :: Open the compendium tab.  Pick a creature and press "/".  Open Reset
   and press Esc.
@@ -1232,7 +1258,8 @@ The suite did not cover these:
   the hidden panel.
 - Evidence :: ~test_slash_jumps_to_the_search_box~ and
   ~test_escape_backs_out_of_the_reset_dialog~
-- Action :: Skip the column's key handling on the compendium route.
+- Action :: Fixed.  The column takes Esc only on the encounter page.  The
+  compendium tab keeps its own keys.
 
 *** QA-COMP-06: New creatures do not reach the encounter tab until it reloads
 
@@ -1398,6 +1425,7 @@ The suite did not cover these:
 
 *** QA-COMP-23: Compendium controls lack names
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Each row is a button around a checkbox.  Every checkbox is named
   "Select for bulk action" with no creature.  The stat block's name is not a
@@ -1405,7 +1433,9 @@ The suite did not cover these:
   nothing to tell them apart.  The save ability select has no label.  Its ×
   buttons are named only ×.  The group initiative radios and the lore weight
   slider have no names.
-- Action :: Add names that say which creature or picker they belong to.
+- Action :: Fixed.  The checkboxes name their creature.  The stat block's name
+  is a heading.  The pickers, radio groups, slider, save select and × buttons
+  say what they belong to.
 
 *** QA-COMP-24: A file that is not a compendium gets a misleading warning
 

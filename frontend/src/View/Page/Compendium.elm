@@ -1103,7 +1103,7 @@ listItem selectedId selectedIds encounterIds c =
         [ class (rowClass ++ " compendium__row--creature")
         , Attr.id (Effects.compendiumRowId c.id)
         ]
-        [ rowCheckbox c.id isChecked
+        [ rowCheckbox c isChecked
         , button
             [ class "compendium__row-text compendium__row-pick"
             , type_ "button"
@@ -1138,17 +1138,17 @@ implement the shift+click select-all / clear-all semantics in
 `Update.Compendium.Browser.rowToggle`.
 
 -}
-rowCheckbox : String -> Bool -> Html Msg
-rowCheckbox creatureId isChecked =
+rowCheckbox : Compendium.Creature -> Bool -> Html Msg
+rowCheckbox c isChecked =
     Html.input
         [ type_ "checkbox"
         , class "compendium__row-check"
         , Attr.checked isChecked
-        , attribute "aria-label" "Select for bulk action"
+        , attribute "aria-label" ("Select " ++ c.name ++ " for bulk action")
         , Tooltips.attr Tooltips.compendiumRowSelect
         , Html.Events.on "click"
             (Decode.field "shiftKey" Decode.bool
-                |> Decode.map (CompendiumRowToggle creatureId)
+                |> Decode.map (CompendiumRowToggle c.id)
             )
         ]
         []

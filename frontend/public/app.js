@@ -631,6 +631,74 @@ document.addEventListener(
   );
 })();
 
+// Closing a modal hands focus back to the control that opened it.
+// The focused close button leaves with the modal.  Focus then drops
+// to the page, and a keyboard user would start over from the top.
+// When the modal opens, focus may already have moved inside it.  The
+// last focus outside any modal then names the opener.
+(function () {
+  var open = false;
+  var opener = null;
+  var lastOutside = null;
+
+  document.addEventListener("focusin", function (e) {
+    if (!(e.target.closest && e.target.closest(".modal-backdrop"))) {
+      lastOutside = e.target;
+    }
+  });
+
+  function track() {
+    var backdrop = document.querySelector(".modal-backdrop");
+    if (backdrop && !open) {
+      open = true;
+      var active = document.activeElement;
+      opener = backdrop.contains(active) ? lastOutside : active;
+    } else if (!backdrop && open) {
+      open = false;
+      var lost =
+        !document.activeElement || document.activeElement === document.body;
+      if (lost && opener && opener.isConnected) opener.focus();
+      opener = null;
+    }
+  }
+
+  try {
+    new MutationObserver(track).observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  } catch (_) {}
+})();
+
+// A modal closes on a click on its backdrop.  A resize that ends
+// past the modal's edge also fires a click there.  The browser
+// targets the backdrop because it holds both the press and the
+// release.  Only a press that began on the backdrop closes it.
+(function () {
+  var pressedOn = null;
+  document.addEventListener(
+    "mousedown",
+    function (e) {
+      pressedOn = e.target;
+    },
+    true,
+  );
+  document.addEventListener(
+    "click",
+    function (e) {
+      if (
+        e.target &&
+        e.target.classList &&
+        e.target.classList.contains("modal-backdrop") &&
+        pressedOn !== e.target
+      ) {
+        e.stopPropagation();
+      }
+    },
+    true,
+  );
+})();
+
 // A folded log row offers a caret only when its text is too wide
 // to read on one line — and whether it fits is a rendered width,
 // which only the browser can measure.  Each measurable row marks

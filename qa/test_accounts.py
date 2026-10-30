@@ -100,10 +100,6 @@ def test_a_wrong_password_and_an_unknown_email_get_the_same_refusal(app):
     assert api(app.page, "GET", "/api/auth/me").status == 401
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-07: the sign-in error is not announced to screen readers",
-)
 def test_a_sign_in_error_is_announced_to_screen_readers(app):
     signed_out(app)
     form = LoginPage(app.page, app.server.base_url).goto()

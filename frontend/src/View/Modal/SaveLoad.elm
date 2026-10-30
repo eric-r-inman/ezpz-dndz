@@ -277,9 +277,6 @@ first.
 saveListRows : SaveLoadUi -> Maybe String -> List SavedEncounterMeta -> List (Html Msg)
 saveListRows ui picked metas =
     let
-        names =
-            List.map (.name >> Just) metas
-
         tabStop =
             case picked of
                 Just _ ->
@@ -288,13 +285,17 @@ saveListRows ui picked metas =
                 Nothing ->
                     List.head metas |> Maybe.map .name
     in
-    List.map3
-        (\previous meta next ->
-            saveListRow ui picked { tabStop = tabStop == Just meta.name, previous = previous, next = next } meta
-        )
-        (Nothing :: names)
-        metas
-        (List.drop 1 names ++ [ Nothing ])
+    Util.Keyboard.neighbours metas
+        |> List.map
+            (\n ->
+                saveListRow ui
+                    picked
+                    { tabStop = tabStop == Just n.option.name
+                    , previous = Maybe.map .name n.previous
+                    , next = Maybe.map .name n.next
+                    }
+                    n.option
+            )
 
 
 type alias Neighbours =
