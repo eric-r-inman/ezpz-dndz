@@ -1,14 +1,13 @@
 module Effects exposing
-    ( cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+    ( cardId, compendiumRowId, mainRegionId, replaceRowId, saveRowId, xpScopeOptionId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
     , drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
-    , autoRollCmdsFor
+    , RollSpec, rollBatch, autoRollSpecsFor
     , pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-    , fetchMe, cmdForRoute
-    , persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
-    , compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
+    , persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+    , compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
     , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
-    , anchorDicePopup, areaRollCmd, areaRollCmdsFor, changePassword, compendiumListId, damageSaveCmd, diceInputId, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
+    , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, deleteTreasureTable, diceInputId, editorFieldFocus, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
 {-| Cmd-emitting helpers for the application.
@@ -26,13 +25,12 @@ and `Model` for the small set of model-level helpers. Doesn't
 import any `Update/*` module — the dependency arrow points one
 way: Update modules → Effects.
 
-@docs cardId, compendiumRowId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
+@docs cardId, compendiumRowId, mainRegionId, replaceRowId, saveRowId, xpScopeOptionId, scrollActiveIntoView, scrollCardToTop, scrollCompendiumRowIntoView
 @docs drawerStackId, drawerPinnedId, drawerPanelId, scrollDrawerPanelIntoView, scrollDrawerTo, scrollDrawerToTop, scrollDrawerPairToTop, scrollDrawerStackToTop
-@docs autoRollCmdsFor
+@docs RollSpec, rollBatch, autoRollSpecsFor
 @docs pushDiceRoll, persistDiceRoll, fetchDiceHistory, clearDiceHistory
-@docs fetchMe, cmdForRoute
-@docs persistEncounterFor, persistDiceHistoryFor, persistCompendiumFor
-@docs compendiumChanged, shouldPersistAfter, shouldBroadcastAfter
+@docs persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
+@docs compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
 @docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
 @docs importCompendiumBundle, clearCompendiumCreatures, resetCompendium
 
@@ -54,14 +52,15 @@ import Encounter.SaveChain.Wire
 import Encounter.Treasure exposing (TreasureTable)
 import Encounter.Treasure.TableWire
 import Encounter.Wire
+import Encounter.Xp exposing (XpScope(..))
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
 import Model exposing (Model)
-import Msg exposing (MeInfo, Msg(..))
+import Msg exposing (BatchRoll(..), Msg(..))
 import Ports
 import Process
-import Route exposing (Route(..))
+import Random
 import Task
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Condition
@@ -138,6 +137,50 @@ creature's compendium id.
 compendiumRowId : String -> String
 compendiumRowId id =
     "compendium-row-" ++ id
+
+
+{-| DOM id of the page's main landmark. The skip link targets it.
+-}
+mainRegionId : String
+mainRegionId =
+    "main"
+
+
+{-| Stable HTML id for one row of the saved-encounter list, keyed by
+the save's name.
+-}
+saveRowId : String -> String
+saveRowId name =
+    "save-row-" ++ name
+
+
+{-| Stable HTML id for one row of the Replace editor's picker,
+keyed by the creature's compendium id.
+-}
+replaceRowId : String -> String
+replaceRowId creatureId =
+    "replace-row-" ++ creatureId
+
+
+{-| Stable HTML id for one of the Encounter XP panel's scope
+options.
+-}
+xpScopeOptionId : XpScope -> String
+xpScopeOptionId scope =
+    "xp-scope-"
+        ++ (case scope of
+                ScopeXpEnemiesAndNpcs ->
+                    "enemies-and-npcs"
+
+                ScopeXpEnemiesOnly ->
+                    "enemies"
+
+                ScopeXpNpcsOnly ->
+                    "npcs"
+
+                ScopeXpSelectedOnly ->
+                    "selected"
+           )
 
 
 {-| DOM id of the editor column's scroll container. The stack
@@ -261,6 +304,20 @@ focusField : String -> Cmd Msg
 focusField elementId =
     Browser.Dom.focus elementId
         |> Task.attempt (always NoOp)
+
+
+{-| Put the cursor in a card editor's field once its button has
+opened the editor. A press that closed the editor leaves focus on
+the button. `autofocus` cannot do this, because it acts only on
+page load.
+-}
+editorFieldFocus : String -> Model -> Cmd Msg
+editorFieldFocus elementId model =
+    if model.surface == Nothing then
+        Cmd.none
+
+    else
+        focusField elementId
 
 
 {-| Scroll so the panel at `index` sits at the top of the stack's
@@ -456,90 +513,107 @@ scrollCardToTop name =
 -- ── AUTO-ROLL SAVES ──────────────────────────────────────────────────────────
 
 
-{-| Build a list of Cmds that fire auto-roll saves for one
-creature in one turn-phase. Each result lands in
-`ConditionSaveLanded`, which applies the success / failure
-logic and updates the dice history.
-
-`mode` filters: only conditions whose `saveToEnd.autoRoll`
-matches `mode` produce a Cmd. The two phases (`AutoRollAtBegin`
-and `AutoRollAtEnd`) are fired separately — see the `NextTurn`
-update branch.
-
-Returns `[]` when the named creature isn't in the queue or has
-no matching auto-roll saves, which is the common case.
-
+{-| One roll of a batch: where it lands, the label the log shows and
+the dice.
 -}
-autoRollCmdsFor : Encounter.AutoRollMode -> String -> Encounter.Encounter -> List (Cmd Msg)
-autoRollCmdsFor mode name enc =
+type alias RollSpec =
+    ( BatchRoll, Dice.Source, Random.Generator Dice.Roll )
+
+
+{-| Fires every roll one event sets off as a single batch. Fired one
+by one in the same millisecond, they would share a seed and land on
+the same total.
+-}
+rollBatch : List RollSpec -> Cmd Msg
+rollBatch specs =
+    if List.isEmpty specs then
+        Cmd.none
+
+    else
+        Dice.batchRollCmd BatchRollsLanded specs
+
+
+{-| The auto-roll saves one creature makes in one turn phase. Only
+conditions whose `saveToEnd.autoRoll` matches `mode` roll. Empty when
+the creature is gone or has none. That is the common case.
+-}
+autoRollSpecsFor : Encounter.AutoRollMode -> String -> Encounter.Encounter -> List RollSpec
+autoRollSpecsFor mode name enc =
     enc.creatures
         |> List.filter (\c -> c.name == name)
-        |> List.concatMap
-            (\c ->
-                List.filterMap (autoRollCmdForCondition mode c.name) c.conditions
+        |> List.concatMap (\c -> List.filterMap (autoRollSpec mode c.name) c.conditions)
+
+
+autoRollSpec : Encounter.AutoRollMode -> String -> Encounter.Condition -> Maybe RollSpec
+autoRollSpec mode bearer cond =
+    cond.saveToEnd
+        |> Maybe.andThen
+            (\spec ->
+                if spec.autoRoll == mode then
+                    Just
+                        ( ConditionSaveRoll bearer cond.id spec.dc
+                        , saveSource cond bearer spec
+                        , Dice.generator (saveExpression spec.bonus)
+                        )
+
+                else
+                    Nothing
             )
 
 
-autoRollCmdForCondition : Encounter.AutoRollMode -> String -> Encounter.Condition -> Maybe (Cmd Msg)
-autoRollCmdForCondition mode bearer cond =
-    case cond.saveToEnd of
-        Just spec ->
-            if spec.autoRoll == mode then
-                Just
-                    (Dice.rollCmd
-                        (ConditionSaveLanded bearer cond.id spec.dc)
-                        (saveSource cond bearer spec)
-                        (saveExpression spec.bonus)
-                    )
-
-            else
-                Nothing
-
-        Nothing ->
-            Nothing
-
-
-{-| A save fired by a hit on the bearer: straight, or with
+{-| A save fired by a hit on the bearer. It rolls straight, or with
 advantage for an effect whose rules grant it.
 -}
-damageSaveCmd : String -> Int -> Encounter.SaveToEnd -> Bool -> Cmd Msg
-damageSaveCmd bearer id spec advantage =
-    let
-        source =
-            { feature = "Save on damage: " ++ spec.ability ++ " DC " ++ String.fromInt spec.dc
-            , target = Just bearer
-            }
-    in
-    if advantage then
-        Dice.advantageCmd (ConditionSaveLanded bearer id spec.dc) source spec.bonus
+damageSaveSpec : String -> Int -> Encounter.SaveToEnd -> Bool -> RollSpec
+damageSaveSpec bearer id spec advantage =
+    ( ConditionSaveRoll bearer id spec.dc
+    , { feature = "Save on damage: " ++ spec.ability ++ " DC " ++ String.fromInt spec.dc
+      , target = Just bearer
+      }
+    , if advantage then
+        Dice.advantageGenerator spec.bonus
 
-    else
-        Dice.rollCmd (ConditionSaveLanded bearer id spec.dc) source (saveExpression spec.bonus)
+      else
+        Dice.generator (saveExpression spec.bonus)
+    )
 
 
 {-| The save each area marker on the named creature rolls at this
-phase of its turn, landing in `AreaSaveLanded`.
+phase of its turn.
 -}
-areaRollCmdsFor : Encounter.TurnPhase -> String -> Encounter.Encounter -> List (Cmd Msg)
-areaRollCmdsFor phase name enc =
+areaRollSpecsFor : Encounter.TurnPhase -> String -> Encounter.Encounter -> List RollSpec
+areaRollSpecsFor phase name enc =
     Encounter.SaveChain.areaRollsDue phase name enc
-        |> List.map (\( cond, tracker ) -> areaRollCmd name cond tracker)
+        |> List.map
+            (\( cond, tracker ) ->
+                ( AreaSaveRoll name cond.id
+                , areaSource name tracker
+                , Dice.generator (saveExpression tracker.bonus)
+                )
+            )
 
 
+{-| One area save the DM asks for by hand.
+-}
 areaRollCmd : String -> Encounter.Condition -> Encounter.AreaTracker -> Cmd Msg
 areaRollCmd bearer cond tracker =
     Dice.rollCmd (AreaSaveLanded bearer cond.id)
-        { feature =
-            "Area: "
-                ++ tracker.chain
-                ++ " ("
-                ++ tracker.ability
-                ++ " DC "
-                ++ String.fromInt tracker.dc
-                ++ ")"
-        , target = Just bearer
-        }
+        (areaSource bearer tracker)
         (saveExpression tracker.bonus)
+
+
+areaSource : String -> Encounter.AreaTracker -> Dice.Source
+areaSource bearer tracker =
+    { feature =
+        "Area: "
+            ++ tracker.chain
+            ++ " ("
+            ++ tracker.ability
+            ++ " DC "
+            ++ String.fromInt tracker.dc
+            ++ ")"
+    , target = Just bearer
+    }
 
 
 {-| Clears the save-reminder pulse once `condition-chip-flash`'s
@@ -688,6 +762,10 @@ pushIncomingDiceRoll roll model =
                 -- triple-roll's own handler re-sets it after its own
                 -- three pushes clear it here.
                 , rollBadgeOverride = Nothing
+
+                -- The menu is keyed by row, and a new roll shifts
+                -- every row down one.
+                , rerunMenuOpenFor = Nothing
             }
       }
     , Cmd.none
@@ -882,6 +960,22 @@ putTreasureTable table =
         }
 
 
+{-| DELETE the caller's treasure table, so the bundled one applies
+again.
+-}
+deleteTreasureTable : Cmd Msg
+deleteTreasureTable =
+    Http.request
+        { method = "DELETE"
+        , headers = []
+        , url = "/api/treasure-table"
+        , body = Http.emptyBody
+        , expect = Http.expectWhatever TreasureTablePersisted
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+
+
 {-| GET the caller's saved Treasure-roller settings profiles
 ("Tune your rolls" presets) as opaque JSON. The frontend decodes
 the value into a `Dict String TreasureSettings`; null + decode
@@ -908,35 +1002,6 @@ putTreasureProfiles encoded =
         , timeout = Nothing
         , tracker = Nothing
         }
-
-
-
--- ── /me ──────────────────────────────────────────────────────────────────────
-
-
-fetchMe : Cmd Msg
-fetchMe =
-    Http.get
-        { url = "/me"
-        , expect = Http.expectJson GotMe meDecoder
-        }
-
-
-meDecoder : Decode.Decoder MeInfo
-meDecoder =
-    Decode.map2 MeInfo
-        (Decode.field "name" Decode.string)
-        (Decode.field "auth_enabled" Decode.bool)
-
-
-cmdForRoute : Route -> Cmd Msg
-cmdForRoute route =
-    case route of
-        Me ->
-            fetchMe
-
-        _ ->
-            Cmd.none
 
 
 
@@ -967,8 +1032,38 @@ submitLogin { email, password } =
                     , ( "password", Encode.string password )
                     ]
                 )
-        , expect = Http.expectJson AuthLoginResponse Auth.userDecoder
+        , expect = Http.expectStringResponse AuthLoginResponse submitResult
         }
+
+
+{-| The sign-in and registration reply. A refusal keeps its body
+because the body holds the server's reason. `Http.expectJson` would
+drop it.
+-}
+submitResult : Http.Response String -> Result Auth.SubmitError Auth.User
+submitResult response =
+    case response of
+        Http.GoodStatus_ _ body ->
+            Decode.decodeString Auth.userDecoder body
+                |> Result.mapError (\_ -> Auth.Unreadable)
+
+        Http.BadStatus_ metadata body ->
+            Err
+                (Auth.Refused
+                    { status = metadata.statusCode
+                    , reason = Result.toMaybe (Decode.decodeString (Decode.field "error" Decode.string) body)
+                    , retryAfterSecs = Result.toMaybe (Decode.decodeString (Decode.field "retry_after_secs" Decode.int) body)
+                    }
+                )
+
+        Http.Timeout_ ->
+            Err Auth.TimedOut
+
+        Http.NetworkError_ ->
+            Err Auth.Unreachable
+
+        Http.BadUrl_ _ ->
+            Err Auth.Unreachable
 
 
 submitRegister :
@@ -985,7 +1080,7 @@ submitRegister { email, password, displayName } =
                     , ( "display_name", Encode.string displayName )
                     ]
                 )
-        , expect = Http.expectJson AuthLoginResponse Auth.userDecoder
+        , expect = Http.expectStringResponse AuthLoginResponse submitResult
         }
 
 
@@ -1162,10 +1257,17 @@ persistEncounterFor auth encounter =
             Encounter.Wire.persistEncounterCmd EncounterPersisted encounter
 
         Auth.AuthAnonymous ->
-            Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
+            persistLocalEncounter encounter
 
         Auth.AuthLoading ->
             Cmd.none
+
+
+{-| Write the encounter to the browser's own slot.
+-}
+persistLocalEncounter : Encounter.Encounter -> Cmd Msg
+persistLocalEncounter encounter =
+    Ports.persistLocalEncounter (Encounter.Wire.encodeEncounter encounter)
 
 
 {-| Persist the full dice-history list to `localStorage` when
@@ -1216,26 +1318,41 @@ persistCompendiumFor : Model -> Cmd Msg
 persistCompendiumFor model =
     case model.auth of
         Auth.AuthAnonymous ->
-            -- Snapshot only carries creatures the user authored or
-            -- imported locally — bundled SRD creatures are always
-            -- refetched from `/bundled-creatures.json` on boot,
-            -- never stored client-side.  Filtering by `isBundled`
-            -- keeps the snapshot small AND ensures stale bundled
-            -- bytes can't shadow a corrected bundle after an app
-            -- update.
             Ports.persistLocalCompendium
-                (Compendium.Wire.encodeLocalCompendiumSnapshot
-                    { creatures =
-                        loadedCreatures model.compendium.db
-                            |> List.filter (\c -> not c.isBundled)
-                    , groups = Dict.values model.compendium.groups
-                    , nextLocalId = model.nextLocalCreatureId
-                    , bundledVersion = Compendium.Wire.currentBundledVersion
-                    }
-                )
+                (Compendium.Wire.encodeLocalCompendiumSnapshot (localSnapshot model))
 
         _ ->
             Cmd.none
+
+
+{-| Post the compendium to the app's other tabs, so a creature made
+in one is in every other one's Quick Add and stat blocks.
+-}
+broadcastCompendiumFor : Model -> Cmd Msg
+broadcastCompendiumFor model =
+    Auth.owner model.auth
+        |> Maybe.map
+            (\owner ->
+                Ports.broadcastCompendium
+                    (Compendium.Wire.encodeTabSync owner (localSnapshot model))
+            )
+        |> Maybe.withDefault Cmd.none
+
+
+localSnapshot : Model -> Compendium.Wire.LocalCompendiumSnapshot
+localSnapshot model =
+    -- The snapshot carries only creatures the user authored or
+    -- imported.  Bundled creatures come from
+    -- `/bundled-creatures.json` on every boot.  Leaving them out
+    -- keeps the snapshot small.  It also keeps stale bundled
+    -- bytes from shadowing a corrected bundle after an update.
+    { creatures =
+        loadedCreatures model.compendium.db
+            |> List.filter (\c -> not c.isBundled)
+    , groups = Dict.values model.compendium.groups
+    , nextLocalId = model.nextLocalCreatureId
+    , bundledVersion = Compendium.Wire.currentBundledVersion
+    }
 
 
 shouldPersistAfter : Msg -> Bool
@@ -1269,6 +1386,76 @@ shouldPersistAfter msg =
         -- (and already broadcast), so re-doing either from this
         -- tab would loop.
         EncounterFromOtherTab _ ->
+            False
+
+        CompendiumFromOtherTab _ ->
+            False
+
+        _ ->
+            True
+
+
+{-| Whether hit points that fell during this Msg were a hit. A Msg
+that swaps in a whole encounter from storage or another tab, resets
+one, or undoes a change moves the numbers without dealing damage.
+-}
+couldDealDamage : Msg -> Bool
+couldDealDamage msg =
+    case msg of
+        EncounterLoaded _ ->
+            False
+
+        EncounterFromOtherTab _ ->
+            False
+
+        AuthMeReceived _ ->
+            False
+
+        LocalEncounterMigrated _ _ ->
+            False
+
+        SaveLoadLoadRequested _ ->
+            False
+
+        SaveLoadServerResponse _ _ ->
+            False
+
+        SaveLoadDeviceFileRead _ ->
+            False
+
+        EncounterReset ->
+            False
+
+        EncounterClear ->
+            False
+
+        HpChangeUndoLatest ->
+            False
+
+        _ ->
+            True
+
+
+{-| Whether to fire `broadcastCompendium` after this Msg. A load is
+left out as well as the inbound broadcast. A tab posting what it
+just loaded could undo a newer edit made in another tab.
+-}
+shouldBroadcastCompendiumAfter : Msg -> Bool
+shouldBroadcastCompendiumAfter msg =
+    case msg of
+        CompendiumFromOtherTab _ ->
+            False
+
+        CompendiumLoaded _ ->
+            False
+
+        CompendiumGroupsLoaded _ ->
+            False
+
+        AuthMeReceived _ ->
+            False
+
+        LocalCompendiumMigrated _ _ ->
             False
 
         _ ->

@@ -72,7 +72,7 @@ parseStatBlock raw =
             initialState name typeLine
                 |> walk rest
                 |> commitFeature
-                |> .creature
+                |> initiativeOrDex
                 |> extractSpellcasting
                 |> autoFlagSpecialReactions
                 |> Ok
@@ -313,6 +313,7 @@ type alias State =
     , pending : Maybe PendingFeature
     , passedHeader : Bool
     , loreMode : Bool
+    , sawInitiative : Bool
     }
 
 
@@ -392,6 +393,7 @@ initialState name typeLine =
     , pending = Nothing
     , passedHeader = False
     , loreMode = False
+    , sawInitiative = False
     }
 
 
@@ -522,7 +524,7 @@ dispatchClassifiedLine line state =
             withCreature (\c -> { c | speed = speed }) (commitFeature state)
 
         LineInitiative bonus ->
-            withCreature (\c -> { c | initiativeBonus = bonus }) (commitFeature state)
+            withInitiative bonus (commitFeature state)
 
         LineAbilities abs_ ->
             withCreature (\c -> { c | abilities = abs_ }) (commitFeature state)
@@ -621,10 +623,35 @@ applyEmbeddedInitiative : String -> State -> State
 applyEmbeddedInitiative line state =
     case extractInitiativeFromLine line of
         Just bonus ->
-            withCreature (\c -> { c | initiativeBonus = bonus }) state
+            withInitiative bonus state
 
         Nothing ->
             state
+
+
+withInitiative : Int -> State -> State
+withInitiative bonus state =
+    let
+        set =
+            withCreature (\c -> { c | initiativeBonus = bonus }) state
+    in
+    { set | sawInitiative = True }
+
+
+{-| A block with no Initiative line rolls initiative off DEX, as the
+2014 rules have it.
+-}
+initiativeOrDex : State -> Compendium.Creature
+initiativeOrDex state =
+    let
+        c =
+            state.creature
+    in
+    if state.sawInitiative then
+        c
+
+    else
+        { c | initiativeBonus = Compendium.abilityModifier c.abilities.dex }
 
 
 extractInitiativeFromLine : String -> Maybe Int
@@ -825,7 +852,7 @@ applyAbilityRow ability score maybeSave c =
                     { abilities | cha = score }
 
         modifier =
-            (score - 10) // 2
+            Compendium.abilityModifier score
 
         savesAdditions =
             case maybeSave of

@@ -8,7 +8,7 @@ module Compendium exposing
     , Treasure(..), allTreasures, treasureLabel, treasureToWire, treasureFromWire
     , Db, fromList, toList, count, upsert, remove
     , find, findByName, search, filterByKind, sortByName, sortByCr, sortByRecency
-    , crToFloat
+    , crToFloat, abilityModifier
     , stripTrailingRecharge, appendRechargeSuffix
     , draftToInstance
     , instanceKindLine, sourceLegendaryResistanceBase, sourceLegendaryResistanceLairBonus, specialReactionLabels, specialReactionNames, specialReactions, syncLegendaryFields
@@ -46,7 +46,7 @@ lives in `View/` modules and consumes this domain.
 
 # Helpers
 
-@docs crToFloat
+@docs crToFloat, abilityModifier
 @docs stripTrailingRecharge, appendRechargeSuffix
 
 
@@ -1367,6 +1367,15 @@ instanceKindLine c =
                 subraced ++ ", " ++ c.alignment
     in
     withAlignment
+
+
+{-| The modifier an ability score gives. It is half of the score less
+10, rounded down. A score of 5 gives -3. Elm's `//` rounds toward zero
+and would give -2.
+-}
+abilityModifier : Int -> Int
+abilityModifier score =
+    floor (toFloat (score - 10) / 2)
 
 
 {-| Convert a CR string ("1/4", "12", "—") to a float for sorting.

@@ -1,21 +1,26 @@
-module Update.Tabs exposing (encounterFromOtherTab)
+module Update.Tabs exposing (compendiumFromOtherTab, encounterFromOtherTab)
 
 {-| Cross-tab sync handlers — the receive side of the
 BroadcastChannel ports.
 
 The app can run in several tabs at once. The JS side bridges
 them with BroadcastChannels; the handlers here consume what a
-peer tab posted. The encounter's send side stays with the
-top-level update wrapper, where the mutation happens.
+peer tab posted. The send side stays with the top-level update
+wrapper, where the mutation happens.
 
-@docs encounterFromOtherTab
+@docs compendiumFromOtherTab, encounterFromOtherTab
 
 -}
 
+import Auth
+import Compendium
+import Compendium.Wire
+import Dict
 import Encounter.Wire
 import Json.Decode as Decode
 import Model exposing (Model)
 import Msg exposing (Msg)
+import Ui.Compendium exposing (CompendiumDb(..))
 
 
 {-| `EncounterFromOtherTab` handler — drop the broadcast straight
@@ -31,3 +36,48 @@ encounterFromOtherTab raw model =
 
         Err _ ->
             ( model, Cmd.none )
+
+
+{-| `CompendiumFromOtherTab` handler. This tab keeps its bundled
+creatures and takes the sender's own creatures and groups. A tab
+whose library has not loaded yet will load it fresh. A payload from
+another owner is dropped, so one account's creatures never reach a
+tab signed in as someone else or signed out.
+-}
+compendiumFromOtherTab : Decode.Value -> Model -> ( Model, Cmd Msg )
+compendiumFromOtherTab raw model =
+    case ( Decode.decodeValue Compendium.Wire.decodeTabSync raw, model.compendium.db ) of
+        ( Ok ( owner, snapshot ), CompendiumDbLoaded db ) ->
+            if Just owner == Auth.owner model.auth then
+                ( withSnapshot snapshot db model, Cmd.none )
+
+            else
+                ( model, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+withSnapshot : Compendium.Wire.LocalCompendiumSnapshot -> Compendium.Db -> Model -> Model
+withSnapshot snapshot db model =
+    let
+        compendium =
+            model.compendium
+    in
+    { model
+        | compendium =
+            { compendium
+                | db =
+                    CompendiumDbLoaded
+                        (Compendium.fromList
+                            ((Compendium.toList db |> List.filter .isBundled)
+                                ++ snapshot.creatures
+                            )
+                        )
+                , groups =
+                    snapshot.groups
+                        |> List.map (\group -> ( group.id, group ))
+                        |> Dict.fromList
+            }
+        , nextLocalCreatureId = max model.nextLocalCreatureId snapshot.nextLocalId
+    }

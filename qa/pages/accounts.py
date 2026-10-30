@@ -244,18 +244,14 @@ def wait_anonymous(app):
 
 
 class AccountPage:
-    """The /me page with its display name, password change and sign out."""
+    """The /account page with its display name, password change and sign out."""
 
     def __init__(self, page, base_url):
         self.page = page
         self.base_url = base_url
 
     def goto(self, name="Test DM"):
-        """Opens the page from the AppBar link that names the DM.
-
-        Loading /me directly serves the server's own JSON instead of the
-        app.  See QA-ACCT-04.
-        """
+        """Opens the page from the AppBar link that names the DM."""
         self.page.goto(self.base_url + "/")
         self.page.get_by_role("link", name=name, exact=True).click()
         expect(self.page.get_by_role("heading", name="Profile")).to_be_visible()

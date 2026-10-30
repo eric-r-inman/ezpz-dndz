@@ -1,6 +1,6 @@
 module View.Account exposing (view)
 
-{-| Account page (`/me`).
+{-| Account page (`/account`).
 
 Three sections:
 
@@ -50,6 +50,7 @@ import Html.Events exposing (onClick, onInput)
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Ui.Account as Account exposing (AccountUi, PasswordDraft, ProfileDraft)
+import View.Landmark
 
 
 view : Model -> Html Msg
@@ -70,7 +71,7 @@ view model =
                 AuthAuthenticated user ->
                     accountBody user model.accountUi
     in
-    div [ class "workspace workspace--account" ]
+    View.Landmark.mainRegion [ class "workspace workspace--account" ]
         [ section [ class "panel panel--main account-page" ]
             [ div [ class "panel__header" ]
                 [ div [ class "panel__title" ] [ text "Account" ] ]
@@ -143,7 +144,7 @@ profileFeedback : ProfileDraft -> Html Msg
 profileFeedback draft =
     case ( draft.error, draft.success ) of
         ( Just err, _ ) ->
-            p [ class "account-card__error" ] [ text err ]
+            p [ class "account-card__error", Attr.attribute "role" "alert" ] [ text err ]
 
         ( Nothing, Just ok ) ->
             p [ class "account-card__success" ] [ text ok ]
@@ -231,7 +232,7 @@ passwordFeedback : PasswordDraft -> Html Msg
 passwordFeedback draft =
     case ( draft.error, draft.success ) of
         ( Just err, _ ) ->
-            p [ class "account-card__error" ] [ text err ]
+            p [ class "account-card__error", Attr.attribute "role" "alert" ] [ text err ]
 
         ( Nothing, Just ok ) ->
             p [ class "account-card__success" ] [ text ok ]

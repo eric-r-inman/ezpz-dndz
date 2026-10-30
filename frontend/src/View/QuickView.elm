@@ -32,7 +32,7 @@ view ui enc =
             else
                 enc.creatures
     in
-    section [ class "panel panel--quick-view" ]
+    section [ class "panel panel--quick-view", attribute "aria-label" "Quick view" ]
         [ div [ class "panel__header" ]
             [ span [ class "panel__title" ] [ text "Quick view" ]
             , filterToggle ui.enemiesOnly
@@ -79,7 +79,7 @@ filterToggle enemiesOnly =
              else
                 Tooltips.quickViewEnemiesOnly
             )
-        , attribute "aria-label" Tooltips.quickViewEnemiesOnly
+        , attribute "aria-label" "Show only enemies in the quick view"
         , attribute "aria-pressed"
             (if enemiesOnly then
                 "true"
@@ -99,11 +99,30 @@ row creature =
             , type_ "button"
             , onClick (ScrollCardIntoView creature.name)
             , Tooltips.attr (Tooltips.queueScrollTo creature.name)
-            , attribute "aria-label" (Tooltips.queueScrollTo creature.name)
+            , attribute "aria-label"
+                (Tooltips.queueScrollTo creature.name
+                    ++ standingNote (Encounter.standing creature)
+                )
             ]
             [ text creature.name ]
         , hitPoints creature
         ]
+
+
+{-| What the strike-through shows by look alone, for the name a
+screen reader reads.
+-}
+standingNote : Standing -> String
+standingNote standing =
+    case standing of
+        Fighting ->
+            ""
+
+        Held ->
+            ". Held by a condition"
+
+        Down ->
+            ". Down"
 
 
 nameClass : Standing -> String

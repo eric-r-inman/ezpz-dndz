@@ -86,10 +86,6 @@ def test_shared_manual_initiative_puts_every_member_on_that_count(app, tab):
     assert [app.card(name).initiative() for name in ["Ogre", "Ogre 2"]] == [15, 15]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-14: group initiative rolls a flat d20 and drops the creature's bonus",
-)
 def test_each_rolls_initiative_adds_each_creatures_initiative_bonus(app, tab):
     create_group(tab, "Goblin Patrol", [("Goblin Warrior", 3)], initiative="Each rolls")
     group_row(tab, "Goblin Patrol").click()
@@ -162,14 +158,11 @@ def test_deleting_a_group_removes_it(tab):
     create_group(tab, "Goblin Patrol", [("Goblin Warrior", 2)])
     group_row(tab, "Goblin Patrol").click()
     tab.page.get_by_role("button", name="Delete group").click()
+    tab.button("Delete").click()
     expect(tab.toast('Deleted group "Goblin Patrol".')).to_be_visible()
     expect(group_row(tab, "Goblin Patrol")).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-09: a group's delete button removes it with no confirmation",
-)
 def test_deleting_a_group_asks_first(tab):
     create_group(tab, "Goblin Patrol", [("Goblin Warrior", 2)])
     group_row(tab, "Goblin Patrol").click()
@@ -189,6 +182,7 @@ def test_signed_in_group_lives_on_the_server(app, signed_in_tab):
 
     group_row(tab, "Goblin Patrol").click()
     tab.page.get_by_role("button", name="Delete group").click()
+    tab.button("Delete").click()
     expect(tab.toast('Deleted group "Goblin Patrol".')).to_be_visible()
     assert library.server_groups(app.page) == []
 
@@ -197,9 +191,8 @@ def test_signed_in_group_lives_on_the_server(app, signed_in_tab):
 
 
 def lore_row(tab, name):
-    return tab.page.get_by_role(
-        "button",
-        name=re.compile("^Toggle lore group members (?:📖|🔒) " + re.escape(name) + " "),
+    return tab.page.locator(".compendium__row--lore").filter(
+        has=tab.page.get_by_role("button", name=re.compile("^(?:📖|🔒) " + re.escape(name) + " "))
     )
 
 
@@ -228,7 +221,7 @@ def create_lore(tab, name, members, weight=None):
     expect(dialog).to_be_visible()
     dialog.get_by_placeholder("e.g. Kobold Skirmishers").fill(name)
     if weight is not None:
-        dialog.get_by_role("slider").fill(str(weight))
+        dialog.get_by_role("slider", name="Weight").fill(str(weight))
     for member in members:
         lore_member(dialog, *member)
     return dialog
@@ -288,6 +281,9 @@ def test_editing_and_deleting_a_lore_grouping(tab):
     expect(tab.page.locator(".compendium__detail")).to_contain_text("2–6× Goblin Warrior")
 
     tab.page.get_by_role("button", name="Delete this Lore grouping").click()
+    expect(lore_row(tab, "Goblin Raiders")).to_be_visible()
+    tab.button("Delete").click()
+    expect(tab.toast('Deleted lore grouping "Goblin Raiders".')).to_be_visible()
     expect(lore_row(tab, "Goblin Raiders")).to_have_count(0)
     expect(tab.page.get_by_text("Select a creature or group on the left.")).to_be_visible()
 
@@ -309,10 +305,6 @@ def test_lore_editor_names_what_is_missing(tab):
     expect(dialog.get_by_text(re.compile("invalid count range"))).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-15: a second Lore grouping with the same name replaces the first",
-)
 def test_two_lore_groupings_with_one_name_both_survive(tab):
     lore_save(create_lore(tab, "Raiders", [("Goblin Warrior", 2, 4)])).click()
     lore_save(create_lore(tab, "Raiders", [("Ogre", 1, 2)])).click()
@@ -322,9 +314,7 @@ def test_two_lore_groupings_with_one_name_both_survive(tab):
 
 def test_bundled_lore_grouping_is_read_only_but_adds(app, tab):
     lore_section(tab)
-    bundled = tab.page.get_by_role(
-        "button", name=re.compile("^Toggle lore group members 🔒 ")
-    ).first
+    bundled = tab.page.get_by_role("button", name=re.compile("^🔒 ")).first
     bundled.click()
     expect(tab.page.locator(".compendium__detail")).to_contain_text("Bundled")
     expect(
@@ -337,10 +327,6 @@ def test_bundled_lore_grouping_is_read_only_but_adds(app, tab):
     expect(app.card_boxes().first).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-17: Lore groupings vanish whenever no creature row is listed",
-)
 def test_lore_groupings_stay_listed_when_no_creature_matches(tab):
     tab.search("xyzzy")
     expect(tab.page.get_by_text("No creatures match the current filters.")).to_be_visible()

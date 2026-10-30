@@ -41,7 +41,8 @@ import HpChange
 import Model exposing (Model, Surface(..))
 import Msg
     exposing
-        ( HpField(..)
+        ( BatchRoll(..)
+        , HpField(..)
         , HpKind(..)
         , Msg(..)
         )
@@ -143,11 +144,12 @@ manualApplyTo rawNames ui model =
                 , names
                     |> List.map
                         (\name ->
-                            Dice.rollCmd (HpChangeManualRollLanded name)
-                                { feature = "HP roll", target = Just name }
-                                expr
+                            ( SetHpRoll name
+                            , { feature = "HP roll", target = Just name }
+                            , Dice.generator expr
+                            )
                         )
-                    |> Cmd.batch
+                    |> Effects.rollBatch
                 )
 
             Err err ->
@@ -291,7 +293,10 @@ openFor target model =
                 )
     in
     ( nextModel
-    , Effects.scrollDrawerTo Model.hpChangeLens nextModel
+    , Cmd.batch
+        [ Effects.scrollDrawerTo Model.hpChangeLens nextModel
+        , Effects.focusField HpChangeUi.amountInputId
+        ]
     )
 
 
@@ -392,12 +397,12 @@ applyAs kind model =
                             , hpChangeTargets withKind modelWithKind.encounter
                                 |> List.map
                                     (\name ->
-                                        Dice.rollCmd
-                                            (HpChangeFreshRollLanded kind name)
-                                            { feature = kindLabel kind, target = Just name }
-                                            expr
+                                        ( FreshHpRoll kind name
+                                        , { feature = kindLabel kind, target = Just name }
+                                        , Dice.generator expr
+                                        )
                                     )
-                                |> Cmd.batch
+                                |> Effects.rollBatch
                             )
 
                         else
@@ -459,17 +464,21 @@ freshRollLanded kind target roll model =
     )
 
 
-editStart : String -> HpField -> Int -> Model -> ( Model, Cmd Msg )
-editStart name field current model =
+editStart : String -> HpField -> Model -> ( Model, Cmd Msg )
+editStart name field model =
     ( { model
         | hpEdit =
             Just
                 { target = name
                 , field = field
-                , text = String.fromInt current
+
+                -- The field opens empty so typing replaces the value
+                -- rather than adding to it.  The view shows the value
+                -- as the placeholder.  An empty commit keeps it.
+                , text = ""
                 }
       }
-    , Cmd.none
+    , Effects.focusField HpChangeUi.editInputId
     )
 
 
