@@ -169,7 +169,48 @@ exhaustionSuite =
             \_ ->
                 Encounter.conditionLevel "Prone" (Just 3)
                     |> Expect.equal Nothing
+        , test "receiving Exhaustion again adds a level and stops at 6" <|
+            \_ ->
+                List.map exhaustionAfterReceiving [ 1, 5, 6 ]
+                    |> Expect.equal [ Just 2, Just 6, Just 6 ]
         ]
+
+
+{-| The Exhaustion level the seed's first creature reaches when it
+receives Exhaustion at `level`.
+-}
+exhaustionAfterReceiving : Int -> Maybe Int
+exhaustionAfterReceiving level =
+    let
+        seed =
+            Seed.initialEncounter
+    in
+    List.head seed.creatures
+        |> Maybe.andThen
+            (\base ->
+                { seed
+                    | creatures =
+                        [ { base
+                            | conditions =
+                                [ { id = 1
+                                  , name = "Exhaustion"
+                                  , note = ""
+                                  , duration = Encounter.DurationManual
+                                  , saveToEnd = Nothing
+                                  , linkedTo = Nothing
+                                  , area = Nothing
+                                  , level = Just level
+                                  }
+                                ]
+                          }
+                        ]
+                }
+                    |> Encounter.addExhaustionLevel base.name
+                    |> .creatures
+                    |> List.head
+                    |> Maybe.andThen (.conditions >> List.head)
+                    |> Maybe.andThen .level
+            )
 
 
 

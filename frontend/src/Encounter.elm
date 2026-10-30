@@ -14,7 +14,7 @@ module Encounter exposing
     , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration, skipsFirstTick
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, Standing(..), conditionLevel, creatureNamed, damageReminders, damageRolls, damageTaken, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, standing, unsavedChanges
+    , AreaTracker, DamageTrigger(..), RechargeAbility, Standing(..), addExhaustionLevel, conditionLevel, creatureNamed, damageReminders, damageRolls, damageTaken, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, stacksWithItself, standing, unsavedChanges
     )
 
 {-| Domain layer for the encounter manager.
@@ -937,11 +937,42 @@ level it has, starting at 1, and no other condition has one.
 -}
 conditionLevel : String -> Maybe Int -> Maybe Int
 conditionLevel name level =
-    if name == "Exhaustion" then
+    if stacksWithItself name then
         Just (Maybe.withDefault 1 level)
 
     else
         Nothing
+
+
+{-| Exhaustion is the one condition that stacks with itself. Each
+time a creature receives it, the creature gains a level. Any other
+condition a creature either has or does not.
+-}
+stacksWithItself : String -> Bool
+stacksWithItself name =
+    name == "Exhaustion"
+
+
+{-| The named creature receives Exhaustion again and gains a level.
+Level 6 is death. Receiving it there changes nothing.
+-}
+addExhaustionLevel : String -> Encounter -> Encounter
+addExhaustionLevel target =
+    mapCreature target
+        (\c ->
+            { c
+                | conditions =
+                    List.map
+                        (\cond ->
+                            if stacksWithItself cond.name then
+                                { cond | level = Maybe.map (\l -> Basics.min 6 (l + 1)) cond.level }
+
+                            else
+                                cond
+                        )
+                        c.conditions
+            }
+        )
 
 
 {-| One step up the Exhaustion ladder: 1 through 6, then back to 0.

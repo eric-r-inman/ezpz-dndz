@@ -12,6 +12,9 @@
    action needed.
 4. Save Chain rolls a damage formula once for every target and halves that roll
    for a pass.  No action needed.
+5. A condition applied to a selection skips only the creatures that already have
+   it and names them.  No action needed.
+6. Exhaustion applied to a creature that has it adds a level.  No action needed.
 ** Breaking
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.

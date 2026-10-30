@@ -1198,10 +1198,17 @@ The suite did not cover these:
 
 *** QA-FIGHT-17: One creature that already has a condition blocks the selection
 
+- Status :: fixed
 - Severity :: question
 - Actual :: The condition lands on none of the selection.  The notice does not
   say which creature already has it.
-- Action :: Apply it to the rest and name the creature that was skipped.
+- Evidence :: ~test_a_condition_on_a_selection_skips_the_creature_that_has_it~,
+  ~test_a_creature_cannot_take_the_same_condition_twice~ and
+  ~test_exhaustion_on_a_creature_that_has_it_adds_a_level~
+- Action :: Fixed.  The condition goes on the rest.  A toast names the creature
+  skipped.  Under the SRD 5.2.1 a condition does not stack with itself.
+  Exhaustion is the exception.  A creature that has it gains a level.  The level
+  stops at 6.
 
 *** QA-FIGHT-18: Exhaustion wraps from 6 to 0
 
