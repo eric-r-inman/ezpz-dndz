@@ -5,14 +5,16 @@ creature's queue position and initiative.
 -}
 
 import Compendium
+import Effects
 import Html exposing (Html, div, input, li, span, text, ul)
-import Html.Attributes as Attr exposing (attribute, class, placeholder, type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html.Attributes as Attr exposing (attribute, class, id, placeholder, tabindex, type_, value)
+import Html.Events exposing (onClick, onInput, preventDefaultOn)
 import Html.Keyed
 import Msg exposing (Msg(..))
 import Set exposing (Set)
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Replace exposing (ReplaceLogEntry, ReplaceUi)
+import Util.Keyboard
 import View.Inline.ApplyButton as ApplyButton
 import View.Inline.Field as Field
 import View.LogRow
@@ -86,8 +88,12 @@ pickerList db ui =
                     [ text "No matches." ]
 
             else
-                ul [ class "quick-add__list quick-add__list--docked" ]
-                    (List.map (row ui) creatures)
+                ul
+                    [ class "quick-add__list quick-add__list--docked"
+                    , attribute "role" "listbox"
+                    , attribute "aria-label" "Replacement creature"
+                    ]
+                    (Util.Keyboard.neighbours creatures |> List.map (row ui (tabStop ui creatures)))
 
         CompendiumDbLoading ->
             div [ class "cond-section__caption" ] [ text "Loading the compendium…" ]
@@ -96,28 +102,63 @@ pickerList db ui =
             div [ class "cond-section__caption" ] [ text "Couldn't load the compendium." ]
 
 
-row : ReplaceUi -> Compendium.Creature -> Html Msg
-row ui c =
+{-| The list's one tab stop. It is the picked creature while the
+list still shows it, and the first row otherwise.
+-}
+tabStop : ReplaceUi -> List Compendium.Creature -> Maybe String
+tabStop ui creatures =
+    ui.pickedId
+        |> Maybe.andThen (\picked -> List.filter (\c -> c.id == picked) creatures |> List.head)
+        |> Maybe.map Just
+        |> Maybe.withDefault (List.head creatures)
+        |> Maybe.map .id
+
+
+{-| An arrow key picks a neighbour. `ReplacePick` toggles a pick.
+A neighbour is never the picked row. An arrow therefore always
+picks.
+-}
+row :
+    ReplaceUi
+    -> Maybe String
+    -> { previous : Maybe Compendium.Creature, option : Compendium.Creature, next : Maybe Compendium.Creature }
+    -> Html Msg
+row ui stop { previous, option, next } =
     li
         [ class
-            (if ui.pickedId == Just c.id then
+            (if ui.pickedId == Just option.id then
                 "quick-add__row quick-add__row--picked"
 
              else
                 "quick-add__row"
             )
-        , onClick (ReplacePick c.id)
+        , id (Effects.replaceRowId option.id)
+        , tabindex
+            (if stop == Just option.id then
+                0
+
+             else
+                -1
+            )
+        , onClick (ReplacePick option.id)
+        , preventDefaultOn "keydown"
+            (Util.Keyboard.listboxOptionKeys
+                { pick = ReplacePick option.id
+                , previous = Maybe.map (.id >> ReplacePick) previous
+                , next = Maybe.map (.id >> ReplacePick) next
+                }
+            )
         , attribute "role" "option"
         , attribute "aria-selected"
-            (if ui.pickedId == Just c.id then
+            (if ui.pickedId == Just option.id then
                 "true"
 
              else
                 "false"
             )
         ]
-        [ span [ class "quick-add__name" ] [ text c.name ]
-        , span [ class "quick-add__cr" ] [ text (crLabel c.challengeRating) ]
+        [ span [ class "quick-add__name" ] [ text option.name ]
+        , span [ class "quick-add__cr" ] [ text (crLabel option.challengeRating) ]
         ]
 
 

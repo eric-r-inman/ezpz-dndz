@@ -293,7 +293,10 @@ openFor target model =
                 )
     in
     ( nextModel
-    , Effects.scrollDrawerTo Model.hpChangeLens nextModel
+    , Cmd.batch
+        [ Effects.scrollDrawerTo Model.hpChangeLens nextModel
+        , Effects.focusField HpChangeUi.amountInputId
+        ]
     )
 
 

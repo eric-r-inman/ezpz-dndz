@@ -303,7 +303,9 @@ def test_typing_straight_after_clicking_the_armor_class_edits_it(app):
     ac = ogre.root.get_by_role("button", name=re.compile("^Armor Class \\d+ for Ogre"))
 
     ac.click()
-    app.page.keyboard.press("ControlOrMeta+A")
+    # The field renders on the next frame.  Keys sent inside that frame have
+    # nowhere to land, and no hand types that fast.
+    expect(ogre.root.get_by_role("spinbutton", name="Armor Class for Ogre")).to_be_focused()
     app.page.keyboard.type("16")
     app.page.keyboard.press("Enter")
     expect(ac).to_have_text("16", timeout=2000)

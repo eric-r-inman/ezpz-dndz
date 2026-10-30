@@ -165,13 +165,7 @@ def test_a_dark_operating_system_leaves_the_modern_theme_whole(app, browser):
     [
         "Modern",
         "Dark",
-        pytest.param(
-            "Accessible",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason="QA-UI-17: the Encounter Difficulty title is half again as big as the others",
-            ),
-        ),
+        "Accessible",
     ],
 )
 def test_every_panel_title_in_the_column_is_the_same_size(app, theme):
@@ -322,10 +316,6 @@ def test_the_contact_link_mails_a_well_formed_address(app):
     assert EMAIL.match(href.removeprefix("mailto:")), href
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-04: the Manage HP field takes focus on load, so the first Tab skips the skip link",
-)
 @pytest.mark.cross_browser
 def test_the_first_tab_on_the_encounter_page_reaches_the_skip_link(app):
     app.page.keyboard.press("Tab")
@@ -336,10 +326,7 @@ def test_the_first_tab_on_the_encounter_page_reaches_the_skip_link(app):
 def test_the_skip_link_shows_on_focus_and_jumps_to_the_encounter(app):
     skip = app.page.get_by_role("link", name="Skip to main content")
     expect(skip).not_to_be_in_viewport()
-    for _ in range(20):
-        app.page.keyboard.press("Shift+Tab")
-        if skip.evaluate("el => el === document.activeElement"):
-            break
+    app.page.keyboard.press("Tab")
     expect(skip).to_be_focused()
     expect(skip).to_be_in_viewport()
     app.shot("skip-link")
@@ -409,10 +396,6 @@ def test_a_modal_grows_when_its_corner_is_dragged(app):
     app.shot("resized")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-10: the corner grip lies outside the rounded corner, and a press there closes the modal",
-)
 @pytest.mark.cross_browser
 def test_pressing_on_the_very_corner_of_a_modal_resizes_rather_than_closes_it(app):
     dialog = open_round_setter(app)
@@ -424,10 +407,6 @@ def test_pressing_on_the_very_corner_of_a_modal_resizes_rather_than_closes_it(ap
     assert dialog.bounding_box()["width"] > before["width"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-UI-10: a resize released outside the modal closes it",
-)
 @pytest.mark.cross_browser
 def test_a_modal_shrinks_no_smaller_than_its_floor_and_stays_open(app):
     dialog = open_round_setter(app)

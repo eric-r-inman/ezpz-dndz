@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, pinnedHeld, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, unfoldHpChangeOnly, unfoldPinnedOnly, xpLens
+    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, anyPopoverOpen, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, pinnedHeld, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, unfoldHpChangeOnly, unfoldPinnedOnly, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -885,6 +885,18 @@ drawerGet lens model =
 drawerHas : SurfaceLens a -> Model -> Bool
 drawerHas lens model =
     drawerGet lens model /= Nothing
+
+
+{-| Whether a popover is open: the settings or Encounter menu, the
+compendium's bulk menu, or a dice roll's re-roll menu. Esc belongs
+to the popover then, not to the column behind it.
+-}
+anyPopoverOpen : Model -> Bool
+anyPopoverOpen model =
+    model.settingsOpen
+        || model.encounterMenuOpen
+        || (model.compendium.bulkMenu /= Nothing)
+        || (model.dice.rerunMenuOpenFor /= Nothing)
 
 
 {-| Whether a panel's body is on screen. `drawerHas` answers a
