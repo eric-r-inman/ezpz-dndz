@@ -1420,7 +1420,7 @@ couldDealDamage msg =
         SaveLoadServerResponse _ _ ->
             False
 
-        SaveLoadDeviceFileRead _ ->
+        SaveLoadConfirmConfirm ->
             False
 
         EncounterReset ->

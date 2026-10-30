@@ -985,10 +985,14 @@ The suite did not cover these:
 
 *** QA-BUILD-19: Loading from a file replaces the fight without asking
 
+- Status :: fixed
 - Severity :: question
 - Actual :: A server load asks first.  A file load replaced a fight in round 2
   with no prompt.
-- Action :: Ask the same way for both.
+- Evidence :: ~test_a_downloaded_file_loads_back_in_pre_combat~ and
+  ~test_cancelling_a_file_load_keeps_the_fight~
+- Action :: Fixed.  A file that reads asks in the same banner a server load
+  uses.  Cancel keeps the fight.
 
 *** QA-BUILD-20: The Treasure Table footer overlaps the rows behind it
 
