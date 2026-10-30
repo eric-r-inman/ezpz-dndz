@@ -45,7 +45,8 @@ WorkingDirectory={{INSTALL_DIR}}
 ExecStart={{INSTALL_DIR}}/ezpz-dndz-server \
   --listen 127.0.0.1:4040 \
   --base-url https://ezpz.example.com \
-  --data-dir {{DATA_DIR}}
+  --data-dir {{DATA_DIR}} \
+  --trust-forwarded-for
 
 # systemd-watchdog: foundation's runner calls sd_notify() to
 # refresh this heartbeat at half the configured interval.  60s is

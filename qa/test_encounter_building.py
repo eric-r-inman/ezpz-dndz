@@ -128,10 +128,6 @@ def start_rename(app, name):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-01: the rename field opens without focus, so typing goes nowhere",
-)
 def test_clicking_a_placeholder_name_puts_the_cursor_in_the_rename_field(app):
     app.add_placeholder()
     field = start_rename(app, "Placeholder 1")
@@ -277,10 +273,6 @@ def test_replace_needs_a_pick_before_it_can_apply(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-02: Quick Add rows take focus but Enter does nothing",
-)
 def test_a_keyboard_dm_adds_a_creature_from_quick_add_with_enter(app):
     panel = app.panel("Quick Add").open()
     panel.root.get_by_role("searchbox", name="Filter Quick Add by name").fill("Ogre")
@@ -370,7 +362,7 @@ def test_reset_restores_full_hp_and_clears_conditions_and_status(app):
     ogre = app.card("Ogre")
     assert (ogre.hp(), app.round_number()) == (48, 2)
     expect(ogre.root.get_by_role("button", name="Temp HP for Ogre")).to_be_visible()
-    expect(ogre.root.get_by_role("button", name="Prone")).to_be_visible()
+    expect(ogre.root.get_by_role("button", name="Prone", exact=True)).to_be_visible()
     expect(ogre.root.get_by_role("button", name="Clear dodging for Ogre")).to_be_visible()
     expect(ogre.root.get_by_role("button", name="Action Readied")).to_be_visible()
     expect(ogre.root.get_by_role("button", name=re.compile("^Reaction spent"))).to_be_visible()
@@ -384,7 +376,7 @@ def test_reset_restores_full_hp_and_clears_conditions_and_status(app):
     assert (ogre.hp(), ogre.max_hp()) == (68, 68)
     assert app.card_names() == ["Goblin Warrior", "Ogre"]
     expect(ogre.root.get_by_role("button", name="Temp HP for Ogre")).to_have_count(0)
-    expect(ogre.root.get_by_role("button", name="Prone")).to_have_count(0)
+    expect(ogre.root.get_by_role("button", name="Prone", exact=True)).to_have_count(0)
     expect(ogre.root.get_by_role("button", name=re.compile("^Clear "))).to_have_count(0)
     expect(ogre.root.get_by_role("button", name="Ready an Action")).to_be_visible()
     expect(ogre.root.get_by_role("button", name=re.compile("^Reaction available"))).to_be_visible()
@@ -399,7 +391,7 @@ def test_cancelling_reset_leaves_the_wounds_in_place(app):
     app.page.get_by_role("button", name=re.compile("^Reset every creature")).click()
     confirm_dialog(app, "Reset Encounter").get_by_role("button", name="Cancel").click()
     assert app.card("Ogre").hp() == 48
-    expect(app.card("Ogre").root.get_by_role("button", name="Prone")).to_be_visible()
+    expect(app.card("Ogre").root.get_by_role("button", name="Prone", exact=True)).to_be_visible()
 
 
 # Encounter Difficulty.
@@ -542,10 +534,6 @@ def test_encounter_xp_scope_and_calculations_tally(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-03: the Encounter XP scope options cannot be reached by keyboard",
-)
 def test_a_keyboard_dm_can_reach_the_encounter_xp_scope(app):
     panel = app.panel("Encounter XP").open()
     panel.fold_button().focus()
@@ -697,10 +685,6 @@ def test_excluded_creatures_never_appear_and_an_emptied_pool_says_so(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-15: a two-word creature name wraps under its CR in the roll result",
-)
 def test_roll_result_rows_keep_the_name_clear_of_the_cr(app):
     panel = random_panel(app, [5, 5, 5, 5])
     choose(panel, scale="One", habitat="Elemental Plane of Earth")
@@ -760,22 +744,16 @@ def test_include_minions_adds_a_small_group_tagged_as_minions(app):
 
 
 @pytest.mark.parametrize("scale", ["One", "Few (2-4)"])
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-04: Include minions adds none to One or Few rolls yet holds back budget",
-)
 def test_include_minions_adds_minions_or_is_unavailable(app, scale):
     panel = random_panel(app, [12, 12, 12, 12])
-    choose(panel, scale=scale, minions=True)
+    # The box goes unavailable once One is chosen, so it is ticked first.
+    choose(panel, minions=True)
+    choose(panel, scale=scale)
     box = panel.root.get_by_role("checkbox", name="Include minions")
     minion_rolls = [any(group[3] for group in roll_random(panel)[0]) for _ in range(5)]
     assert box.is_disabled() or all(minion_rolls)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-05: Few and Many rolls often come back with fewer creatures than promised",
-)
 def test_scale_few_and_many_keep_their_promised_creature_counts(app):
     panel = random_panel(app)
     choose(panel, difficulty="Low", scale="Few (2-4)")
@@ -796,10 +774,6 @@ def test_a_large_roll_lands_roughly_on_the_budget(app, tier):
     assert all(0.5 * budget <= total <= 1.25 * budget for total in totals), totals
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-06: about one default Moderate roll in seven lands in the Low band",
-)
 def test_the_default_roll_lands_in_the_moderate_band(app):
     panel = random_panel(app)
     low, _, high = party_budget([1, 1, 1, 1])

@@ -9,16 +9,15 @@ from pages.accounts import api, success_toast
 from pages.app import settle
 
 KINDS = "(?:Player|Enemy|NPC)"
-# A row has no name of its own.  Each row is a button whose name joins its
-# checkbox label, the creature name and the meta line.  For the Ogre it starts
-# "Select for bulk action Ogre Enemy".
-ROW_PREFIX = "Select for bulk action "
 
 
 def row_name_pattern(name):
-    return re.compile(
-        "^" + re.escape(ROW_PREFIX + name) + "(?: in encounter)? " + KINDS + " · "
-    )
+    """The name of a creature row's pick button.
+
+    It joins the creature name and the meta line.  For the Ogre it starts
+    "Ogre Enemy".
+    """
+    return re.compile("^" + re.escape(name) + "(?: in encounter)? " + KINDS + " · ")
 
 
 def server_creatures(page):
@@ -62,8 +61,8 @@ def add_row(section, button, rows):
 
 
 def group_row(tab, name):
-    return tab.page.get_by_role(
-        "button", name=re.compile("^Toggle group entries 👥 " + re.escape(name) + " ")
+    return tab.page.locator(".compendium__row--group").filter(
+        has=tab.page.get_by_role("button", name=re.compile("^👥 " + re.escape(name) + " "))
     )
 
 
@@ -80,7 +79,7 @@ def create_group(tab, name, entries, initiative="Each rolls", manual=None):
     pane = tab.editor()
     expect(pane.get_by_role("heading", name="👥 Create Group")).to_be_visible()
     pane.get_by_label("Name").fill(name)
-    pane.get_by_role("radio", name=initiative).check()
+    pane.get_by_role("radiogroup", name="Initiative").get_by_role("radio", name=initiative).check()
     if manual is not None:
         pane.get_by_role("spinbutton", name="Manual initiative value").fill(str(manual))
     for entry in entries:
@@ -156,10 +155,15 @@ class Compendium:
     # The library list.
 
     def rows(self):
-        return self.page.get_by_role("button", name=re.compile("^" + ROW_PREFIX))
+        return self.page.locator(".compendium__row--creature")
 
     def row(self, name):
-        return self.page.get_by_role("button", name=row_name_pattern(name))
+        return self.rows().filter(
+            has=self.page.get_by_role("button", name=row_name_pattern(name))
+        )
+
+    def pick(self, name):
+        return self.row(name).get_by_role("button", name=row_name_pattern(name))
 
     def row_names(self):
         """Creature names in list order.
@@ -179,12 +183,12 @@ class Compendium:
         )
 
     def select(self, name):
-        self.row(name).click()
+        self.pick(name).click()
         expect(self.detail_name()).to_have_text(name)
         return self
 
     def check(self, name):
-        self.row(name).get_by_role("checkbox", name="Select for bulk action").check()
+        self.row(name).get_by_role("checkbox", name=f"Select {name} for bulk action").check()
         self.settle()
 
     # The detail pane.

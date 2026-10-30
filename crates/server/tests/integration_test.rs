@@ -59,7 +59,7 @@ async fn stub_app_state_at(data_dir: &std::path::Path) -> AppState {
     .await
     .expect("test database");
 
-  AppState::assemble(base, db, &paths, None)
+  AppState::assemble(base, db, &paths, None, false)
     .await
     .expect("app state assemble")
 }
@@ -1435,6 +1435,55 @@ async fn test_treasure_table_put_then_get_roundtrip() {
 }
 
 #[tokio::test]
+async fn test_treasure_table_delete_puts_get_back_to_null() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+
+  let put = send_json(
+    &app,
+    &cookie,
+    "PUT",
+    "/api/treasure-table",
+    serde_json::json!({
+      "individualBrackets": {},
+      "hoardBrackets": {},
+      "gems": { "50gp": ["Custom gem"] },
+      "art": {},
+      "magic": {},
+    }),
+  )
+  .await;
+  assert_eq!(put.status(), StatusCode::OK);
+
+  let delete = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .method("DELETE")
+        .uri("/api/treasure-table")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(delete.status(), StatusCode::NO_CONTENT);
+
+  let get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/treasure-table")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(read_body(get).await.trim(), "null");
+}
+
+#[tokio::test]
 async fn test_treasure_table_per_user_isolation() {
   let (_temp, state) = stub_app_state().await;
   let app = build_test_router(state);
@@ -2364,6 +2413,7 @@ fn config_refuses_oidc_without_a_base_url() {
       base_url: None,
       compendium_claim_user: None,
       database_url: None,
+      trust_forwarded_for: false,
     },
   };
 
@@ -2481,4 +2531,85 @@ async fn test_compendium_merge_keeps_what_the_account_already_holds() {
   let hag_ids: Vec<&str> =
     hags.iter().map(|c| c["id"].as_str().unwrap()).collect();
   assert!(coven_members.iter().all(|id| hag_ids.contains(id)));
+}
+
+#[tokio::test]
+async fn test_encounter_put_with_archive_as_saves_the_live_fight_first() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+  let fight = |name: &str| {
+    serde_json::json!({
+        "creatures": [{
+            "name": name, "initiative": 10, "currentHp": 59,
+            "maxHp": 59, "armorClass": 11
+        }],
+        "activeName": name,
+        "round": 2
+    })
+  };
+  let first =
+    send_json(&app, &cookie, "PUT", "/api/encounter", fight("Ogre")).await;
+  assert_eq!(first.status(), StatusCode::OK);
+
+  let archived = send_json(
+    &app,
+    &cookie,
+    "PUT",
+    "/api/encounter?archive_as=Account",
+    fight("Goblin Warrior"),
+  )
+  .await;
+  assert_eq!(archived.status(), StatusCode::OK);
+
+  let live = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert!(read_body(live).await.contains("Goblin Warrior"));
+  let saved = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter/saves/Account")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(saved.status(), StatusCode::OK);
+  assert!(read_body(saved).await.contains("Ogre"));
+}
+
+#[tokio::test]
+async fn test_encounter_put_with_archive_as_skips_an_empty_live_fight() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+  let body =
+    serde_json::json!({ "creatures": [], "activeName": "", "round": 1 });
+  let put =
+    send_json(&app, &cookie, "PUT", "/api/encounter?archive_as=Account", body)
+      .await;
+  assert_eq!(put.status(), StatusCode::OK);
+  let saved = app
+    .clone()
+    .oneshot(
+      Request::builder()
+        .uri("/api/encounter/saves/Account")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(saved.status(), StatusCode::NOT_FOUND);
 }

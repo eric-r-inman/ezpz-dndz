@@ -1,5 +1,5 @@
 module Msg exposing
-    ( Msg(..), MeInfo, MeStatus(..)
+    ( Msg(..)
     , HpKind(..), HpField(..)
     , RollScope(..), RollMode(..)
     , DurationKind(..)
@@ -15,12 +15,11 @@ import from a stable surface without dragging in the entire
 application shell.
 
 The non-`Msg` types here are the message-shaped enums (HP-edit
-verb, condition-duration kind, initiative roll scope, etc.) plus
-`MeInfo` / `MeStatus`, which `Msg.GotMe` transports. Larger
+verb, condition-duration kind, initiative roll scope, etc.). Larger
 modal-state record types (`HpChangeUi`, `ConditionUi`, etc.)
 live in their per-feature `Ui/*` modules.
 
-@docs Msg, MeInfo, MeStatus
+@docs Msg
 @docs HpKind, HpField
 @docs RollScope, RollMode
 @docs DurationKind
@@ -43,31 +42,8 @@ import Encounter.Xp exposing (XpScope)
 import File exposing (File)
 import Http
 import Json.Decode as Decode
+import Time
 import Url exposing (Url)
-
-
-
--- ── USER / AUTH ──────────────────────────────────────────────────────────────
-
-
-{-| Server-side user record returned by `/me`. `name` is the
-display label; `authEnabled` flips false when the server runs
-without OIDC configured (local-dev mode), in which case the name
-is the stub `"admin"`.
--}
-type alias MeInfo =
-    { name : String
-    , authEnabled : Bool
-    }
-
-
-{-| Loading state for the `/me` request. Drives the app-bar
-identity badge.
--}
-type MeStatus
-    = Loading
-    | Loaded MeInfo
-    | Failed
 
 
 
@@ -465,7 +441,6 @@ Update.Dice.Msg | ...`); for now everything is one ADT.
 type Msg
     = UrlRequested Browser.UrlRequest
     | UrlChanged Url
-    | GotMe (Result Http.Error MeInfo)
     | NextTurn
       -- Clears the save-reminder pulse a turn boundary or a hit
       -- set on a condition chip; fired by a `Process.sleep` once
@@ -565,6 +540,9 @@ type Msg
       -- the receiving handler decodes and replaces
       -- `model.encounter` in place.  No re-broadcast.
     | EncounterFromOtherTab Decode.Value
+      -- A peer tab's compendium changed.  The payload is
+      -- `Compendium.Wire.encodeTabSync`'s.  No re-broadcast.
+    | CompendiumFromOtherTab Decode.Value
     | DiceHistoryLoaded (Result Http.Error (List Dice.Roll))
     | DicePersistResponse (Result Http.Error (List Dice.Roll))
     | DiceClearResponse (Result Http.Error ())
@@ -713,7 +691,7 @@ type Msg
     | SaveChainRollSaves SaveChainRollMode
     | SaveChainSavesRolled (List ( String, Dice.Roll ))
       -- Inline HP edit on the creature card
-    | HpEditStart String HpField Int
+    | HpEditStart String HpField
     | HpEditChange String
     | HpEditCommit
     | HpEditCancel
@@ -824,6 +802,8 @@ type Msg
       -- Empty every setting of the form, keeping only what it is
       -- aimed at.
     | ConditionClear
+      -- Leave the condition being edited and start a new one.
+    | ConditionNew
       -- Save/Load presets for the Add-Condition modal.  The GM
       -- captures a fully-configured form under a user-given name
       -- so common scenarios (e.g. "Stun" with the bearer's-next-
@@ -1104,6 +1084,9 @@ type Msg
     | CompendiumEditSpellcastingInnateUsesChanged Int String
     | CompendiumEditSpellcastingInnateSpellsChanged Int String
     | CompendiumEditSubmit
+      -- A signed-out submit, with the time it happened.  The server
+      -- stamps a signed-in one.
+    | CompendiumEditLocalStamped Compendium.Creature Time.Posix
     | CompendiumEditSubmitResponse (Result Http.Error Compendium.Creature)
     | CompendiumEditDelete
     | CompendiumEditDeleteResponse String (Result Http.Error ())
@@ -1205,10 +1188,6 @@ type Msg
       -- Quick Add modal — one-click "drop a creature into the
       -- encounter" picker (alphabetical / CR sort, click-a-row).
     | QuickAddOpen
-      -- Open the picker in "swap this creature" mode.  The pick
-      -- handler then replaces the named creature in place with
-      -- the chosen one, preserving the old initiative.
-    | QuickAddOpenForReplace String
     | QuickAddSortToggle
     | QuickAddSearchChanged String
     | QuickAddPick String
@@ -1303,7 +1282,7 @@ type Msg
     | AuthLoginDisplayNameChanged String
     | AuthLoginModeChanged Auth.LoginMode
     | AuthLoginSubmit
-    | AuthLoginResponse (Result Http.Error Auth.User)
+    | AuthLoginResponse (Result Auth.SubmitError Auth.User)
     | AuthLogout
     | AuthLogoutDone (Result Http.Error ())
       -- Anonymous-mode nudge: gated controls (Save to Server, etc.)
@@ -1542,7 +1521,7 @@ type Msg
     | TreasureTableRevertRequest
     | TreasureTableRevertCancel
     | TreasureTableRevertConfirm
-      -- Account page (`/me`) form interactions.
+      -- Account page (`/account`) form interactions.
     | AccountDisplayNameChanged String
     | AccountProfileSubmit
     | AccountProfileSaved (Result Http.Error Auth.User)
