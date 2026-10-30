@@ -78,7 +78,7 @@ save : Model -> ( Model, Cmd Msg )
 save model =
     case Maybe.andThen Model.loreEditLens.extract model.surface of
         Just ui ->
-            case GroupEdit.validateLoreDraft ui.draft of
+            case GroupEdit.validateLoreDraft model.userLoreGroups ui.draft of
                 Ok newGroup ->
                     let
                         replaced =
@@ -220,7 +220,7 @@ test : Model -> ( Model, Cmd Msg )
 test model =
     case Maybe.andThen Model.loreEditLens.extract model.surface of
         Just ui ->
-            case GroupEdit.validateLoreDraft ui.draft of
+            case GroupEdit.validateLoreDraft model.userLoreGroups ui.draft of
                 Ok group ->
                     let
                         pool =

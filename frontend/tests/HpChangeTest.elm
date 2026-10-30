@@ -11,6 +11,7 @@ shift when the seed changes.
 -}
 
 import Encounter
+import Encounter.Concentration as Concentration
 import Encounter.DeathSaves as DeathSaves
 import Expect
 import HpChange
@@ -290,10 +291,96 @@ restoreSuite =
         ]
 
 
+dyingSuite : Test
+dyingSuite =
+    let
+        down =
+            { fixture | currentHp = 0, acceptingDeathSaves = True }
+
+        failuresAfter damage creature =
+            creature
+                |> HpChange.apply (HpChange.Damage damage)
+                |> .deathSaves
+                |> .failures
+    in
+    describe "Damage at or through 0 HP"
+        [ test "damage while making death saves adds one failure" <|
+            \_ -> failuresAfter 3 down |> Expect.equal 1
+        , test "damage to a downed creature not making death saves adds none" <|
+            \_ -> failuresAfter 3 { down | acceptingDeathSaves = False } |> Expect.equal 0
+        , test "leftover damage that meets the maximum kills outright" <|
+            \_ ->
+                { fixture | currentHp = 10, maxHp = 10 }
+                    |> HpChange.apply (HpChange.Damage 20)
+                    |> .deathSaves
+                    |> DeathSaves.isDead
+                    |> Expect.equal True
+        , test "leftover damage short of the maximum only drops the creature" <|
+            \_ -> failuresAfter 19 { fixture | currentHp = 10, maxHp = 10 } |> Expect.equal 0
+        , test "temporary hit points soak before the leftover is counted" <|
+            \_ -> failuresAfter 24 { fixture | currentHp = 10, maxHp = 10, tempHp = 5 } |> Expect.equal 0
+        , test "damage at 0 that meets the maximum kills outright" <|
+            \_ -> failuresAfter 50 down |> Expect.equal 3
+        ]
+
+
+concentrationSuite : Test
+concentrationSuite =
+    let
+        concentrating =
+            { fixture | concentrating = True }
+
+        encounterOf creature =
+            let
+                empty =
+                    Encounter.empty
+            in
+            { empty | creatures = [ creature ] }
+
+        owedAfter damage creature =
+            Concentration.savesOwed (encounterOf creature)
+                (encounterOf (HpChange.apply (HpChange.Damage damage) creature))
+    in
+    describe "Concentration under damage"
+        [ test "a creature dropped to 0 stops concentrating" <|
+            \_ ->
+                concentrating
+                    |> HpChange.apply (HpChange.Damage 30)
+                    |> .concentrating
+                    |> Expect.equal False
+        , test "a creature set to 0 stops concentrating" <|
+            \_ ->
+                concentrating
+                    |> HpChange.setCurrentHp 0
+                    |> .concentrating
+                    |> Expect.equal False
+        , test "a creature still standing keeps concentrating" <|
+            \_ ->
+                concentrating
+                    |> HpChange.apply (HpChange.Damage 5)
+                    |> .concentrating
+                    |> Expect.equal True
+        , test "the save is DC 10 for light damage" <|
+            \_ -> owedAfter 5 concentrating |> Expect.equal [ { name = "Test", dc = 10 } ]
+        , test "the save is half the damage when that is higher" <|
+            \_ -> owedAfter 24 concentrating |> Expect.equal [ { name = "Test", dc = 12 } ]
+        , test "damage temporary hit points soak still calls for a save" <|
+            \_ -> owedAfter 6 { concentrating | tempHp = 10 } |> Expect.equal [ { name = "Test", dc = 10 } ]
+        , test "a creature dropped to 0 owes no save" <|
+            \_ -> owedAfter 30 concentrating |> Expect.equal []
+        , test "a creature not concentrating owes no save" <|
+            \_ -> owedAfter 5 fixture |> Expect.equal []
+        , test "the DC stops at 30" <|
+            \_ -> Concentration.saveDc 100 |> Expect.equal 30
+        ]
+
+
 suite : Test
 suite =
     describe "HpChange (pure HP arithmetic)"
         [ damageSuite
+        , dyingSuite
+        , concentrationSuite
         , healSuite
         , tempHpSuite
         , setHpSuite

@@ -80,6 +80,7 @@ impl AppState {
     db: Db,
     paths: &RuntimePaths,
     compendium_claim_user: Option<&str>,
+    trust_forwarded_for: bool,
   ) -> Result<Self, AppStateError> {
     let dice_store = DiceStore::new(db.clone());
     let user_store = UserStore::new(db.clone());
@@ -138,7 +139,7 @@ impl AppState {
       encounter_store,
       encounter_saves,
       user_store: Arc::new(user_store),
-      auth_rate_limiter: AuthRateLimiter::new(),
+      auth_rate_limiter: AuthRateLimiter::new(trust_forwarded_for),
     })
   }
 }

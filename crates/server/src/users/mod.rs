@@ -153,7 +153,7 @@ async fn current_user_id(session: &Session) -> Result<UserId, AuthHttpError> {
     .get(SESSION_KEY_USER_ID)
     .await
     .map_err(|e| AuthHttpError::Session(e.to_string()))?;
-  id.map(UserId).ok_or(AuthHttpError::Unauthorized)
+  id.map(UserId).ok_or(AuthHttpError::SignInRequired)
 }
 
 async fn update_profile_handler(
@@ -205,12 +205,12 @@ async fn me_handler(
       .get(SESSION_KEY_USER_ID)
       .await
       .map_err(|e| AuthHttpError::Session(e.to_string()))?;
-    let id = user_id.ok_or(AuthHttpError::Unauthorized)?;
+    let id = user_id.ok_or(AuthHttpError::SignInRequired)?;
     let user = state
       .user_store
       .find_by_id(&UserId(id))
       .await?
-      .ok_or(AuthHttpError::Unauthorized)?;
+      .ok_or(AuthHttpError::SignInRequired)?;
     Ok(Json(UserPublic::from(&user)))
   }
   .await;
@@ -242,12 +242,12 @@ pub async fn require_auth(
   };
 
   let Some(id) = user_id_opt else {
-    return AuthHttpError::Unauthorized.into_response();
+    return AuthHttpError::SignInRequired.into_response();
   };
 
   let user = match state.user_store.find_by_id(&UserId(id)).await {
     Ok(Some(user)) => user,
-    Ok(None) => return AuthHttpError::Unauthorized.into_response(),
+    Ok(None) => return AuthHttpError::SignInRequired.into_response(),
     Err(e) => return AuthHttpError::from(e).into_response(),
   };
 
@@ -290,9 +290,12 @@ pub fn router(state: AppState) -> ApiRouter<AppState> {
 /// `UserStoreError` and session-store errors onto status codes
 /// and JSON bodies.  The credential-check variants collapse to
 /// `401 Unauthorized` so account enumeration via timing or
-/// error-text differences is harder.
+/// error-text differences is harder.  A request with no session
+/// gets its own 401 that names no credential.
 pub enum AuthHttpError {
   Unauthorized,
+  SignInRequired,
+  CurrentPasswordIncorrect,
   EmailTaken,
   PasswordTooShort,
   EmailInvalid,
@@ -306,6 +309,9 @@ impl From<UserStoreError> for AuthHttpError {
     match e {
       UserStoreError::EmailTaken => Self::EmailTaken,
       UserStoreError::InvalidCredentials => Self::Unauthorized,
+      UserStoreError::CurrentPasswordIncorrect => {
+        Self::CurrentPasswordIncorrect
+      }
       UserStoreError::PasswordTooShort => Self::PasswordTooShort,
       UserStoreError::EmailInvalid => Self::EmailInvalid,
       UserStoreError::DisplayNameEmpty => Self::DisplayNameEmpty,
@@ -322,6 +328,13 @@ impl IntoResponse for AuthHttpError {
     let (status, message) = match self {
       Self::Unauthorized => {
         (StatusCode::UNAUTHORIZED, "Invalid email or password".to_string())
+      }
+      Self::SignInRequired => {
+        (StatusCode::UNAUTHORIZED, "Sign in required".to_string())
+      }
+      // A 401 here would read as a lost session to the frontend.
+      Self::CurrentPasswordIncorrect => {
+        (StatusCode::FORBIDDEN, "Current password is incorrect".to_string())
       }
       Self::EmailTaken => {
         (StatusCode::CONFLICT, "Email is already registered".to_string())

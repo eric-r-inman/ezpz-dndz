@@ -3,11 +3,12 @@
 //! Mirrors `frontend/src/Encounter/Treasure/ProfileWire.elm`, whose
 //! per-profile body is `Encounter.Wire.decodeTreasureSettings` /
 //! `encodeTreasureSettings`.  The Elm settings decoder is fully
-//! tolerant — every knob falls back to a default when absent or
-//! mistyped — so a profile body can be any JSON object (or even a
-//! scalar; Elm's `D.field` lookups simply fail into their fallbacks).
-//! The only decode failure is a top-level payload that is neither an
-//! object nor null (`decodeProfiles` accepts null as the empty dict).
+//! tolerant.  Every knob falls back to a default when absent or
+//! mistyped, so a profile body can be any JSON object.  The server
+//! is stricter than Elm in one way.  A profile that is not an object
+//! is refused, since `{"zzz": 1}` would otherwise store a profile of
+//! defaults.  A top-level payload that is neither an object nor null
+//! is refused too.  `decodeProfiles` reads null as the empty dict.
 //!
 //! Fallback rules, straight from `Encounter.Wire`:
 //!
@@ -86,12 +87,13 @@ impl PerUserFeature for TreasureProfiles {
     if payload.is_null() {
       return Ok(BTreeMap::new());
     }
-    Ok(
-      as_object(payload, "treasure profiles")?
-        .iter()
-        .map(|(name, raw)| (name.clone(), decode_settings(raw)))
-        .collect(),
-    )
+    as_object(payload, "treasure profiles")?
+      .iter()
+      .map(|(name, raw)| {
+        as_object(raw, &format!("treasure profile {name:?}"))
+          .map(|_| (name.clone(), decode_settings(raw)))
+      })
+      .collect()
   }
 
   fn encode(data: &Self::Data) -> Value {
