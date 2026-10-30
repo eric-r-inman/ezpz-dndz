@@ -3,6 +3,12 @@
 
 * Upcoming
 ** Added
+** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.38.0
+** Added
 1. The Condition/Effect editor has a New condition button while it edits one.
    No action needed.
 ** Fixes
@@ -155,7 +161,6 @@
 ** Maintenance
 1. =just qa= no longer fails now and then when a scenario types a note right
    after picking a condition.  No action needed.
-** Security
 * v0.37.0
 ** Maintenance
 1. Bump cc from 1.5.1 to 1.10.0
