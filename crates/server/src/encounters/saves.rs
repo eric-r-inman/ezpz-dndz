@@ -373,6 +373,16 @@ pub fn validate_save_name(raw: &str) -> Result<String, EncounterStoreError> {
   Ok(trimmed.to_string())
 }
 
+/// The body stays opaque, but it has to be a save of creatures.  A
+/// body without a `creatures` list is refused before it is stored.
+pub fn validate_save_body(body: &Value) -> Result<(), EncounterStoreError> {
+  if body.get("creatures").is_some_and(Value::is_array) {
+    Ok(())
+  } else {
+    Err(EncounterStoreError::SaveBodyInvalid)
+  }
+}
+
 fn epoch_millis() -> i64 {
   SystemTime::now()
     .duration_since(UNIX_EPOCH)

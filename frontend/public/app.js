@@ -146,6 +146,16 @@ try {
   }
 } catch (_) {}
 
+// Named Tune your rolls profiles.  Anonymous mode only.  Authed
+// sessions pull from /api/treasure-profiles instead.
+var localTreasureProfiles = null;
+try {
+  var profilesRaw = localStorage.getItem("treasureProfiles");
+  if (profilesRaw) {
+    localTreasureProfiles = JSON.parse(profilesRaw);
+  }
+} catch (_) {}
+
 // One-time clearance of the obsolete user-tables list from
 // the prior PR #39 model (a list of named UserTables).  The
 // new singular-table feature doesn't translate the old shape;
@@ -173,6 +183,7 @@ var app = Elm.Main.init({
     localParty: localParty,
     localUserLoreGroups: localUserLoreGroups,
     localUserTreasureTable: localUserTreasureTable,
+    localTreasureProfiles: localTreasureProfiles,
   },
 });
 
@@ -340,79 +351,73 @@ if (app.ports && app.ports.persistLocalUserTreasureTable) {
   });
 }
 
-// Cross-tab dice-roll sync.  When a roll lands in any tab,
-// Elm fires `broadcastDiceRoll` with the encoded roll; every
-// other tab of the app open in the same browser profile
-// receives the same value via `incomingDiceRoll` and pushes
-// it into its own dice history.  Solves the case where a
-// stat block is opened in its own tab — rolls fired there
-// would otherwise be invisible to the main encounter tab's
-// dice modal.  `BroadcastChannel` does NOT echo to the
-// sender, so no self-filtering is needed.
-var diceChannel = null;
-try {
-  if (typeof BroadcastChannel === "function") {
-    diceChannel = new BroadcastChannel("ezpz-dndz-dice");
-  }
-} catch (_) {
-  // Older browser / disabled by privacy mode — degrade to
-  // per-tab dice histories.
-}
-if (
-  diceChannel &&
-  app.ports &&
-  app.ports.broadcastDiceRoll &&
-  app.ports.incomingDiceRoll
-) {
-  app.ports.broadcastDiceRoll.subscribe(function (value) {
+// Named Tune your rolls profiles.  Fires on every save or delete.
+if (app.ports && app.ports.persistLocalTreasureProfiles) {
+  app.ports.persistLocalTreasureProfiles.subscribe(function (value) {
     try {
-      diceChannel.postMessage(value);
+      localStorage.setItem("treasureProfiles", JSON.stringify(value));
     } catch (_) {}
   });
-  diceChannel.onmessage = function (event) {
-    try {
-      app.ports.incomingDiceRoll.send(event.data);
-    } catch (_) {}
-  };
-} else if (app.ports && app.ports.broadcastDiceRoll) {
-  // No channel available — swallow outbound broadcasts so
-  // the port still has a subscriber (Elm errors otherwise).
-  app.ports.broadcastDiceRoll.subscribe(function () {});
 }
 
-// Cross-tab encounter sync.  Mirrors the dice channel above:
-// a workspace tab posts the encounter on every change, and a
-// second one opened in the same browser profile picks the
-// changes up live.  Same BroadcastChannel discipline — no
-// self-echo, so loops are impossible.
-var encounterChannel = null;
-try {
-  if (typeof BroadcastChannel === "function") {
-    encounterChannel = new BroadcastChannel("ezpz-dndz-encounter");
-  }
-} catch (_) {
-  // Older browser / privacy mode — a second tab won't
-  // auto-update, but the app still works.
-}
-if (
-  encounterChannel &&
-  app.ports &&
-  app.ports.broadcastEncounter &&
-  app.ports.incomingEncounter
-) {
-  app.ports.broadcastEncounter.subscribe(function (value) {
+// Treasure table eraser.  Fires when the GM reverts to the
+// bundled table.
+if (app.ports && app.ports.clearLocalUserTreasureTable) {
+  app.ports.clearLocalUserTreasureTable.subscribe(function () {
     try {
-      encounterChannel.postMessage(value);
+      localStorage.removeItem("userTreasureTable");
     } catch (_) {}
   });
-  encounterChannel.onmessage = function (event) {
-    try {
-      app.ports.incomingEncounter.send(event.data);
-    } catch (_) {}
-  };
-} else if (app.ports && app.ports.broadcastEncounter) {
-  app.ports.broadcastEncounter.subscribe(function () {});
 }
+
+// Bridges an outbound and an inbound Elm port over one
+// BroadcastChannel.  A value posted in one tab reaches every other
+// tab of the app in the same browser profile.  The channel does not
+// echo to its sender, so no tab filters out its own posts.  Without
+// a channel the tabs simply stay apart.
+function bridgeChannel(name, outPort, inPort) {
+  if (!(app.ports && app.ports[outPort])) {
+    return;
+  }
+  var channel = null;
+  try {
+    if (typeof BroadcastChannel === "function") {
+      channel = new BroadcastChannel(name);
+    }
+  } catch (_) {
+    // An older browser or privacy mode can refuse the channel.
+  }
+  if (channel && app.ports[inPort]) {
+    app.ports[outPort].subscribe(function (value) {
+      try {
+        channel.postMessage(value);
+      } catch (_) {}
+    });
+    channel.onmessage = function (event) {
+      try {
+        app.ports[inPort].send(event.data);
+      } catch (_) {}
+    };
+  } else {
+    // Elm errors when an outbound port has no subscriber.
+    app.ports[outPort].subscribe(function () {});
+  }
+}
+
+// A stat block opened in its own tab rolls there.  The main tab's
+// dice history needs those rolls too.
+bridgeChannel("ezpz-dndz-dice", "broadcastDiceRoll", "incomingDiceRoll");
+
+// A second workspace tab follows the encounter live.
+bridgeChannel("ezpz-dndz-encounter", "broadcastEncounter", "incomingEncounter");
+
+// A creature made in the library tab reaches the encounter tab's
+// Quick Add and stat blocks.
+bridgeChannel(
+  "ezpz-dndz-compendium",
+  "broadcastCompendium",
+  "incomingCompendium",
+);
 
 // Standalone Compendium tab.  Each Elm app instance keeps a
 // single window reference; opening twice from the same main
@@ -457,6 +462,9 @@ if (app.ports && app.ports.openCompendiumTab) {
   var portal = document.createElement("div");
   portal.id = "tooltip-portal";
   portal.setAttribute("role", "tooltip");
+  // Nothing points a screen reader here.  The text a reader needs
+  // rides each control's own label instead.
+  portal.setAttribute("aria-hidden", "true");
   document.body.appendChild(portal);
 
   var showTimer = null;
@@ -522,7 +530,9 @@ if (app.ports && app.ports.openCompendiumTab) {
     portal.style.top = "0";
     portal.style.left = "0";
     requestAnimationFrame(function () {
-      if (currentTarget !== target) return;
+      // A trigger gone from the page measures as an empty box at the
+      // top-left corner.
+      if (currentTarget !== target || !target.isConnected) return;
       place(target);
       portal.style.visibility = "visible";
       portal.style.opacity = "1";
@@ -563,6 +573,14 @@ if (app.ports && app.ports.openCompendiumTab) {
     if (related && trigger.contains(related)) return;
     hide();
   });
+
+  // Removing the hovered trigger fires no mouseout.  The tooltip goes
+  // with it instead.
+  try {
+    new MutationObserver(function () {
+      if (currentTarget && !currentTarget.isConnected) hide();
+    }).observe(document.body, { childList: true, subtree: true });
+  } catch (_) {}
 
   document.addEventListener("focusin", function (e) {
     var trigger = findTrigger(e.target);
@@ -637,6 +655,74 @@ document.addEventListener(
       ) {
         var btn = document.getElementById("modal-close-btn");
         if (btn) btn.focus();
+      }
+    },
+    true,
+  );
+})();
+
+// Closing a modal hands focus back to the control that opened it.
+// The focused close button leaves with the modal.  Focus then drops
+// to the page, and a keyboard user would start over from the top.
+// When the modal opens, focus may already have moved inside it.  The
+// last focus outside any modal then names the opener.
+(function () {
+  var open = false;
+  var opener = null;
+  var lastOutside = null;
+
+  document.addEventListener("focusin", function (e) {
+    if (!(e.target.closest && e.target.closest(".modal-backdrop"))) {
+      lastOutside = e.target;
+    }
+  });
+
+  function track() {
+    var backdrop = document.querySelector(".modal-backdrop");
+    if (backdrop && !open) {
+      open = true;
+      var active = document.activeElement;
+      opener = backdrop.contains(active) ? lastOutside : active;
+    } else if (!backdrop && open) {
+      open = false;
+      var lost =
+        !document.activeElement || document.activeElement === document.body;
+      if (lost && opener && opener.isConnected) opener.focus();
+      opener = null;
+    }
+  }
+
+  try {
+    new MutationObserver(track).observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  } catch (_) {}
+})();
+
+// A modal closes on a click on its backdrop.  A resize that ends
+// past the modal's edge also fires a click there.  The browser
+// targets the backdrop because it holds both the press and the
+// release.  Only a press that began on the backdrop closes it.
+(function () {
+  var pressedOn = null;
+  document.addEventListener(
+    "mousedown",
+    function (e) {
+      pressedOn = e.target;
+    },
+    true,
+  );
+  document.addEventListener(
+    "click",
+    function (e) {
+      if (
+        e.target &&
+        e.target.classList &&
+        e.target.classList.contains("modal-backdrop") &&
+        pressedOn !== e.target
+      ) {
+        e.stopPropagation();
       }
     },
     true,

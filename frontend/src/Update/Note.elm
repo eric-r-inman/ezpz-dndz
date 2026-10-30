@@ -6,6 +6,7 @@ Empty strings are valid: that's how the user clears a note without
 a separate "delete" action.
 -}
 
+import Effects
 import Encounter
 import Model exposing (Model, Surface(..))
 import Msg exposing (Msg)
@@ -22,18 +23,20 @@ own in-place input is already showing closes it (a cancel).
 -}
 open : String -> String -> Model -> ( Model, Cmd Msg )
 open name current model =
-    ( case model.surface of
-        Just (SurfaceNoteEdit ui) ->
-            if ui.target == name then
-                { model | surface = Nothing }
+    let
+        next =
+            case model.surface of
+                Just (SurfaceNoteEdit ui) ->
+                    if ui.target == name then
+                        { model | surface = Nothing }
 
-            else
-                { model | surface = Just (SurfaceNoteEdit (NoteUi.fresh name current)) }
+                    else
+                        { model | surface = Just (SurfaceNoteEdit (NoteUi.fresh name current)) }
 
-        _ ->
-            { model | surface = Just (SurfaceNoteEdit (NoteUi.fresh name current)) }
-    , Cmd.none
-    )
+                _ ->
+                    { model | surface = Just (SurfaceNoteEdit (NoteUi.fresh name current)) }
+    in
+    ( next, Effects.editorFieldFocus NoteUi.inputId next )
 
 
 {-| Cap the text at `NoteUi.maxNoteLength` here so the model never

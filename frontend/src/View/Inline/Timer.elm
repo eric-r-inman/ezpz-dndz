@@ -17,7 +17,7 @@ import Html.Attributes as Attr exposing (attribute, autofocus, class, disabled, 
 import Html.Events exposing (on, onClick, onInput, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (Msg(..))
-import Ui.Timer exposing (TimerPreset, TimerSetupUi)
+import Ui.Timer as TimerUi exposing (TimerPreset, TimerSetupUi)
 import Util.Keyboard
 import View.PhaseToggle
 import View.Tooltips as Tooltips
@@ -27,16 +27,15 @@ view : Dict String TimerPreset -> TimerSetupUi -> Html Msg
 view presets ui =
     div [ class "creature-card__inline" ]
         [ div [ class "cond-row" ]
-            [ Html.label [ for "timer-turns-input", class "cond-label" ]
+            [ Html.label [ for TimerUi.turnsInputId, class "cond-label" ]
                 [ text "Timer lasts" ]
             , input
-                [ id "timer-turns-input"
+                [ id TimerUi.turnsInputId
                 , class "cond-input cond-input--narrow"
                 , type_ "number"
                 , Attr.min "1"
                 , Attr.max "99"
                 , value ui.turnsText
-                , autofocus True
                 , onInput TimerSetupTurnsChanged
                 , on "keydown" (Util.Keyboard.enterKey TimerSetupApply)
                 ]
@@ -111,6 +110,7 @@ presetSaveControl ui =
                     , type_ "text"
                     , value typed
                     , placeholder "Name this preset"
+                    , attribute "aria-label" "Preset name"
                     , autofocus True
                     , onInput TimerPresetSaveNameChanged
                     , on "keydown" (enterKeyDecoder TimerPresetSaveSubmit)

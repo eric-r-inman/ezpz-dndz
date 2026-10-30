@@ -86,14 +86,11 @@ def test_card_stat_block_hands_off_to_the_library_on_that_creature(app, bundled)
     tab = library.tab_for(app, opened.value)
     expect(tab.detail_name()).to_have_text("Ogre")
     assert tab.page.url.endswith("/compendium?creature=" + bundled["Ogre"]["id"])
-    expect(tab.row("Ogre")).to_have_attribute("aria-pressed", "true")
+    expect(tab.pick("Ogre")).to_have_attribute("aria-pressed", "true")
     tab.shot("handed-off-to-ogre")
     tab.assert_quiet()
 
 
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-02: a deep link never scrolls its row into view"
-)
 def test_deep_link_scrolls_the_chosen_row_into_view(app, bundled):
     tab = library.open_at(app, "/compendium?creature=" + bundled["Ogre"]["id"])
     expect(tab.detail_name()).to_have_text("Ogre")
@@ -102,7 +99,7 @@ def test_deep_link_scrolls_the_chosen_row_into_view(app, bundled):
 
 def test_creature_page_shows_one_stat_block_and_names_a_missing_one(app, bundled):
     tab = library.open_at(app, "/compendium/creatures/" + bundled["Ogre"]["id"])
-    expect(tab.page.locator(".statblock__name")).to_have_text("Ogre")
+    expect(tab.page.get_by_role("heading", name="Ogre", exact=True)).to_be_visible()
     expect(tab.page.get_by_text("68 (8d10 + 24)")).to_be_visible()
     tab.shot("creature-page")
 
@@ -171,7 +168,7 @@ def test_picking_a_bundled_creature_shows_its_stat_block_read_only(app, tab):
     expect(block).to_contain_text("Armor Class: 11 (natural armor)")
     expect(block).to_contain_text("Hit Points: 68 (8d10 + 24)")
     expect(block).to_contain_text("Challenge: 2 (450 XP)")
-    expect(tab.row("Ogre")).to_have_attribute("aria-pressed", "true")
+    expect(tab.pick("Ogre")).to_have_attribute("aria-pressed", "true")
     expect(tab.button("✏️ Edit")).to_be_disabled()
     expect(tab.button("📋 Duplicate")).to_be_enabled()
     expect(tab.page.get_by_role("button", name="Delete creature")).to_have_count(0)
@@ -179,10 +176,6 @@ def test_picking_a_bundled_creature_shows_its_stat_block_read_only(app, tab):
     tab.shot("ogre-stat-block")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-01: odd ability scores below 10 show a modifier one too high",
-)
 def test_ability_cells_show_the_rules_modifier_for_every_score(tab, bundled):
     tab.select("Ogre")
     for short, key in [
@@ -213,10 +206,6 @@ def test_ability_check_rolls_straight_advantage_and_disadvantage(app, tab):
     tab.shot("triple-roll-popups")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-01: an INT 5 check rolls with -2 instead of -3",
-)
 def test_low_ability_check_rolls_with_the_rules_modifier(tab):
     tab.select("Ogre")
     tab.button(re.compile(r"^INT 5 ")).click()
@@ -292,9 +281,6 @@ def test_add_selected_sends_every_checked_creature(app, tab):
     assert sorted(app.card_names()) == ["Goblin Warrior", "Ogre"]
 
 
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-03: adding one checked creature toasts 'Added 1 creatures'"
-)
 def test_add_selected_with_one_creature_reads_as_singular(tab):
     tab.check("Ogre")
     tab.select("Ogre")
@@ -337,10 +323,6 @@ def test_kind_chips_show_only_the_chosen_kind(tab, bundled):
     assert "Lia the Bard" not in tab.row_names()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-04: a creature made while signed out sorts last under Newest first",
-)
 def test_newest_first_puts_a_creature_made_while_signed_out_on_top(tab):
     tab.create("Bog Hag")
     tab.sort_by("Newest first")
@@ -358,9 +340,6 @@ def test_newest_first_puts_a_creature_made_while_signed_in_on_top(app, signed_in
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-05: the hidden Manage HP panel swallows the page's slash key"
-)
 def test_slash_jumps_to_the_search_box(tab):
     tab.select("Ogre")
     tab.page.keyboard.press("/")
@@ -368,9 +347,6 @@ def test_slash_jumps_to_the_search_box(tab):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-05: the hidden Manage HP panel swallows the page's Esc key"
-)
 def test_escape_backs_out_of_the_reset_dialog(tab):
     tab.button("↺ Reset").click()
     expect(tab.dialog("Reset Compendium")).to_be_visible()
@@ -410,15 +386,10 @@ def add_feature(tab, legend, name, description):
 
 
 def picker_chip(tab, picker, option):
-    """One chip of a multi-select picker.
-
-    The three damage pickers repeat the same chip names with nothing to tell
-    them apart.  The picker is found by its label text.
-    """
+    """One chip of a multi-select picker."""
     return (
         tab.editor()
-        .locator(".edit-field--picker")
-        .filter(has_text=picker)
+        .get_by_role("group", name=picker, exact=True)
         .get_by_role("button", name=option, exact=True)
     )
 
@@ -442,12 +413,13 @@ def fill_marsh_troll(tab):
 
     saves = tab.section("Saving Throws")
     saves.get_by_role("button", name="+ Add Save").click()
-    saves.get_by_role("combobox").select_option(label="CON")
-    saves.get_by_role("spinbutton", name="Bonus").fill("8")
+    saves.get_by_role("combobox", name="Save ability").select_option(label="CON")
+    saves.get_by_role("spinbutton", name="CON save bonus").fill("8")
+    expect(saves.get_by_role("button", name="Remove save: CON")).to_be_visible()
 
     skills = tab.section("Skills")
     skills.get_by_role("button", name="+ Add Skill").click()
-    skills.get_by_placeholder("Skill name (e.g. Perception)").fill("Perception")
+    skills.get_by_role("textbox", name="Skill name").fill("Perception")
     skills.get_by_role("spinbutton", name="Bonus").fill("2")
 
     picker_chip(tab, "Damage Resistances", "Fire").click()
@@ -510,18 +482,15 @@ def test_new_creature_saves_and_shows_its_stat_block(app, tab):
     expect(tab.row("Marsh Troll")).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-06: the encounter tab's Quick Add misses new creatures until reload",
-)
 def test_new_creature_shows_up_in_quick_add_without_a_reload(app, tab):
     tab.create("Bog Hag", ac="17", hp="82")
     app.page.bring_to_front()
     quick_add = app.panel("Quick Add").open()
     quick_add.root.get_by_role("searchbox", name="Filter Quick Add by name").fill("Bog Hag")
-    expect(
-        quick_add.root.get_by_role("button", name=re.compile("^Bog Hag CR "))
-    ).to_be_visible(timeout=2000)
+    # Made with no CR, its entry reads "Bog Hag—".
+    expect(quick_add.root.get_by_role("button", name=re.compile("^Bog Hag"))).to_be_visible(
+        timeout=2000
+    )
 
 
 def test_new_creature_lands_on_a_card_with_its_numbers(app, tab):
@@ -539,10 +508,6 @@ def test_new_creature_lands_on_a_card_with_its_numbers(app, tab):
     app.shot("marsh-troll-card")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-06: a card sent from the library has no stat block until reload",
-)
 def test_new_creature_sent_from_the_library_shows_its_stat_block_on_the_card(app, tab):
     fill_marsh_troll(tab)
     tab.submit("Marsh Troll", "Create")
@@ -555,6 +520,19 @@ def test_new_creature_sent_from_the_library_shows_its_stat_block_on_the_card(app
     )
     app.shot("card-stat-block-opened")
     expect(app.page.get_by_text("Fetid Breath (Recharge 5–6).")).to_be_visible(timeout=2000)
+
+
+def test_a_signed_out_tab_keeps_its_creatures_out_of_a_signed_in_one(app, tab):
+    # The library tab opened signed out.  It stays so until it reloads.
+    app.sign_up()
+    tab.create("Bog Hag", ac="17", hp="82")
+    app.page.bring_to_front()
+    quick_add = app.panel("Quick Add").open()
+    quick_add.root.get_by_role("searchbox", name="Filter Quick Add by name").fill("Bog Hag")
+    # A tab post lands in milliseconds.  Nothing marks a dropped one.  Half a
+    # second is a guess with room to spare.
+    app.page.wait_for_timeout(500)
+    expect(quick_add.root.get_by_role("button", name=re.compile("^Bog Hag"))).to_have_count(0)
 
 
 def test_library_and_editor_read_in_the_dark_theme(app):
@@ -640,10 +618,6 @@ def test_deleting_from_the_list_asks_before_it_removes(tab):
     expect(tab.page.get_by_text("Select a creature or group on the left.")).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-09: the editor's Delete removes the creature with no confirmation",
-)
 def test_deleting_from_the_editor_asks_before_it_removes(tab):
     tab.create("Bog Hag")
     tab.button("✏️ Edit").click()
@@ -743,9 +717,6 @@ def test_editor_rejects_a_missing_name_and_non_whole_numbers(tab):
     expect(tab.row("Bog Hag")).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True, reason="QA-COMP-07: the editor saves a creature with 0 max HP"
-)
 def test_editor_rejects_a_creature_with_no_hit_points(tab):
     tab.new_creature()
     tab.field("Name").fill("Hollow Shade")
@@ -755,10 +726,6 @@ def test_editor_rejects_a_creature_with_no_hit_points(tab):
     expect(tab.row("Hollow Shade")).to_have_count(0)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-08: the editor silently drops a tag with a space and a nameless action",
-)
 def test_editor_warns_before_dropping_entries_it_cannot_save(tab):
     tab.new_creature()
     tab.field("Name").fill("Bog Hag")
@@ -812,8 +779,8 @@ def test_advanced_sections_reach_the_stat_block_and_the_card(app, tab):
     spells.get_by_role("textbox", name="At will spells, comma-separated").fill(
         "Light, Thaumaturgy"
     )
-    add_row(spells, "+ Add Slot Level", spells.get_by_label("Level"))
-    spells.get_by_label("Level").fill("1")
+    add_row(spells, "+ Add Slot Level", spells.get_by_label("Level", exact=True))
+    spells.get_by_label("Level", exact=True).fill("1")
     spells.get_by_label("Slots").fill("2")
     spells.get_by_label("Spells (comma-separated)").first.fill("Bless")
     add_row(spells, "+ Add Innate Group", spells.get_by_label("Uses"))
@@ -900,10 +867,6 @@ def test_pasted_stat_block_previews_and_fills_the_editor(app, tab):
     expect(tab.row("Mire Stalker")).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-16: a pasted block with no Initiative line gets +0, not its DEX modifier",
-)
 def test_pasted_block_without_an_initiative_line_rolls_initiative_off_dex(tab):
     tab.button("📋 Paste Stat Block").click()
     tab.editor().get_by_role("textbox").fill(HOME_BREW_BLOCK)
@@ -934,7 +897,7 @@ def import_from_file(tab, path):
     with tab.page.expect_file_chooser() as chooser_info:
         dialog.get_by_role("button", name="📁 Choose file…").click()
     chooser_info.value.set_files(str(path))
-    return dialog
+    expect(dialog).to_be_hidden()
 
 
 def close_dialog(dialog):
@@ -961,14 +924,13 @@ def exported_bog_hag(tab, tmp_path, bundled):
 @pytest.mark.cross_browser
 def test_export_then_import_round_trips_the_library(app, tab, tmp_path, bundled):
     path = exported_bog_hag(tab, tmp_path, bundled)
-    dialog = import_from_file(tab, path)
+    import_from_file(tab, path)
     expect(
         tab.page.get_by_text(
             f"Import {len(bundled) + 1} creatures? This REPLACES the entire current library."
         )
     ).to_be_visible()
-    tab.shot("import-confirm-behind-dialog")
-    close_dialog(dialog)
+    tab.shot("import-confirm")
     tab.button("Replace library").click()
     expect(tab.toast(f"Imported {len(bundled) + 1} creatures")).to_be_visible()
     expect(tab.row("Bog Hag")).to_be_visible()
@@ -976,10 +938,6 @@ def test_export_then_import_round_trips_the_library(app, tab, tmp_path, bundled)
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-11: the import confirmation sits behind the Load Compendium dialog",
-)
 def test_import_confirmation_is_reachable_from_the_load_dialog(tab, tmp_path, bundled):
     path = exported_bog_hag(tab, tmp_path, bundled)
     import_from_file(tab, path)
@@ -991,10 +949,9 @@ def test_importing_a_file_that_is_not_a_compendium_changes_nothing(app, tab, tmp
     tab.create("Bog Hag")
     junk = tmp_path / "shopping-list.json"
     junk.write_text('{"eggs": 12}')
-    dialog = import_from_file(tab, junk)
+    import_from_file(tab, junk)
     expect(tab.page.get_by_text(re.compile("compatibility issues"))).to_be_visible()
     tab.shot("import-junk")
-    close_dialog(dialog)
     tab.button("OK").click()
     expect(tab.rows()).to_have_count(len(bundled) + 1)
     expect(tab.row("Bog Hag")).to_be_visible()
@@ -1016,15 +973,11 @@ def test_reset_asks_first_then_returns_to_the_bundled_library(app, tab, bundled)
     expect(tab.rows()).to_have_count(len(bundled))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-10: the Reset dialog promises 'the original 5 creatures' of 330",
-)
-def test_reset_dialog_counts_the_bundled_creatures_it_restores(tab, bundled):
+def test_reset_dialog_names_the_bundled_creatures_it_restores(tab):
     tab.button("↺ Reset").click()
-    expect(tab.dialog("Reset Compendium")).to_contain_text(
-        f"original {len(bundled)} creatures", timeout=1000
-    )
+    dialog = tab.dialog("Reset Compendium")
+    expect(dialog).to_contain_text("the bundled SRD creatures", timeout=1000)
+    expect(dialog).not_to_contain_text("original 5")
 
 
 def test_clear_selected_and_clear_all_empty_the_library(app, tab, bundled):
@@ -1079,10 +1032,6 @@ def test_signed_in_clear_all_empties_the_library(app, signed_in_tab):
     expect(tab.rows()).to_have_count(0, timeout=2000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-13: every fresh sign-in toasts a Save Chain decode error",
-)
 def test_signed_in_library_opens_without_an_error_toast(app, signed_in_tab):
     tab = signed_in_tab
     tab.select("Ogre")

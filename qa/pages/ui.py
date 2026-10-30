@@ -174,8 +174,7 @@ class Dice:
         expect(self.rows()).to_have_count(count)
 
     def reroll_button(self, index=0):
-        # The re-roll trigger's only name is its glyph.
-        return self.rows().nth(index).get_by_role("button", name="\u21bb")
+        return self.rows().nth(index).get_by_role("button", name=re.compile("^Roll .+ again$"))
 
 
 def consistent(row, faces):

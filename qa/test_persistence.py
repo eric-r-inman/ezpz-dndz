@@ -73,10 +73,6 @@ def test_a_server_restart_keeps_the_dm_signed_in(app):
     expect(app.page.get_by_role("link", name="Dee Em", exact=True)).to_be_visible(timeout=3000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-06: after a restart the open tab says only 'Save failed: Server returned 401.'",
-)
 def test_an_open_tab_tells_the_dm_to_sign_in_again_after_a_restart(app):
     app.sign_up(DM, PASSWORD, "Dee Em")
     build_mid_fight(app)
@@ -88,6 +84,20 @@ def test_an_open_tab_tells_the_dm_to_sign_in_again_after_a_restart(app):
     expect(error_toasts(app.page).filter(has_text="Save failed")).to_contain_text(
         "sign in", ignore_case=True
     )
+
+
+def test_an_edit_made_after_a_restart_survives_signing_back_in(app):
+    app.sign_up(DM, PASSWORD, "Dee Em")
+    build_mid_fight(app)
+    wait_until_saved(app.page, MID_FIGHT["names"], "Web")
+    app.server.restart()
+    hurt = int(hp_button(app.card("Ogre"), "Current").inner_text()) - 5
+    ManageHp(app).open_for("Ogre").damage(5)
+    expect(error_toasts(app.page).filter(has_text="Save failed")).to_be_visible()
+    LoginPage(app.page, app.server.base_url).goto().sign_in(DM)
+    wait_signed_in(app, "Dee Em")
+    wait_for_cards(app, MID_FIGHT["names"])
+    expect(hp_button(app.card("Ogre"), "Current")).to_have_text(str(hurt))
 
 
 @pytest.mark.cross_browser

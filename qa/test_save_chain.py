@@ -175,16 +175,12 @@ def test_a_creature_marked_in_an_area_takes_the_save_each_turn(app):
     app.next_turn()
     expect_pools(ogre, 58, 68)
 
-    chip(ogre, "In: Fumes").get_by_role("button", name="Remove condition").click()
+    chip(ogre, "In: Fumes").get_by_role("button", name="Remove In: Fumes from Ogre").click()
     app.next_turn()
     app.next_turn()
     expect_pools(ogre, 58, 68)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-11: an area chain not saved as a preset marks creatures that then never resolve",
-)
 def test_an_area_chain_resolves_without_being_saved_as_a_preset(app):
     app.add("Goblin Warrior")
     app.add("Ogre")
@@ -246,10 +242,6 @@ def test_restore_brings_back_a_deleted_bundled_preset(app):
     expect(chain.preset_picker().locator("option", has_text="Fireball")).to_have_count(1)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-12: every turn advance resets the Save Chain form to blank",
-)
 def test_a_chain_being_built_survives_the_next_turn(app):
     app.add("Goblin Warrior", count=2)
     app.begin_combat()

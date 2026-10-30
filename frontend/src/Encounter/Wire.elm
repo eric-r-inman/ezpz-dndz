@@ -1,7 +1,7 @@
 module Encounter.Wire exposing
     ( SavedEncounterMeta
     , decodeEncounter, encodeEncounter
-    , fetchEncounterCmd, persistEncounterCmd
+    , fetchEncounterCmd, persistEncounterCmd, persistEncounterArchivingCmd
     , listSavesCmd, getSaveCmd, putSaveCmd, deleteSaveCmd, renameSaveCmd
     , decodeTreasureSettings, encodeTreasureSettings
     )
@@ -22,7 +22,7 @@ the server doesn't re-model this schema.
 
 @docs SavedEncounterMeta
 @docs decodeEncounter, encodeEncounter
-@docs fetchEncounterCmd, persistEncounterCmd
+@docs fetchEncounterCmd, persistEncounterCmd, persistEncounterArchivingCmd
 @docs listSavesCmd, getSaveCmd, putSaveCmd, deleteSaveCmd, renameSaveCmd
 
 -}
@@ -95,11 +95,29 @@ persistEncounterCmd :
     (Result Http.Error () -> msg)
     -> Encounter
     -> Cmd msg
-persistEncounterCmd toMsg encounter =
+persistEncounterCmd =
+    putEncounter "/api/encounter"
+
+
+{-| `PUT /api/encounter?archive_as=<name>` first saves the account's
+live encounter under `name`. Sign-in uses it so a signed-out session's
+fight never erases the account's.
+-}
+persistEncounterArchivingCmd :
+    (Result Http.Error () -> msg)
+    -> String
+    -> Encounter
+    -> Cmd msg
+persistEncounterArchivingCmd toMsg archiveName =
+    putEncounter ("/api/encounter?archive_as=" ++ Util.Http.urlPathSegment archiveName) toMsg
+
+
+putEncounter : String -> (Result Http.Error () -> msg) -> Encounter -> Cmd msg
+putEncounter url toMsg encounter =
     Http.request
         { method = "PUT"
         , headers = []
-        , url = "/api/encounter"
+        , url = url
         , body = Http.jsonBody (encodeEncounter encounter)
         , expect = Http.expectWhatever toMsg
         , timeout = Nothing

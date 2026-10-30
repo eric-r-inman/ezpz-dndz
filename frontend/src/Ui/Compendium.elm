@@ -181,8 +181,8 @@ The third field is the creature count we surface in the
 confirm message; groups don't get their own count line because
 they're a secondary detail.
 
-`PendingDelete` carries `(creatureId, displayName)` for the
-confirmation message.
+`PendingDelete`, `PendingGroupDelete` and `PendingLoreDelete`
+carry `(id, displayName)` for the confirmation message.
 
 -}
 type PendingAction
@@ -190,6 +190,8 @@ type PendingAction
     | PendingClear
     | PendingImport (List Compendium.Creature) (List Group) Int
     | PendingDelete String String
+    | PendingGroupDelete String String
+    | PendingLoreDelete String String
 
 
 type CompendiumDb
@@ -680,89 +682,150 @@ validateEdit ui =
                 Err "Max HP must be a whole number."
 
             ( Just ac, Just maxHp ) ->
-                let
-                    ( id, createdAt ) =
-                        case ui.mode of
-                            CreateMode ->
-                                ( "", 0 )
+                case ( maxHp < 1, droppedEntryProblem ui ) of
+                    ( True, _ ) ->
+                        Err "Max HP must be at least 1."
 
-                            EditExisting e ->
-                                ( e.id, e.createdAt )
-                in
-                Ok
-                    { id = id
-                    , name = String.trim ui.name
-                    , kind = ui.kind
-                    , size = ui.size
-                    , race = String.trim ui.race
-                    , subrace = String.trim ui.subrace
-                    , alignment = String.trim ui.alignment
-                    , source = String.trim ui.source
-                    , description = ui.description
-                    , armorClass = ac
-                    , armorClassNote = String.trim ui.armorClassNote
-                    , maxHp = maxHp
-                    , hpFormula = String.trim ui.hpFormula
-                    , initiativeBonus = parseIntOr 0 ui.initiativeBonus
-                    , speed =
-                        { walk = parseIntOr 0 ui.speedWalk
-                        , fly = parseIntOr 0 ui.speedFly
-                        , swim = parseIntOr 0 ui.speedSwim
-                        , climb = parseIntOr 0 ui.speedClimb
-                        , burrow = parseIntOr 0 ui.speedBurrow
-                        , hover = ui.speedHover
-                        }
-                    , abilities =
-                        { str = parseIntOr 10 ui.abilityStr
-                        , dex = parseIntOr 10 ui.abilityDex
-                        , con = parseIntOr 10 ui.abilityCon
-                        , int = parseIntOr 10 ui.abilityInt
-                        , wis = parseIntOr 10 ui.abilityWis
-                        , cha = parseIntOr 10 ui.abilityCha
-                        }
-                    , savingThrows = List.filterMap saveRowToValue ui.savingThrows
-                    , skills = List.filterMap skillRowToValue ui.skills
-                    , damageVulnerabilities = ui.damageVulnerabilities
-                    , damageResistances = ui.damageResistances
-                    , damageImmunities = ui.damageImmunities
-                    , conditionImmunities = ui.conditionImmunities
-                    , senses =
-                        { blindsight = parseIntOr 0 ui.sensesBlindsight
-                        , darkvision = parseIntOr 0 ui.sensesDarkvision
-                        , tremorsense = parseIntOr 0 ui.sensesTremorsense
-                        , truesight = parseIntOr 0 ui.sensesTruesight
-                        , passivePerception = parseIntOr 10 ui.sensesPassivePerception
-                        }
-                    , languages = parseCsv ui.languages
-                    , challengeRating = String.trim ui.challengeRating
-                    , xp = parseIntOr 0 ui.xp
-                    , xpInLair = parseIntOr 0 ui.xpInLair
-                    , proficiencyBonus = parseIntOr 2 ui.proficiencyBonus
-                    , traits = List.filterMap draftToFeature ui.traits
-                    , actions = List.filterMap draftToFeature ui.actions
-                    , bonusActions = List.filterMap draftToFeature ui.bonusActions
-                    , reactions = List.filterMap draftToFeature ui.reactions
-                    , legendaryActions = ui.legendaryActions
-                    , lairActions = ui.lairActions
-                    , regionalEffects = ui.regionalEffects
-                    , spellcasting = ui.spellcasting
-                    , customSections = List.filterMap customSectionRowToValue ui.customSections
-                    , habitats = ui.habitats
-                    , treasures = ui.treasures
-                    , tags =
-                        ui.tags
-                            |> List.map String.trim
-                            |> List.filter isOneWord
-                            |> dedupOrdered
-                    , loot =
-                        ui.loot
-                            |> List.map String.trim
-                            |> List.filter (not << String.isEmpty)
-                    , createdAt = createdAt
-                    , updatedAt = 0
-                    , isBundled = False
-                    , hasSpecialReactions = ui.hasSpecialReactions
-                    }
+                    ( False, Just problem ) ->
+                        Err problem
+
+                    ( False, Nothing ) ->
+                        Ok (creatureFrom ui ac maxHp)
+
+
+{-| The creature an edit form describes, once its checks have
+passed.
+-}
+creatureFrom : CompendiumEditUi -> Int -> Int -> Compendium.Creature
+creatureFrom ui ac maxHp =
+    let
+        ( id, createdAt ) =
+            case ui.mode of
+                CreateMode ->
+                    ( "", 0 )
+
+                EditExisting e ->
+                    ( e.id, e.createdAt )
+    in
+    { id = id
+    , name = String.trim ui.name
+    , kind = ui.kind
+    , size = ui.size
+    , race = String.trim ui.race
+    , subrace = String.trim ui.subrace
+    , alignment = String.trim ui.alignment
+    , source = String.trim ui.source
+    , description = ui.description
+    , armorClass = ac
+    , armorClassNote = String.trim ui.armorClassNote
+    , maxHp = maxHp
+    , hpFormula = String.trim ui.hpFormula
+    , initiativeBonus = parseIntOr 0 ui.initiativeBonus
+    , speed =
+        { walk = parseIntOr 0 ui.speedWalk
+        , fly = parseIntOr 0 ui.speedFly
+        , swim = parseIntOr 0 ui.speedSwim
+        , climb = parseIntOr 0 ui.speedClimb
+        , burrow = parseIntOr 0 ui.speedBurrow
+        , hover = ui.speedHover
+        }
+    , abilities =
+        { str = parseIntOr 10 ui.abilityStr
+        , dex = parseIntOr 10 ui.abilityDex
+        , con = parseIntOr 10 ui.abilityCon
+        , int = parseIntOr 10 ui.abilityInt
+        , wis = parseIntOr 10 ui.abilityWis
+        , cha = parseIntOr 10 ui.abilityCha
+        }
+    , savingThrows = List.filterMap saveRowToValue ui.savingThrows
+    , skills = List.filterMap skillRowToValue ui.skills
+    , damageVulnerabilities = ui.damageVulnerabilities
+    , damageResistances = ui.damageResistances
+    , damageImmunities = ui.damageImmunities
+    , conditionImmunities = ui.conditionImmunities
+    , senses =
+        { blindsight = parseIntOr 0 ui.sensesBlindsight
+        , darkvision = parseIntOr 0 ui.sensesDarkvision
+        , tremorsense = parseIntOr 0 ui.sensesTremorsense
+        , truesight = parseIntOr 0 ui.sensesTruesight
+        , passivePerception = parseIntOr 10 ui.sensesPassivePerception
+        }
+    , languages = parseCsv ui.languages
+    , challengeRating = String.trim ui.challengeRating
+    , xp = parseIntOr 0 ui.xp
+    , xpInLair = parseIntOr 0 ui.xpInLair
+    , proficiencyBonus = parseIntOr 2 ui.proficiencyBonus
+    , traits = List.filterMap draftToFeature ui.traits
+    , actions = List.filterMap draftToFeature ui.actions
+    , bonusActions = List.filterMap draftToFeature ui.bonusActions
+    , reactions = List.filterMap draftToFeature ui.reactions
+    , legendaryActions = ui.legendaryActions
+    , lairActions = ui.lairActions
+    , regionalEffects = ui.regionalEffects
+    , spellcasting = ui.spellcasting
+    , customSections = List.filterMap customSectionRowToValue ui.customSections
+    , habitats = ui.habitats
+    , treasures = ui.treasures
+    , tags =
+        ui.tags
+            |> List.map String.trim
+            |> List.filter isOneWord
+            |> dedupOrdered
+    , loot =
+        ui.loot
+            |> List.map String.trim
+            |> List.filter (not << String.isEmpty)
+    , createdAt = createdAt
+    , updatedAt = 0
+    , isBundled = False
+    , hasSpecialReactions = ui.hasSpecialReactions
+    }
+
+
+{-| The first entry the creature could not keep as typed. A row with
+nothing in it is dropped quietly. A row with something in it is
+reported rather than lost.
+-}
+droppedEntryProblem : CompendiumEditUi -> Maybe String
+droppedEntryProblem ui =
+    let
+        blank =
+            String.trim >> String.isEmpty
+
+        unnamed what drafts =
+            if List.any (\d -> blank d.name && not (blank d.description)) drafts then
+                Just ("Every " ++ what ++ " needs a name.")
+
+            else
+                Nothing
+    in
+    [ ui.tags
+        |> List.map String.trim
+        |> List.filter (\t -> not (String.isEmpty t) && not (isOneWord t))
+        |> List.head
+        |> Maybe.map (\t -> "The tag \"" ++ t ++ "\" must be one word.")
+    , unnamed "trait" ui.traits
+    , unnamed "action" ui.actions
+    , unnamed "bonus action" ui.bonusActions
+    , unnamed "reaction" ui.reactions
+    , if List.any (\( name, bonus ) -> blank name && not (blank bonus)) ui.skills then
+        Just "Every skill needs a name."
+
+      else
+        Nothing
+    , if List.any (\( name, body ) -> blank name && not (blank body)) ui.customSections then
+        Just "Every custom section needs a heading."
+
+      else
+        Nothing
+    , if List.any (\( _, bonus ) -> String.toInt (String.trim bonus) == Nothing) ui.savingThrows then
+        Just "Every saving throw needs a whole-number bonus."
+
+      else
+        Nothing
+    ]
+        |> List.filterMap identity
+        |> List.head
 
 
 parseIntOr : Int -> String -> Int

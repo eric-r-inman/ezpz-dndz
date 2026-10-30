@@ -37,7 +37,7 @@ import Compendium
         , Usage(..)
         )
 import Dice
-import Html exposing (Html, a, button, div, em, hr, li, p, span, strong, text, ul)
+import Html exposing (Html, a, button, div, em, h3, hr, li, p, span, strong, text, ul)
 import Html.Attributes exposing (attribute, class, href, target)
 import Html.Events exposing (onClick)
 import Json.Decode as Decode
@@ -84,7 +84,7 @@ type TagDisplay
   - `onAbilityCheck` — handler for clicking one of the six
     ability cells (STR / DEX / CON / INT / WIS / CHA). Receives
     the creature's display name, the ability label (e.g. `"STR"`),
-    and the flat ability modifier (`(score − 10) // 2`). Pass
+    and the ability modifier from `Compendium.abilityModifier`. Pass
     `AbilityCheckTriggered` from `Main` to fire the same
     triple-roll.
   - `onSavingThrow` — handler for clicking one of the inline
@@ -155,7 +155,7 @@ nameRow tagDisplay c =
     case tagDisplay of
         TagBadges ->
             div [ class "statblock__name-row" ]
-                [ div [ class "statblock__name" ] [ text c.name ]
+                [ h3 [ class "statblock__name" ] [ text c.name ]
                 , kindBadge c.kind
                 , bundledBadge c.isBundled
                 , tagBadges c.tags
@@ -163,7 +163,7 @@ nameRow tagDisplay c =
 
         TagBadgesOpenInNewTab ->
             div [ class "statblock__name-row" ]
-                [ div [ class "statblock__name" ] [ text c.name ]
+                [ h3 [ class "statblock__name" ] [ text c.name ]
                 , kindBadge c.kind
                 , bundledBadge c.isBundled
                 , div [ class "statblock__name-row-end" ]
@@ -376,7 +376,7 @@ viewAbilities onAbilityCheck c =
             -- the flat modifier (not the proficient save bonus).
             -- The save bonus has its own dedicated chip in the
             -- Saving Throws property line.
-            viewAbilityCell onAbilityCheck c.name label (modifier score) score
+            viewAbilityCell onAbilityCheck c.name label (Compendium.abilityModifier score) score
     in
     div [ class "ability-row" ]
         [ cell "STR" Str c.abilities.str
@@ -404,17 +404,12 @@ viewAbilityCell onAbilityCheck creatureName label bonus score =
                 (Decode.field "clientX" Decode.int)
                 (Decode.field "clientY" Decode.int)
             )
-        , Tooltips.attr (Tooltips.statBlockAbilityCheck label (modifier score))
+        , Tooltips.attr (Tooltips.statBlockAbilityCheck label (Compendium.abilityModifier score))
         ]
         [ div [ class "ability__label" ] [ text label ]
         , div [ class "ability__value" ] [ text (String.fromInt score) ]
-        , div [ class "ability__mod" ] [ text ("(" ++ signed (modifier score) ++ ")") ]
+        , div [ class "ability__mod" ] [ text ("(" ++ signed (Compendium.abilityModifier score) ++ ")") ]
         ]
-
-
-modifier : Int -> Int
-modifier score =
-    (score - 10) // 2
 
 
 signed : Int -> String

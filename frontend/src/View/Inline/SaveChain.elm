@@ -99,9 +99,10 @@ presetSection ui presets =
     in
     div [ class "cond-section" ]
         [ div [ class "cond-row" ]
-            [ Html.label [ class "cond-label" ] [ text "Preset:" ]
+            [ Html.label [ Attr.for "save-chain-preset", class "cond-label" ] [ text "Preset:" ]
             , select
-                [ class "cond-select cond-select--grow"
+                [ Attr.id "save-chain-preset"
+                , class "cond-select cond-select--grow"
                 , onInput SaveChainPresetPickerChanged
                 ]
                 options
@@ -149,9 +150,10 @@ identitySection : SaveChainUi -> Html Msg
 identitySection ui =
     div [ class "cond-section" ]
         [ div [ class "cond-row" ]
-            [ Html.label [ class "cond-label" ] [ text "Name:" ]
+            [ Html.label [ Attr.for "save-chain-name", class "cond-label" ] [ text "Name:" ]
             , input
-                [ type_ "text"
+                [ Attr.id "save-chain-name"
+                , type_ "text"
                 , class "cond-input cond-input--w20"
                 , value ui.name
                 , placeholder "e.g. Hold Person"
@@ -172,9 +174,10 @@ identitySection ui =
                     [ ( Str, "STR" ), ( Dex, "DEX" ), ( Con, "CON" ), ( Int_, "INT" ), ( Wis, "WIS" ), ( Cha, "CHA" ) ]
             )
         , div [ class "cond-row" ]
-            [ Html.label [ class "cond-label" ] [ text "DC:" ]
+            [ Html.label [ Attr.for "save-chain-dc", class "cond-label" ] [ text "DC:" ]
             , input
-                [ type_ "text"
+                [ Attr.id "save-chain-dc"
+                , type_ "text"
                 , class "cond-input cond-input--2ch"
                 , value ui.dcText
                 , Attr.maxlength 2
@@ -321,8 +324,12 @@ hpRow side form =
                         , onInput (SaveChainOutcomeHpAmountChanged side)
                         ]
                         []
-                    , span [ class "cond-section__caption cond-section__caption--warn" ]
-                        [ text "req. to apply dmg" ]
+                    , if String.isEmpty (String.trim form.hpAmountText) then
+                        span [ class "cond-section__caption cond-section__caption--warn" ]
+                            [ text "req. to apply dmg" ]
+
+                      else
+                        text ""
                     ]
     in
     div [ class "cond-row" ]
