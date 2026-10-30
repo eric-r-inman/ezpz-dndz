@@ -1,4 +1,4 @@
-module View.Modal exposing (view, closeBtnId, focusInitial)
+module View.Modal exposing (view, closeBtnId, focusInitial, signInLink)
 
 {-| Shared modal chrome.
 
@@ -36,13 +36,13 @@ are imported directly from `Msg` rather than threaded through
 the config record because every modal needs the same handlers —
 threading them through every call site would be pure noise.
 
-@docs view, closeBtnId, focusInitial
+@docs view, closeBtnId, focusInitial, signInLink
 
 -}
 
 import Browser.Dom
-import Html exposing (Html, button, div, h2, text)
-import Html.Attributes exposing (attribute, class, id, style, tabindex)
+import Html exposing (Html, a, button, div, h2, text)
+import Html.Attributes exposing (attribute, class, href, id, style, tabindex)
 import Html.Events exposing (onClick, preventDefaultOn, stopPropagationOn)
 import Json.Decode as Decode
 import Msg exposing (ModalChromeEdge(..), Msg(..))
@@ -59,6 +59,14 @@ past the last focusable element in the modal body.
 closeBtnId : String
 closeBtnId =
     "modal-close-btn"
+
+
+{-| The way an anonymous DM gets an account, for a modal that
+offers what only an account can keep.
+-}
+signInLink : Html msg
+signInLink =
+    a [ class "action-btn action-btn--blue", href "/login" ] [ text "Sign in" ]
 
 
 {-| Cmd that focuses the modal close button. Fires

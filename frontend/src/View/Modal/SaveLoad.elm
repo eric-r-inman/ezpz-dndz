@@ -13,7 +13,7 @@ and the GM's own machine behind a file picker.
 import Auth
 import Effects
 import Encounter.Wire exposing (SavedEncounterMeta)
-import Html exposing (Html, a, button, div, input, li, p, span, text, ul)
+import Html exposing (Html, button, div, input, li, p, span, text, ul)
 import Html.Attributes
     exposing
         ( attribute
@@ -21,7 +21,6 @@ import Html.Attributes
         , class
         , disabled
         , for
-        , href
         , id
         , maxlength
         , tabindex
@@ -473,7 +472,7 @@ signInNotice : String -> Html Msg
 signInNotice why =
     div [ class "save-load__device" ]
         [ p [ class "cond-section__caption" ] [ text why ]
-        , a [ class "action-btn action-btn--blue", href "/login" ] [ text "Sign in" ]
+        , View.Modal.signInLink
         ]
 
 

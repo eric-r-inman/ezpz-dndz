@@ -115,10 +115,6 @@ def test_a_file_that_is_not_json_is_refused_and_the_encounter_is_kept(app, tmp_p
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-12: a wrong JSON file dumps its whole content into the error",
-)
 def test_a_json_file_that_is_not_an_encounter_fails_with_a_short_message(app, tmp_path):
     build_ambush(app)
     before = app.card_names()
@@ -270,10 +266,6 @@ def test_renaming_a_server_save(app):
 
 
 @pytest.mark.parametrize("problem", ["a taken name", "a slash"])
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-13: a refused save or rename shows only an HTTP status code",
-)
 def test_a_refused_save_name_says_why(app, problem):
     app.sign_up()
     app.add("Ogre")

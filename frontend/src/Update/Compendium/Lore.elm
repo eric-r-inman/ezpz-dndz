@@ -1,6 +1,6 @@
 module Update.Compendium.Lore exposing
     ( sectionToggle, expandToggle, select, delete, add
-    , addMaterialise
+    , addMaterialise, findGroup
     )
 
 {-| Handlers for the Lore-groups section in the Compendium
@@ -32,6 +32,7 @@ import Ui.Compendium as CompendiumUi
 import Ui.Toast exposing (ToastKind(..))
 import Update.Compendium.Browser exposing (withCompendium)
 import Update.Toast
+import Util.Number
 
 
 sectionToggle : Model -> ( Model, Cmd Msg )
@@ -98,7 +99,7 @@ delete id model =
             List.any (\g -> g.id == id && g.source == Lore.UserCurated) model.userLoreGroups
     in
     if deleting then
-        ( { model
+        { model
             | userLoreGroups =
                 List.filter (\g -> g.id /= id) model.userLoreGroups
             , compendium =
@@ -114,9 +115,12 @@ delete id model =
                         else
                             c.selectedLoreId
                 }
-          }
-        , Cmd.none
-        )
+        }
+            |> Update.Toast.push ToastSuccess
+                ("Deleted lore grouping \""
+                    ++ (findGroup id model |> Maybe.map .name |> Maybe.withDefault "")
+                    ++ "\"."
+                )
 
     else
         ( model, Cmd.none )
@@ -191,7 +195,7 @@ addMaterialise groupName pairs model =
                     ++ ": "
                     ++ String.fromInt count
                     ++ " "
-                    ++ pluralize "creature" "creatures" count
+                    ++ Util.Number.pluralize "creature" "creatures" count
                 )
 
 
@@ -237,12 +241,3 @@ spawnPair ( source, count ) ( acc0, taken0 ) =
                 ( inst :: acc, name :: taken )
             )
             ( acc0, taken0 )
-
-
-pluralize : String -> String -> Int -> String
-pluralize singular plural n =
-    if n == 1 then
-        singular
-
-    else
-        plural

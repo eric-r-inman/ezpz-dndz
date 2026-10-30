@@ -42,6 +42,7 @@ import Encounter.Xp exposing (XpScope)
 import File exposing (File)
 import Http
 import Json.Decode as Decode
+import Time
 import Url exposing (Url)
 
 
@@ -1083,6 +1084,9 @@ type Msg
     | CompendiumEditSpellcastingInnateUsesChanged Int String
     | CompendiumEditSpellcastingInnateSpellsChanged Int String
     | CompendiumEditSubmit
+      -- A signed-out submit, with the time it happened.  The server
+      -- stamps a signed-in one.
+    | CompendiumEditLocalStamped Compendium.Creature Time.Posix
     | CompendiumEditSubmitResponse (Result Http.Error Compendium.Creature)
     | CompendiumEditDelete
     | CompendiumEditDeleteResponse String (Result Http.Error ())

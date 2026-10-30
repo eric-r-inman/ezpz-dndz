@@ -96,12 +96,62 @@
     action needed.
 54. Screen readers hear what each treasure and compendium control belongs to.
     No action needed.
+55. A wrong current password on the account page says "Current password is
+    incorrect."  No action needed.
+56. A request without a session hears "Sign in required" instead of a password
+    complaint.  No action needed.
+57. Named saves and treasure profiles refuse a body of the wrong shape.  No
+    action needed.
+58. =users reset-password= names an email that has no account.  No action
+    needed.
+59. Importing the same file of drafts twice no longer adds copies.  No action
+    needed.
+60. The compendium's save and load dialogs offer a Sign in link to a signed-out
+    DM.  No action needed.
+61. A fresh data dir no longer logs a warning about lost edits.  No action
+    needed.
+62. The By creature breakdown follows removed and re-rolled treasure.  No action
+    needed.
+63. A signed-out DM's Tune your rolls profiles survive a reload.  No action
+    needed.
+64. Loading a file that is not an encounter shows one short message.  No action
+    needed.
+65. A refused save or rename says why.  No action needed.
+66. A compendium link to a creature scrolls its row into view.  No action
+    needed.
+67. Toasts and banners say "1 creature" for one creature.  No action needed.
+68. Newest first puts a creature made while signed out on top.  No action
+    needed.
+69. The creature editor refuses a Max HP below 1.  No action needed.
+70. The creature editor names an entry it cannot save instead of dropping it.
+    No action needed.
+71. Deleting from the creature editor, a group or a lore grouping asks first.
+    No action needed.
+72. The Reset dialog no longer promises "the original 5 creatures".  No action
+    needed.
+73. Group initiative adds each creature's initiative bonus.  No action needed.
+74. Two lore groupings may share a name.  No action needed.
+75. A pasted stat block with no Initiative line takes its DEX modifier.  No
+    action needed.
+76. Lore groupings stay listed when no creature matches the search.  No action
+    needed.
+77. The compendium's detail pane opens at the top and its sticky bars hide the
+    text behind them.  No action needed.
+78. A straight d20 roll reads on a light stat block.  No action needed.
+79. A tooltip no longer sticks in the corner after its button goes away.  No
+    action needed.
+80. Hover text on the compendium's add and import buttons says what they do.  No
+    action needed.
+81. Random Encounter names no longer run under the CR and XP.  No action needed.
 ** Breaking
 1. The account page moved from =/me= to =/account=.  Update any bookmark to it.
 2. The sign-in throttle reads =X-Forwarded-For= only with
    =--trust-forwarded-for= or =trust_forwarded_for = true=.  Behind Caddy or
    another reverse proxy, add it.  Without it every client shares one throttle
    bucket.
+3. The CLI's list, count, show and tail subcommands refuse a data dir with no
+   database instead of creating an empty one.  Point =--data-dir= or
+   =--database-url= at the server's data before running them.
 ** Maintenance
 1. =just qa= no longer fails now and then when a scenario types a note right
    after picking a condition.  No action needed.

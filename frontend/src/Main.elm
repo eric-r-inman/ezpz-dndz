@@ -547,6 +547,7 @@ type alias Flags =
     , localParty : Maybe Decode.Value
     , localUserLoreGroups : Maybe Decode.Value
     , localUserTreasureTable : Maybe Decode.Value
+    , localTreasureProfiles : Maybe Decode.Value
     }
 
 
@@ -708,7 +709,13 @@ init flags url key =
                     (Decode.decodeValue Encounter.Treasure.TableWire.decodeTable
                         >> Result.toMaybe
                     )
-        , userTreasureProfiles = Dict.empty
+        , userTreasureProfiles =
+            flags.localTreasureProfiles
+                |> Maybe.andThen
+                    (Decode.decodeValue Encounter.Treasure.ProfileWire.decodeProfiles
+                        >> Result.toMaybe
+                    )
+                |> Maybe.withDefault Dict.empty
         , userTreasureProfileNameDraft = ""
         }
       -- The auth-dependent data fetches (encounter, compendium,
@@ -900,7 +907,10 @@ update msg model =
                             )
 
                     _ ->
-                        Cmd.none
+                        Ports.persistLocalTreasureProfiles
+                            (Encounter.Treasure.ProfileWire.encodeProfiles
+                                next.userTreasureProfiles
+                            )
 
             else
                 Cmd.none
@@ -1728,7 +1738,7 @@ updateInner msg model =
             Update.Compendium.Group.select groupId model
 
         CompendiumGroupDelete groupId ->
-            Update.Compendium.Group.delete groupId model
+            Update.Compendium.Bulk.groupDeleteRequested groupId model
 
         CompendiumGroupEditOpenExisting groupId ->
             Update.Compendium.Group.openExisting groupId model
@@ -1749,7 +1759,7 @@ updateInner msg model =
             Update.Compendium.Lore.select id model
 
         CompendiumLoreDelete id ->
-            Update.Compendium.Lore.delete id model
+            Update.Compendium.Bulk.loreDeleteRequested id model
 
         CompendiumLoreAdd id ->
             Update.Compendium.Lore.add id model
@@ -2438,6 +2448,9 @@ updateInner msg model =
         CompendiumEditSubmit ->
             Update.Compendium.Edit.submit model
 
+        CompendiumEditLocalStamped creature now ->
+            Update.Compendium.Edit.localStamped creature now model
+
         CompendiumEditSubmitResponse result ->
             Update.Compendium.Edit.submitResponse result model
 
@@ -2712,7 +2725,7 @@ updateInner msg model =
             Update.Compendium.Bulk.resetClick model
 
         CompendiumDeleteFromBrowser id displayName ->
-            Update.Compendium.Bulk.deleteFromBrowser id displayName model
+            Update.Compendium.Bulk.deleteRequested id displayName model
 
         CompendiumPendingCancel ->
             Update.Compendium.Bulk.pendingCancel model

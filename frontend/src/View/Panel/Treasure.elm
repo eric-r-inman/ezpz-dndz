@@ -328,8 +328,7 @@ presetChip preset label tooltip =
 {-| Save / load / delete row for user-named profiles. Lives at
 the bottom of the settings body so the GM tunes the settings
 above it before saving. Profiles persist server-side when
-authed; anonymous sessions get an empty dict (a follow-up could
-mirror userTreasureTable's localStorage path).
+authed and in localStorage otherwise.
 -}
 profileRow : Dict String Treasure.TreasureSettings -> String -> Html Msg
 profileRow profiles draft =

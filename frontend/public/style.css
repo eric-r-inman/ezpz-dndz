@@ -3743,9 +3743,11 @@ body {
   gap: 6px;
 }
 
+/* A long name keeps its longest word whole.  The CR, XP and buttons
+   wrap to a second line when the drawer has no room for them. */
 .random-encounter__group-row {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto auto auto auto;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
@@ -3812,11 +3814,14 @@ body {
 }
 
 .random-encounter__group-count {
+  flex: 0 0 40px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .random-encounter__group-name {
+  flex: 1 1 0;
+  min-width: min-content;
   font-weight: 600;
 }
 
@@ -10269,13 +10274,6 @@ button.creature-card__lifecycle--dead:focus-visible {
   flex-direction: column;
 }
 
-.compendium__list--empty {
-  padding: 24px;
-  color: var(--color-text-muted);
-  text-align: center;
-  font-style: italic;
-}
-
 .compendium__row {
   text-align: left;
   padding: 10px 14px;
@@ -10375,9 +10373,16 @@ button.creature-card__lifecycle--dead:focus-visible {
   font-size: 0.78rem;
 }
 
+/* The detail pane's padding.  The sticky action bar and editor
+   footer reach out across it, so nothing scrolls past them. */
+:root {
+  --compendium-detail-pad-y: 18px;
+  --compendium-detail-pad-x: 22px;
+}
+
 .compendium__detail {
   overflow-y: auto;
-  padding: 18px 22px;
+  padding: var(--compendium-detail-pad-y) var(--compendium-detail-pad-x);
 }
 
 /* An editor occupying the detail pane in place of the stat
@@ -10439,7 +10444,7 @@ button.creature-card__lifecycle--dead:focus-visible {
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: var(--color-surface-2);
   position: sticky;
-  top: 0;
+  top: calc(-1 * var(--compendium-detail-pad-y));
   z-index: 1;
 }
 
@@ -10686,7 +10691,8 @@ button.creature-card__lifecycle--dead:focus-visible {
    filter-mismatch). Each variant shows a primary line + a
    smaller hint. The "creating one / pasting / importing" links
    inside the genuine-empty variant are click-actionable. */
-.compendium__list--empty {
+.compendium__empty {
+  display: flex;
   padding: 32px 24px;
   text-align: center;
   color: var(--color-text-muted);
@@ -10695,11 +10701,12 @@ button.creature-card__lifecycle--dead:focus-visible {
   gap: 8px;
 }
 
-.compendium__list--empty p {
+.compendium__empty-line {
   margin: 0;
 }
 
 .compendium__empty-hint {
+  margin: 0;
   font-size: 0.8rem;
   font-style: normal;
 }
@@ -11145,13 +11152,13 @@ button.creature-card__lifecycle--dead:focus-visible {
   display: flex;
   gap: 8px;
   align-items: center;
-  padding-top: 8px;
   border-top: 1px solid var(--color-border);
   position: sticky;
-  bottom: 0;
+  bottom: calc(-1 * var(--compendium-detail-pad-y));
   background: var(--color-surface);
-  margin: 0 -20px -16px;
-  padding: 12px 20px;
+  margin: 0 calc(-1 * var(--compendium-detail-pad-x))
+    calc(-1 * var(--compendium-detail-pad-y));
+  padding: 12px var(--compendium-detail-pad-x);
 }
 
 .edit-footer__spacer {
@@ -11872,17 +11879,17 @@ button.creature-card__lifecycle--dead:focus-visible {
   will-change: transform, opacity;
 }
 
-/* Triple-roll popups (attack / ability check / saving throw fired
-   as standard + advantage + disadvantage together): white / green
-   / red instead of the single-roll yellow, so the three read as a
-   labelled set rather than three unrelated rolls. Same glyph size
-   and shadow trick as the base rule for legibility over any card
-   or stat-block background underneath. */
+/* An attack, ability check or saving throw can fire a standard, an
+   advantage and a disadvantage roll together.  The three leave the
+   single-roll yellow, so they read as a labelled set.  The standard
+   roll takes the theme's own text colour with a halo in the surface
+   colour.  The halo reads on any page.  Advantage and disadvantage
+   keep the base rule's shadow trick in green and red. */
 .roll-popup--standard {
-  color: #ffffff;
+  color: var(--color-text);
   text-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.55),
-    0 0 6px rgba(255, 255, 255, 0.35);
+    0 1px 2px var(--color-surface),
+    0 0 6px var(--color-surface);
 }
 
 .roll-popup--advantage {
