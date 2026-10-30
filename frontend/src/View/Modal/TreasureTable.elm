@@ -554,22 +554,23 @@ coinColumn kind bracketKey idx ( coin, mFormula ) =
                     , type_ "button"
                     , onClick (TreasureTableCoinAdd kind bracketKey idx coin)
                     , Tooltips.attr ("Add a " ++ coinLabel coin ++ " formula to this row")
+                    , attribute "aria-label" ("Add a " ++ coinLabel coin ++ " formula to this row")
                     ]
                     [ text "+" ]
 
             Just ( c, f, m ) ->
                 div [ class "treasure-table__coin-formula" ]
-                    [ numField "Count"
+                    [ numField (coinLabel coin ++ " count")
                         c
                         1
                         (TreasureTableCoinSet kind bracketKey idx coin CFCount)
                     , span [ class "treasure-table__coin-d" ] [ text "d" ]
-                    , numField "Faces"
+                    , numField (coinLabel coin ++ " faces")
                         f
                         2
                         (TreasureTableCoinSet kind bracketKey idx coin CFFaces)
                     , span [ class "treasure-table__coin-x" ] [ text "×" ]
-                    , numField "Mult"
+                    , numField (coinLabel coin ++ " multiplier")
                         m
                         1
                         (TreasureTableCoinSet kind bracketKey idx coin CFMult)
@@ -593,6 +594,7 @@ numField title_ current minimum toMsg =
         , Attr.min (String.fromInt minimum)
         , value (String.fromInt current)
         , Tooltips.attr title_
+        , attribute "aria-label" title_
         , onInput toMsg
         ]
         []
@@ -668,6 +670,7 @@ subColumn bracketKey idx cfg =
                     , type_ "button"
                     , onClick (TreasureTableSubAdd bracketKey idx cfg.kind)
                     , Tooltips.attr ("Add a " ++ cfg.label ++ " sub-roll to this row")
+                    , attribute "aria-label" ("Add a " ++ cfg.label ++ " sub-roll to this row")
                     ]
                     [ text "+" ]
 
@@ -685,6 +688,7 @@ subColumn bracketKey idx cfg =
                     , select
                         [ class "treasure-table__sub-tier"
                         , onInput (TreasureTableSubTierSet bracketKey idx cfg.kind)
+                        , attribute "aria-label" (cfg.label ++ " tier")
                         ]
                         (List.map
                             (\( k, label ) ->

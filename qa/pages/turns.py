@@ -195,7 +195,9 @@ def change_hp(app, name, verb, amount):
 
 
 def knock_down(app, name):
-    change_hp(app, name, "Damage", 999)
+    # Damage left over past 0 that meets the maximum would kill outright.
+    current = int(hp_button(app.card(name), "Current").inner_text())
+    change_hp(app, name, "Damage", current)
     expect(hp_button(app.card(name), "Current")).to_have_text("0")
 
 

@@ -16,7 +16,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-pub use store::{insert_user, UserStore, UserStoreError};
+pub use store::{
+  insert_user, validate_new_password, UserStore, UserStoreError,
+};
 
 /// Stable identifier for a user account.  The wire format is the
 /// hyphenated UUID string; storing as a String keeps `JsonSchema`

@@ -252,6 +252,7 @@ ExecStart=/opt/ezpz-dndz/ezpz-dndz-server \
   --listen 127.0.0.1:4040 \
   --base-url https://YOUR-HOSTNAME-HERE \
   --data-dir /var/lib/ezpz-dndz \
+  --trust-forwarded-for \
   --compendium-claim-user YOUR-EMAIL@example.com
 #+end_example
 

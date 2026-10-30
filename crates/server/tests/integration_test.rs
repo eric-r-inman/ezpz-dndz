@@ -59,7 +59,7 @@ async fn stub_app_state_at(data_dir: &std::path::Path) -> AppState {
     .await
     .expect("test database");
 
-  AppState::assemble(base, db, &paths, None)
+  AppState::assemble(base, db, &paths, None, false)
     .await
     .expect("app state assemble")
 }
@@ -2413,6 +2413,7 @@ fn config_refuses_oidc_without_a_base_url() {
       base_url: None,
       compendium_claim_user: None,
       database_url: None,
+      trust_forwarded_for: false,
     },
   };
 
