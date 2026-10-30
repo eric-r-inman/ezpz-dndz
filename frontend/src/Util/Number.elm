@@ -1,8 +1,8 @@
-module Util.Number exposing (formatThousands)
+module Util.Number exposing (formatThousands, pluralize)
 
 {-| Number-formatting helpers.
 
-@docs formatThousands
+@docs formatThousands, pluralize
 
 -}
 
@@ -58,3 +58,19 @@ formatThousands n =
 
     else
         grouped
+
+
+{-| The word that agrees with a count.
+
+    pluralize "creature" "creatures" 1 == "creature"
+
+    pluralize "creature" "creatures" 3 == "creatures"
+
+-}
+pluralize : String -> String -> Int -> String
+pluralize singular plural n =
+    if n == 1 then
+        singular
+
+    else
+        plural

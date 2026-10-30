@@ -39,6 +39,7 @@ module Update.Compendium.Edit exposing
     , legendaryRemove
     , legendaryUsesChanged
     , legendaryUsesInLairChanged
+    , localStamped
     , lootAdd
     , lootChanged
     , lootRemove
@@ -112,6 +113,8 @@ import Msg
         , Msg(..)
         )
 import Set
+import Task
+import Time
 import Ui.Compendium as CompendiumUi
     exposing
         ( CompendiumDb(..)
@@ -123,6 +126,7 @@ import Ui.Compendium as CompendiumUi
         )
 import Ui.Toast exposing (ToastKind(..))
 import Update.Compendium.Browser exposing (withCompendium)
+import Update.Compendium.Bulk
 import Update.Toast
 import Util.Http
 
@@ -1386,7 +1390,30 @@ submit model =
                             )
 
                         _ ->
-                            applyLocalCreatureSubmit ui.mode creature model
+                            ( model, Task.perform (CompendiumEditLocalStamped creature) Time.now )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+{-| Save a signed-out submit with the time it happened. Newest first
+sorts on that time, and a new creature would otherwise carry 0.
+-}
+localStamped : Compendium.Creature -> Time.Posix -> Model -> ( Model, Cmd Msg )
+localStamped creature now model =
+    case model.surface of
+        Just (SurfaceCompendiumEdit ui) ->
+            applyLocalCreatureSubmit ui.mode
+                { creature
+                    | createdAt =
+                        if ui.mode == CreateMode then
+                            Time.posixToMillis now
+
+                        else
+                            creature.createdAt
+                    , updatedAt = Time.posixToMillis now
+                }
+                model
 
         _ ->
             ( model, Cmd.none )
@@ -1485,17 +1512,15 @@ submitResponse result model =
 delete : Model -> ( Model, Cmd Msg )
 delete model =
     case model.surface of
-        Just (SurfaceCompendiumEdit { mode }) ->
-            case mode of
+        Just (SurfaceCompendiumEdit ui) ->
+            case ui.mode of
                 EditExisting { id } ->
-                    case model.auth of
-                        Auth.AuthAuthenticated _ ->
-                            ( withCompendiumEdit (\u -> { u | submitting = True, submitError = Nothing }) model
-                            , Effects.deleteCompendiumCreature id
-                            )
-
-                        _ ->
-                            applyLocalCreatureDelete id model
+                    Update.Compendium.Bulk.deleteRequested id
+                        (currentlySelectedCreature model
+                            |> Maybe.map .name
+                            |> Maybe.withDefault (String.trim ui.name)
+                        )
+                        model
 
                 CreateMode ->
                     ( { model
@@ -1507,47 +1532,6 @@ delete model =
 
         _ ->
             ( model, Cmd.none )
-
-
-{-| Anonymous-mode equivalent of the DELETE + `deleteResponse`
-sequence: drop the creature from the in-memory DB, clear it from
-any selections, close the modal, toast. The update-loop wrapper
-persists the new snapshot.
--}
-applyLocalCreatureDelete : String -> Model -> ( Model, Cmd Msg )
-applyLocalCreatureDelete deletedId model =
-    let
-        compendium =
-            model.compendium
-
-        newDb =
-            case compendium.db of
-                CompendiumUi.CompendiumDbLoaded db ->
-                    CompendiumUi.CompendiumDbLoaded
-                        (Compendium.remove deletedId db)
-
-                other ->
-                    other
-
-        clearedSelection =
-            { compendium
-                | db = newDb
-                , selectedId =
-                    if compendium.selectedId == Just deletedId then
-                        Nothing
-
-                    else
-                        compendium.selectedId
-                , selectedIds = Set.remove deletedId compendium.selectedIds
-                , compendiumDirty = True
-            }
-    in
-    { model
-        | surface = Nothing
-        , compendiumEditDraft = Nothing
-        , compendium = clearedSelection
-    }
-        |> Update.Toast.push ToastSuccess "Creature deleted"
 
 
 deleteResponse : String -> Result Http.Error () -> Model -> ( Model, Cmd Msg )

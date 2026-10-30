@@ -685,10 +685,6 @@ def test_excluded_creatures_never_appear_and_an_emptied_pool_says_so(app):
 
 
 @pytest.mark.cross_browser
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-BUILD-15: a two-word creature name wraps under its CR in the roll result",
-)
 def test_roll_result_rows_keep_the_name_clear_of_the_cr(app):
     panel = random_panel(app, [5, 5, 5, 5])
     choose(panel, scale="One", habitat="Elemental Plane of Earth")

@@ -716,12 +716,12 @@ compendiumInstanceCount =
 
 compendiumAddToEncounter : String
 compendiumAddToEncounter =
-    "Roll initiative and add to the encounter"
+    "Add to the encounter at initiative 0"
 
 
 compendiumAddSelected : String
 compendiumAddSelected =
-    "Roll initiative for every checked creature and add them all"
+    "Add every checked creature to the encounter at initiative 0"
 
 
 compendiumEdit : String
@@ -801,7 +801,7 @@ compendiumReset =
 
 compendiumImport : String
 compendiumImport =
-    "Replace the current Compenidum with a saved Compendium file"
+    "Replace the current Compendium with a saved Compendium file"
 
 
 compendiumEditorClose : String
