@@ -1221,10 +1221,13 @@ The suite did not cover these:
 
 *** QA-FIGHT-19: Fall damage is rolled but not dealt
 
+- Status :: fixed
 - Severity :: question
 - Actual :: ~Update.Encounter.rollFallDamage~ documents this.  Under the 2024
   rules a creature that takes fall damage also lands Prone.
-- Action :: Offer one click that deals the damage and adds Prone.
+- Evidence :: ~test_a_fall_deals_a_d6_per_ten_feet_and_lands_the_creature_prone~
+- Action :: Fixed.  The fall button deals its roll through Manage HP's log and
+  adds Prone.  Undo in Manage HP takes the damage back.
 
 *** QA-FIGHT-20: What 1 Minute counts
 

@@ -15,6 +15,8 @@
 5. A condition applied to a selection skips only the creatures that already have
    it and names them.  No action needed.
 6. Exhaustion applied to a creature that has it adds a level.  No action needed.
+7. The fall button deals its damage and lands the creature Prone.  No action
+   needed.
 ** Breaking
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.
