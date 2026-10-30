@@ -1543,11 +1543,15 @@ The suite did not cover these:
 
 *** QA-COMP-24: A file that is not a compendium gets a misleading warning
 
+- Status :: fixed
 - Severity :: question
 - Actual :: The message warns of compatibility issues and missing values.
   Nothing was imported.
 - Evidence :: ~test_importing_a_file_that_is_not_a_compendium_changes_nothing~
-- Action :: Say the file is not a compendium and nothing changed.
+  and ~test_a_compendium_file_that_cannot_be_read_says_nothing_changed~
+- Action :: Fixed.  A file that is not a compendium says so.  A compendium file
+  that will not read says it may come from another version.  Both say nothing
+  changed.
 
 *** QA-COMP-25: Server snapshot saves are slow
 

@@ -29,6 +29,8 @@
     the account.  No action needed.
 14. Signed in or not, clearing the compendium hides the bundled creatures it
     leaves out until a reset.  No action needed.
+15. A compendium import that fails says whether the file is a compendium at all.
+    No action needed.
 ** Breaking
 1. A password change signs the account out on every other device.  Sign in again
    there with the new password.
