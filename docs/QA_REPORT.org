@@ -757,11 +757,16 @@ The suite did not cover these:
 
 *** QA-ACCT-20: The CLI exits 0 when it did nothing
 
+- Status :: fixed
 - Severity :: question
 - Actual :: ~dice clear~ without ~--yes~ clears nothing and exits 0.  Its help
   mentions a prompt that does not exist.  Running the CLI with no subcommand
   also exits 0.
-- Action :: Exit non-zero in both cases or add the prompt.
+- Evidence :: ~test_running_with_no_subcommand_points_at_help~ and
+  ~test_dice_inspection_and_clearing_follow_the_dms_rolls~
+- Action :: Fixed.  ~dice clear~ without ~--yes~ fails and names the flag.  Its
+  help no longer mentions a prompt.  A run with no subcommand gets clap's usage
+  and exit code 2.
 
 *** QA-ACCT-21: Sign-in toasts cover the app bar
 
