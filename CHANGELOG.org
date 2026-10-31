@@ -6,6 +6,8 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump rust-embed from 8.12.0 to 8.13.0
+   (https://github.com/eric-r-inman/ezpz-dndz/pull/174)
 ** Security
 * v0.39.0
 ** Fixes
