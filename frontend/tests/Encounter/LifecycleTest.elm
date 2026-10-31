@@ -21,6 +21,7 @@ suite =
         , nextTurnSuite
         , deadSkipSuite
         , countdownTickSuite
+        , timerTickSuite
         , untilTurnExpireSuite
         ]
 
@@ -270,6 +271,44 @@ deadSkipSuite =
                 Lifecycle.nextTurn enc
                     |> .activeName
                     |> Expect.equal "C"
+        ]
+
+
+
+-- ── timer tick ───────────────────────────────────────────────────────────
+
+
+timerTickSuite : Test
+timerTickSuite =
+    let
+        timed skip =
+            let
+                c =
+                    mkCreature "A" 20
+            in
+            { threeCreatures
+                | creatures =
+                    [ { c | timer = Just { remaining = 1, phase = AtEnd, ringing = False, note = "", skipNextTick = skip } }
+                    , mkCreature "B" 15
+                    ]
+            }
+
+        timerAfterEnd enc =
+            Lifecycle.applyEndOfTurn "A" enc
+                |> .creatures
+                |> List.head
+                |> Maybe.andThen .timer
+                |> Maybe.map (\t -> ( t.remaining, t.ringing ))
+    in
+    describe "applyEndOfTurn timer"
+        [ test "rings when the last turn ends" <|
+            \_ ->
+                timerAfterEnd (timed False)
+                    |> Expect.equal (Just ( 0, True ))
+        , test "skipNextTick lets the turn it was set on pass uncounted" <|
+            \_ ->
+                timerAfterEnd (timed True)
+                    |> Expect.equal (Just ( 1, False ))
         ]
 
 

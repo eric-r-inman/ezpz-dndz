@@ -591,12 +591,15 @@ def test_a_start_of_turn_timer_ticks_as_the_bearers_turn_begins(app):
     expect(timer_pill(app, "Goblin Warrior")).to_have_class(re.compile("timer-pill--ringing"))
 
 
-def test_an_end_of_turn_timer_set_on_the_bearers_turn_counts_that_turn(app):
+def test_an_end_of_turn_timer_set_on_the_bearers_turn_skips_that_turn(app):
     fight(app)
     app.begin_combat()
     app.next_turn()
     assert app.active_name() == "Wolf"
     start_timer(app, "Wolf", 1, "end")
+    advance(app, 4)
+    assert app.active_name() == "Wolf"
+    expect(timer_pill(app, "Wolf")).not_to_have_class(re.compile("timer-pill--ringing"))
     app.next_turn()
     expect(timer_pill(app, "Wolf")).to_have_class(re.compile("timer-pill--ringing"))
 

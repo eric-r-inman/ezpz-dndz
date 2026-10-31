@@ -500,7 +500,8 @@ signedDice sign d =
 
 {-| The damage-type tail. Restricted to alpha + spaces so we don't
 silently swallow malformed dice notation as a "damage type."
-Strips a trailing " damage" word for cleanliness.
+Strips a trailing " damage" word for cleanliness. Only the 13
+damage types pass. A typo cannot roll under a type nobody has.
 -}
 damageTypeParser : Parser (Maybe String)
 damageTypeParser =
@@ -508,17 +509,20 @@ damageTypeParser =
         |. Parser.spaces
         |= (Parser.getChompedString
                 (Parser.chompWhile (\c -> Char.isAlpha c || c == ' '))
-                |> Parser.map
+                |> Parser.andThen
                     (\s ->
                         let
                             cleaned =
                                 stripTrailingDamage (String.trim s)
                         in
                         if String.isEmpty cleaned then
-                            Nothing
+                            Parser.succeed Nothing
+
+                        else if isKnownDamageType cleaned then
+                            Parser.succeed (Just cleaned)
 
                         else
-                            Just cleaned
+                            Parser.problem "no such damage type"
                     )
            )
 

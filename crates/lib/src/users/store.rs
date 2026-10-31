@@ -14,6 +14,7 @@ use argon2::{
   Argon2,
 };
 use sqlx::{any::AnyRow, AnyConnection, Row};
+use std::sync::LazyLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
@@ -48,6 +49,9 @@ pub enum UserStoreError {
 
   #[error("Password hashing failed: {0}")]
   Hash(String),
+
+  #[error("Failed to build the stand-in hash for unknown-email sign-ins: {0}")]
+  UnknownEmailHash(String),
 }
 
 /// Lower bound on password length.  No further complexity rules —
@@ -131,12 +135,18 @@ impl UserStore {
     email: &str,
     password: &str,
   ) -> Result<User, UserStoreError> {
-    let user = self
-      .find_by_email(email)
-      .await?
-      .ok_or(UserStoreError::InvalidCredentials)?;
-    verify_password(password, &user.password_hash)?;
-    Ok(user)
+    self.find_by_email(email).await?.map_or_else(
+      // The reply's timing must not tell which emails have accounts.
+      // A check against the stand-in costs what a real one costs.
+      || {
+        UNKNOWN_EMAIL_HASH
+          .as_ref()
+          .map_err(|e| UserStoreError::UnknownEmailHash(e.clone()))
+          .and_then(|phc| verify_password(password, phc))
+          .and(Err(UserStoreError::InvalidCredentials))
+      },
+      |user| verify_password(password, &user.password_hash).map(|()| user),
+    )
   }
 
   /// Look up a user by id.  Used by the session-auth middleware to
@@ -326,6 +336,14 @@ fn is_unique_violation(e: &sqlx::Error) -> bool {
     .is_some_and(|db_err| db_err.is_unique_violation())
 }
 
+/// The hash a sign-in checks when its email names no account.  It is
+/// built by `hash_password`, so its parameters match every real hash.
+/// No reply ever accepts it.
+static UNKNOWN_EMAIL_HASH: LazyLock<Result<String, String>> =
+  LazyLock::new(|| {
+    hash_password("no account carries this password").map_err(|e| e.to_string())
+  });
+
 /// Argon2id with the crate's recommended defaults.  Output is a
 /// PHC-format string that stores algorithm, parameters, salt, and
 /// hash all in one — `verify_password` handles the round-trip.
@@ -421,6 +439,46 @@ mod tests {
       .expect("register");
     let bad = store.authenticate("alice@example.com", "wrong-pass").await;
     assert!(matches!(bad, Err(UserStoreError::InvalidCredentials)));
+  }
+
+  async fn rejection_time(
+    store: &UserStore,
+    email: &str,
+  ) -> std::time::Duration {
+    let start = std::time::Instant::now();
+    let refused = store.authenticate(email, "wrong-pass").await;
+    assert!(matches!(refused, Err(UserStoreError::InvalidCredentials)));
+    start.elapsed()
+  }
+
+  async fn fastest_rejection(
+    store: &UserStore,
+    email: &str,
+  ) -> std::time::Duration {
+    rejection_time(store, email)
+      .await
+      .min(rejection_time(store, email).await)
+      .min(rejection_time(store, email).await)
+  }
+
+  #[tokio::test]
+  async fn an_unknown_email_takes_as_long_as_a_wrong_password() {
+    let (_dir, store) = store().await;
+    store
+      .register("alice@example.com", "hunter2hunter", "Alice")
+      .await
+      .expect("register");
+    // The first unknown email builds the stand-in hash, so it is not timed.
+    rejection_time(&store, "nobody@example.com").await;
+
+    let known = fastest_rejection(&store, "alice@example.com").await;
+    let unknown = fastest_rejection(&store, "nobody@example.com").await;
+    assert!(
+      // Argon2 dominates both checks, so a fourfold margin is wide.
+      // The four is a coin flip.
+      unknown * 4 >= known,
+      "an unknown email took {unknown:?} against {known:?} for a known one"
+    );
   }
 
   #[tokio::test]

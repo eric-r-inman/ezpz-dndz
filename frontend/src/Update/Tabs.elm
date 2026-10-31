@@ -19,7 +19,8 @@ import Dict
 import Encounter.Wire
 import Json.Decode as Decode
 import Model exposing (Model)
-import Msg exposing (Msg)
+import Msg exposing (Msg(..))
+import Set
 import Ui.Compendium exposing (CompendiumDb(..))
 
 
@@ -49,7 +50,7 @@ compendiumFromOtherTab raw model =
     case ( Decode.decodeValue Compendium.Wire.decodeTabSync raw, model.compendium.db ) of
         ( Ok ( owner, snapshot ), CompendiumDbLoaded db ) ->
             if Just owner == Auth.owner model.auth then
-                ( withSnapshot snapshot db model, Cmd.none )
+                withSnapshot snapshot db model
 
             else
                 ( model, Cmd.none )
@@ -58,26 +59,50 @@ compendiumFromOtherTab raw model =
             ( model, Cmd.none )
 
 
-withSnapshot : Compendium.Wire.LocalCompendiumSnapshot -> Compendium.Db -> Model -> Model
+{-| Adopt the other tab's creatures beside this tab's bundled ones.
+A changed hidden set refetches the library. A bundled creature the
+other tab restored is not in this tab's memory.
+-}
+withSnapshot : Compendium.Wire.LocalCompendiumSnapshot -> Compendium.Db -> Model -> ( Model, Cmd Msg )
 withSnapshot snapshot db model =
     let
         compendium =
             model.compendium
-    in
-    { model
-        | compendium =
-            { compendium
-                | db =
-                    CompendiumDbLoaded
-                        (Compendium.fromList
-                            ((Compendium.toList db |> List.filter .isBundled)
-                                ++ snapshot.creatures
-                            )
-                        )
-                , groups =
-                    snapshot.groups
-                        |> List.map (\group -> ( group.id, group ))
-                        |> Dict.fromList
+
+        hidden =
+            Set.fromList snapshot.hiddenBundled
+
+        adopted =
+            { model
+                | compendium =
+                    { compendium
+                        | db =
+                            CompendiumDbLoaded
+                                (Compendium.fromList
+                                    ((Compendium.toList db
+                                        |> List.filter (\c -> c.isBundled && not (Set.member c.id hidden))
+                                     )
+                                        ++ snapshot.creatures
+                                    )
+                                )
+                        , groups =
+                            snapshot.groups
+                                |> List.map (\group -> ( group.id, group ))
+                                |> Dict.fromList
+                        , hiddenBundled = hidden
+                    }
+                , nextLocalCreatureId = max model.nextLocalCreatureId snapshot.nextLocalId
             }
-        , nextLocalCreatureId = max model.nextLocalCreatureId snapshot.nextLocalId
-    }
+    in
+    if hidden == compendium.hiddenBundled then
+        ( adopted, Cmd.none )
+
+    else
+        case model.auth of
+            Auth.AuthAuthenticated _ ->
+                ( adopted, Compendium.Wire.fetchAll CompendiumLoaded )
+
+            _ ->
+                ( { adopted | pendingBundleMerge = True }
+                , Compendium.Wire.fetchAllPublic CompendiumLoaded
+                )

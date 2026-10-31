@@ -1,6 +1,6 @@
 module Model exposing
     ( Surface(..), Model
-    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, anyPopoverOpen, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, pinnedHeld, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, treasureLens, treasureTableLens, unfoldDrawer, unfoldHpChangeOnly, unfoldPinnedOnly, xpLens
+    , DragState, DrawerPanel, PendingControl(..), PopupColor(..), RollPopup, SurfaceLens, ackHpLog, aimEditorsAtTarget, anyPopoverOpen, applyDrawerLayout, collapseAt, compendiumEditLens, conditionLens, crCalculatorLens, defaultDrawer, defaultTarget, diceLens, drawerDropIndex, drawerGet, drawerIndexOf, drawerLayout, drawerPanelAt, drawerShows, dropStaleConditionEdit, duplicateLens, foldAllDrawer, foldDrawer, foldProfileHidden, foldProfileHiddenIn, groupEditLens, holdHpChange, hpChangeLens, initiativeLens, loadCompendiumLens, loreEditLens, mapDrawer, mapSurface, mapSurfaceAt, memoLens, moveDrawerPanel, newestShowing, noteLens, openDrawer, parkCreatureEditor, pinnedHeld, profileShows, quickAddLens, randomEncounterLens, reaimStale, replaceLens, roundSetLens, saveChainLens, saveCompendiumLens, saveLoadLens, settleBeta, statusLens, surfaceKey, timerLens, toggleCollapsedAt, togglePinnedAt, trackDrawerOpened, treasureLens, treasureTableLens, unfoldDrawer, unfoldHpChangeOnly, unfoldPinnedOnly, xpLens
     )
 
 {-| The single source of truth for the running app.
@@ -985,18 +985,55 @@ foldDrawer =
     setFolded True
 
 
-{-| The panel a dismissal acts on: the last one still showing
-its body, since the stack reads newest-last. Esc consults it to
-pick its behaviour and `foldNewest` folds what it names, so the
-two cannot drift apart.
+{-| The panel a dismissal acts on: the one the GM opened most
+recently that still shows its body. A panel open since boot was
+never opened, so the lowest one showing stands in. Esc consults
+this to pick its behaviour and `foldNewest` folds what it names, so
+the two cannot drift apart.
 -}
 newestShowing : Model -> Maybe ( Int, DrawerPanel )
 newestShowing model =
-    model.drawer
-        |> List.indexedMap Tuple.pair
-        |> List.filter (\( _, panel ) -> not panel.collapsed)
-        |> List.reverse
-        |> List.head
+    let
+        showing =
+            model.drawer
+                |> List.indexedMap Tuple.pair
+                |> List.filter (\( _, panel ) -> not panel.collapsed)
+
+        keyed key =
+            List.filter (\( _, panel ) -> surfaceKey panel.surface == key) showing
+    in
+    case List.concatMap keyed model.drawerOpened of
+        newest :: _ ->
+            Just newest
+
+        [] ->
+            List.head (List.reverse showing)
+
+
+{-| Note each drawer panel a message opened, newest first. Panels
+open through many handlers, so this compares the drawer before and
+after rather than hooking each one.
+-}
+trackDrawerOpened : Model -> Model -> Model
+trackDrawerOpened before after =
+    let
+        openKeys drawer =
+            drawer
+                |> List.filter (not << .collapsed)
+                |> List.map (.surface >> surfaceKey)
+
+        wasOpen =
+            openKeys before.drawer
+
+        opened =
+            openKeys after.drawer
+                |> List.filter (\key -> not (List.member key wasOpen))
+    in
+    if List.isEmpty opened then
+        after
+
+    else
+        { after | drawerOpened = opened ++ List.filter (\key -> not (List.member key opened)) after.drawerOpened }
 
 
 {-| Whether the pinned panels hold the top of the stack, with the
@@ -1586,6 +1623,10 @@ type alias Model =
     -- The drawer reorder in progress, if any.
     , drawerDrag : Maybe DragState
 
+    -- Drawer panels by `surfaceKey`, the most recently opened
+    -- first.  Esc folds the newest that is still open.
+    , drawerOpened : List String
+
     -- The creature card being dragged to a new queue position.
     , queueDrag : Maybe QueueDrag
 
@@ -1711,6 +1752,10 @@ type alias Model =
     -- `/api/treasure-table` (or `localStorage.userTreasureTable`
     -- for anonymous sessions).
     , userTreasureTable : Maybe Encounter.Treasure.TreasureTable
+
+    -- Whether `userTreasureTable` holds the DM's table yet.  A
+    -- signed-in boot waits on the server for it.
+    , userTreasureTableReady : Bool
 
     -- Per-user named profiles of "Tune your rolls" settings.
     -- Empty dict means the user hasn't saved any yet.  Loaded

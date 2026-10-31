@@ -131,15 +131,15 @@ async fn insert_creature(
      concentrating, hiding, dodging, flying, fly_height, bloodied, \
      death_save_successes, death_save_failures, accepting_death_saves, \
      reaction_used, readied, inactive, note, memo, timer_remaining, \
-     timer_phase, timer_ringing, timer_note, creature_id, \
-     legendary_actions_count, legendary_actions_lair_bonus, \
+     timer_phase, timer_ringing, timer_note, timer_skip_next_tick, \
+     creature_id, legendary_actions_count, legendary_actions_lair_bonus, \
      legendary_resistance_count, legendary_resistance_lair_bonus, \
      is_placeholder, creature_kind, race, alignment, surprised, \
      has_special_reactions) \
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, \
      $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, \
      $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, \
-     $43, $44)",
+     $43, $44, $45)",
   )
   .bind(&row_id)
   .bind(user_id)
@@ -174,6 +174,7 @@ async fn insert_creature(
   .bind(timer.map(|t| t.phase.clone()))
   .bind(timer.map(|t| i64::from(t.ringing)))
   .bind(timer.map(|t| t.note.clone()))
+  .bind(timer.map(|t| i64::from(t.skip_next_tick)))
   .bind(&c.creature_id)
   .bind(c.legendary_actions_count)
   .bind(c.legendary_actions_lair_bonus)
@@ -761,6 +762,11 @@ fn creature_from_row(row: &AnyRow) -> Result<Creature, EncounterStoreError> {
           .try_get::<Option<String>, _>("timer_note")
           .map_err(read_error)?
           .unwrap_or_default(),
+        skip_next_tick: row
+          .try_get::<Option<i64>, _>("timer_skip_next_tick")
+          .map_err(read_error)?
+          .unwrap_or_default()
+          != 0,
       })
     })
     .transpose()?;

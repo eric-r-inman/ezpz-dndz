@@ -167,16 +167,12 @@ def test_save_chains_lore_groups_and_treasure_follow_the_dm_to_a_second_device(a
     app.sign_up(DM, PASSWORD, "Dee Em")
     put_preset_samples(app.page)
     stored = {path: api(app.page, "GET", path).json() for path in PRESET_SAMPLES}
-    # A booting device writes the treasure table back with the bundled
-    # rows filled in.  So only the DM's own gem is compared.
-    stored["/api/treasure-table"] = stored["/api/treasure-table"]["gems"]
 
     laptop = signed_in_device(devices, "laptop", DM, "Dee Em")
     seen = {path: api(laptop.page, "GET", path).json() for path in PRESET_SAMPLES}
-    seen["/api/treasure-table"] = seen["/api/treasure-table"]["gems"]
     assert seen == stored
     assert "Hag's Curse" in stored["/api/save-chain-presets"]
     assert stored["/api/lore-groups"][0]["name"] == "Hag coven"
-    assert stored["/api/treasure-table"] == {"50gp": ["Swamp pearl"]}
+    assert stored["/api/treasure-table"]["gems"] == {"50gp": ["Swamp pearl"]}
     assert "Bog hoard" in stored["/api/treasure-profiles"]
     assert live_names(laptop.page) == []

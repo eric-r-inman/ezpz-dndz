@@ -100,6 +100,7 @@ apply model =
                     , phase = ui.phase
                     , ringing = False
                     , note = String.trim ui.note
+                    , skipNextTick = Encounter.skipsFirstTick model.encounter.activeName ui.target ui.phase
                     }
             in
             -- Starting the timer also closes the editor — unlike
