@@ -31,6 +31,10 @@
     leaves out until a reset.  No action needed.
 15. A compendium import that fails says whether the file is a compendium at all.
     No action needed.
+16. Saving the compendium to the server takes about half as long.  No action
+    needed.
+17. The Treasure Table editor no longer saves the bundled defaults over a
+    signed-in DM's saved table.  No action needed.
 ** Breaking
 1. A password change signs the account out on every other device.  Sign in again
    there with the new password.
@@ -39,6 +43,10 @@
    =--yes= or a subcommand.
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.
+2. The QA report records how long compendium snapshot saves take on a release
+   build.  No action needed.
+3. =just qa= no longer fails now and then when the treasure table loads slowly
+   after a reload.  No action needed.
 ** Security
 1. Sign-in takes as long for an unknown email as for a wrong password.  No
    action needed.
