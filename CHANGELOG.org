@@ -20,10 +20,36 @@
 8. Esc folds the panel opened most recently.  No action needed.
 9. Native controls follow the chosen theme on a dark operating system.  No
    action needed.
+10. A dice formula that ends in a word naming no damage type is refused.  No
+    action needed.
+11. Quick Add's search matches creature names only.  No action needed.
+12. Loading an encounter from a file asks before it replaces the fight.  No
+    action needed.
+13. A device that signs in no longer writes the bundled treasure-table rows into
+    the account.  No action needed.
+14. Signed in or not, clearing the compendium hides the bundled creatures it
+    leaves out until a reset.  No action needed.
+15. A compendium import that fails says whether the file is a compendium at all.
+    No action needed.
+16. Saving the compendium to the server takes about half as long.  No action
+    needed.
+17. The Treasure Table editor no longer saves the bundled defaults over a
+    signed-in DM's saved table.  No action needed.
 ** Breaking
+1. A password change signs the account out on every other device.  Sign in again
+   there with the new password.
+2. The CLI exits non-zero when it does nothing: =dice clear= without =--yes= and
+   a run with no subcommand.  A script that relied on exit 0 there must pass
+   =--yes= or a subcommand.
 ** Maintenance
 1. =just dev= opens the browser once the server answers.  No action needed.
+2. The QA report records how long compendium snapshot saves take on a release
+   build.  No action needed.
+3. =just qa= no longer fails now and then when the treasure table loads slowly
+   after a reload.  No action needed.
 ** Security
+1. Sign-in takes as long for an unknown email as for a wrong password.  No
+   action needed.
 * v0.38.0
 ** Added
 1. The Condition/Effect editor has a New condition button while it edits one.

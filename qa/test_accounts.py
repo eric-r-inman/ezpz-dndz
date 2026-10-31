@@ -299,10 +299,6 @@ def test_a_new_password_replaces_the_old_one(app):
     wait_signed_in(app, "Dee Em")
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-ACCT-11: changing the password leaves other devices signed in",
-)
 def test_changing_the_password_signs_out_other_devices(app, devices):
     app.sign_up(DM, PASSWORD, "Dee Em")
     laptop = devices.device("laptop", "/login")
@@ -313,6 +309,7 @@ def test_changing_the_password_signs_out_other_devices(app, devices):
     account.change_password(PASSWORD, "a brand new password")
     expect(account.success()).to_be_visible()
     assert api(laptop.page, "GET", "/api/auth/me").status == 401
+    assert api(app.page, "GET", "/api/auth/me").status == 200
 
 
 # What an anonymous DM is told.

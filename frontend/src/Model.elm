@@ -1753,6 +1753,10 @@ type alias Model =
     -- for anonymous sessions).
     , userTreasureTable : Maybe Encounter.Treasure.TreasureTable
 
+    -- Whether `userTreasureTable` holds the DM's table yet.  A
+    -- signed-in boot waits on the server for it.
+    , userTreasureTableReady : Bool
+
     -- Per-user named profiles of "Tune your rolls" settings.
     -- Empty dict means the user hasn't saved any yet.  Loaded
     -- from `/api/treasure-profiles` on authed boot; saved back

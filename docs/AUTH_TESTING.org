@@ -318,6 +318,7 @@ nix develop --command cargo test -p ezpz-dndz-server --test integration_test
 - ~test_auth_register_validation_errors~
 - ~test_auth_duplicate_email_conflicts~
 - ~test_auth_wrong_password_unauthorized~
+- ~test_auth_password_change_signs_out_every_other_session~
 - ~test_auth_login_rate_limit_returns_429_after_threshold~
 - ~test_protected_route_without_session_is_unauthorized~
 - ~test_per_user_isolation_for_saved_encounters~
