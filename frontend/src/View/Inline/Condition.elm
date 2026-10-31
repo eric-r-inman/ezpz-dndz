@@ -427,6 +427,8 @@ durationOneMinuteSubsection ui creatureNames =
             , turnsOfSelect ui creatureNames
             , Html.label [ class "cond-label" ] [ text "'s 10th turn" ]
             ]
+        , div [ class "cond-section__caption" ]
+            [ Html.em [] [ text Tooltips.oneMinuteCaption ] ]
         ]
 
 
@@ -474,7 +476,7 @@ durationCountdownSubsection ui creatureNames =
             , Html.label [ class "cond-label" ] [ text "'s turn" ]
             ]
         , div [ class "cond-section__caption" ]
-            [ Html.em [] [ text "Countdown timer begins when active creature's turn ends." ] ]
+            [ Html.em [] [ text (Tooltips.countdownCaption "the counted creature") ] ]
         ]
 
 

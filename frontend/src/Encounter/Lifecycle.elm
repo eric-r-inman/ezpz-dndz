@@ -157,6 +157,9 @@ tickTimerFor name phase enc =
                     if t.ringing || t.phase /= phase then
                         c
 
+                    else if t.skipNextTick then
+                        { c | timer = Just { t | skipNextTick = False } }
+
                     else
                         let
                             nextRemaining =

@@ -69,7 +69,16 @@ dev:
     fi
     ( cd frontend && elm make src/Main.elm --output public/elm.js )
     echo "Starting ezpz-dndz on {{dev_url}}"
-    ( sleep 1.5 && open "{{dev_url}}" ) &
+    # The browser opens only once the server answers.  A tab opened sooner
+    # shows a connection error.  Cargo may still be compiling the server.
+    ( until curl --silent --output /dev/null "{{dev_url}}"; do
+        # The exec below keeps this shell's PID.  Signal 0 only tests that
+        # the server still runs.
+        kill -0 $$ 2>/dev/null || exit 0
+        # The 0.2 second poll is a coin flip.
+        sleep 0.2
+      done
+      open "{{dev_url}}" ) &
     exec cargo run -p ezpz-dndz-server -- \
         --listen {{listen}} \
         --base-url {{dev_url}}

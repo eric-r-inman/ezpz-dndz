@@ -4,7 +4,7 @@ module Msg exposing
     , RollScope(..), RollMode(..)
     , DurationKind(..)
     , CompendiumSort(..), CompendiumField(..), FeatureGroup(..)
-    , BatchRoll(..), CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), DurationEdit(..), FlatCategory(..), ModalChromeEdge(..), Profile(..), QueuePanel(..), RowKind(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveStorage(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
+    , BatchRoll(..), CoinField(..), CoinKind(..), CompendiumBulkMenu(..), DamagePicker(..), DuplicateMode(..), DurationEdit(..), FlatCategory(..), ModalChromeEdge(..), Profile(..), QueuePanel(..), RowKind(..), SaveChainBatchRoll(..), SaveChainHpKind(..), SaveChainRollMode(..), SaveChainSide(..), SaveStorage(..), StatusFlag(..), SubKind(..), Theme(..), TreasurePreset(..), UsageKind(..)
     )
 
 {-| The flat top-level message type for the application + the
@@ -122,6 +122,15 @@ type SaveChainSide
     | SaveChainSuccess
 
 
+{-| What one roll in a Roll saves batch is for. A save belongs to
+one creature. An amount belongs to a side and serves every target
+on it.
+-}
+type SaveChainBatchRoll
+    = SaveChainSaveOf String
+    | SaveChainAmountOf SaveChainSide
+
+
 {-| HP effect selector radio the Save Chain modal renders on
 each side. Kept separate from `HpKind` (the Manage HP modal's
 verbs) because the Save Chain semantics differ — notably
@@ -221,8 +230,8 @@ type DurationEdit
 -- ── PREFERENCES AUX ──────────────────────────────────────────────────────────
 
 
-{-| Color-scheme preference. `Auto` defers to the OS pref via
-the `prefers-color-scheme` media query baked into `style.css`.
+{-| Color-scheme preference. The operating system's dark mode
+does not pick one.
 Defined in `Msg` (rather than `Preferences`) so the
 `PreferencesThemeSet Theme` Msg constructor can carry it
 without an import cycle, mirroring the `CompendiumSort` pattern
@@ -684,12 +693,13 @@ type Msg
       -- pulled from the target's compendium record (saving
       -- throw override, else ability modifier).  Rolls come
       -- back as a batch through `SaveChainSavesRolled`.  The
+      -- batch also rolls each side's amount formula once.  The
       -- `SaveChainRollMode` param picks straight d20 vs.
       -- 2d20-keep-highest (advantage) vs. 2d20-keep-lowest
       -- (disadvantage) so the same batch machinery serves all
       -- three buttons in the modal.
     | SaveChainRollSaves SaveChainRollMode
-    | SaveChainSavesRolled (List ( String, Dice.Roll ))
+    | SaveChainSavesRolled (List ( SaveChainBatchRoll, Dice.Roll ))
       -- Inline HP edit on the creature card
     | HpEditStart String HpField
     | HpEditChange String
@@ -734,8 +744,8 @@ type Msg
     | StatusApplySelected
     | StatusLogToggle
     | StatusUndoLatest
-      -- Initiative.  Manual entry and the auto-roll batch land
-      -- through the same re-sort.
+      -- Initiative.  Manual entry and the auto-roll batch move only
+      -- the creatures they change.
     | InitiativeOpenFor String
     | InitiativeCustomChanged String
     | InitiativeQuickSort

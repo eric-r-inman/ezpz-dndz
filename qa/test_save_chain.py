@@ -9,6 +9,7 @@ import pytest
 from playwright.sync_api import expect
 
 from pages.fight import SaveChain, chip, chip_names, expect_pools, hp_button, select
+from pages.ui import Dice
 
 FAIL, PASS = "On failed save", "On successful save"
 
@@ -35,18 +36,30 @@ def test_a_failed_save_takes_the_damage_and_a_pass_takes_half_rounded_down(app):
     app.shot("fail-and-pass")
 
 
-def test_a_fail_formula_is_rolled_and_a_pass_halves_a_roll_of_it(app):
+def amount_rolls(app, chain_name):
+    """The totals of each logged roll of the chain's amount.
+
+    The newest comes first.
+    """
+    dice = Dice(app).open()
+    rows = [dice.row_text(i) for i in range(dice.rows().count())]
+    return [total for text, total in rows if re.match(rf"^(?:▶ )?{chain_name} \(", text)]
+
+
+def test_a_pass_halves_the_fail_roll_that_hit_the_others(app):
     ogre, ogre2 = two_ogres(app)
     chain = SaveChain(app).name("Fire").ability("DEX").dc(15)
     chain.hp(FAIL, "Damage", "8d6").hp(PASS, "Half of Fail damage")
 
     chain.press("Fail")
     expect(hp_button(ogre, "Current")).not_to_have_text("68")
-    assert 68 - 48 <= ogre.hp() <= 68 - 8
+    taken = 68 - ogre.hp()
+    assert 8 <= taken <= 48
     select(app, "Ogre 2")
     chain.scope_selected(1).press("Pass")
     expect(hp_button(ogre2, "Current")).not_to_have_text("68")
-    assert 68 - 24 <= ogre2.hp() <= 68 - 4
+    assert amount_rolls(app, "Fire") == [taken]
+    expect_pools(ogre2, 68 - taken // 2, 68)
 
 
 def test_drain_lowers_the_maximum_by_the_damage_dealt(app):
@@ -140,13 +153,31 @@ def test_advantage_keeps_the_higher_d20_and_disadvantage_the_lower(app):
     assert [row[0] for row in chain.log()[:3]] == ["FAIL", "FAIL", "PASS"]
 
 
-def test_rolled_saves_damage_is_the_formulas_average(app):
-    app.add("Goblin Warrior")
-    chain = SaveChain(app).name("Dart").ability("DEX").dc(99)
-    chain.hp(FAIL, "Damage", "2d4")
+def rolled_goblins(app, dc):
+    """Two goblins roll saves against 2d4 with half on a pass.
 
+    Returns the one 2d4 roll.
+    """
+    app.add("Goblin Warrior", count=2)
+    select(app, "Goblin Warrior", "Goblin Warrior 2")
+    chain = SaveChain(app).name("Dart").ability("DEX").dc(dc).scope_selected(2)
+    chain.hp(FAIL, "Damage", "2d4").hp(PASS, "Half of Fail damage")
     chain.press("🎲 Roll saves")
-    expect_pools(app.card("Goblin Warrior"), 5, 10)
+    expect(hp_button(app.card("Goblin Warrior"), "Current")).not_to_have_text("10")
+    [rolled] = amount_rolls(app, "Dart")
+    return rolled
+
+
+def test_rolled_saves_deal_one_damage_roll_to_every_failed_save(app):
+    rolled = rolled_goblins(app, 99)
+    for name in ("Goblin Warrior", "Goblin Warrior 2"):
+        expect_pools(app.card(name), 10 - rolled, 10)
+
+
+def test_rolled_saves_halve_that_roll_for_every_pass(app):
+    rolled = rolled_goblins(app, 1)
+    for name in ("Goblin Warrior", "Goblin Warrior 2"):
+        expect_pools(app.card(name), 10 - rolled // 2, 10)
 
 
 def area_chain(app, name):

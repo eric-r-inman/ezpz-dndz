@@ -45,6 +45,7 @@ import Msg
     exposing
         ( DurationEdit
         , Msg(..)
+        , SaveChainBatchRoll(..)
         , SaveChainHpKind(..)
         , SaveChainRollMode(..)
         , SaveChainSide(..)
@@ -653,6 +654,7 @@ applyPass model =
       - parse failure → skip the HP part, still apply the condition
   - `HalfFailDamage` (success side only) — same routing against the
     fail's raw text; the resolved integer is halved before applying.
+    A formula halves the latest Fail roll when there is one.
 
 The condition apply always fires synchronously — dice rolling
 never gates it, because conditions don't depend on the rolled
@@ -728,40 +730,41 @@ applyOutcome side ui chain model =
 
         finish amount m =
             pushLog (immuneEntries ++ entriesAt amount) (grantImmunities side chain targets m)
+
+        applyAmount amount =
+            ( finish amount
+                { modelAfterCond
+                    | encounter = List.foldl (SaveChain.applyResolvedHp outcome.hp amount) withConditions targets
+                }
+            , Cmd.none
+            )
     in
     case rawTextForResolve side chain of
         RawEmpty ->
             ( finish 0 modelAfterCond, Cmd.none )
 
         RawInteger n ->
-            let
-                resolvedAmount =
-                    case ( side, outcome.hp ) of
-                        ( SaveChainSuccess, HalfFailDamage ) ->
-                            SaveChain.halfFailDamage n
+            case ( side, outcome.hp ) of
+                ( SaveChainSuccess, HalfFailDamage ) ->
+                    applyAmount (SaveChain.halfFailDamage n)
 
-                        _ ->
-                            n
-
-                nextEnc =
-                    List.foldl
-                        (\name enc ->
-                            SaveChain.applyResolvedHp outcome.hp resolvedAmount name enc
-                        )
-                        withConditions
-                        targets
-            in
-            ( finish resolvedAmount { modelAfterCond | encounter = nextEnc }, Cmd.none )
+                _ ->
+                    applyAmount n
 
         RawDice expr ->
-            -- Log entries are pushed after the roll lands
-            -- (see `applyRollLanded`) so the amount reflects
-            -- the actual dice total, not the mid-flight zero.
-            ( pushLog immuneEntries modelAfterCond
-            , Dice.rollCmd (SaveChainApplyRollLanded side)
-                (saveChainSource side chain ui model.encounter)
-                expr
-            )
+            case lastFailHalf side ui chain of
+                Just half ->
+                    applyAmount half
+
+                Nothing ->
+                    -- Log entries are pushed after the roll lands
+                    -- (see `applyRollLanded`) so the amount reflects
+                    -- the actual dice total, not the mid-flight zero.
+                    ( pushLog immuneEntries modelAfterCond
+                    , Dice.rollCmd (SaveChainApplyRollLanded side)
+                        (saveChainSource side chain ui model.encounter)
+                        expr
+                    )
 
         RawUnparseable ->
             -- Non-empty text that's neither an integer nor
@@ -822,11 +825,52 @@ applyRollLanded side roll model =
                         targets
             in
             ( pushLog entries (grantImmunities side chain targets { logged | encounter = nextEnc })
+                |> rememberFailRoll side chain roll
             , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
             )
 
         _ ->
             ( logged, Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ] )
+
+
+{-| Keep a fail-side roll for the Pass that halves it. The rules
+roll an effect's damage once for every target that saves against
+it at the same time.
+-}
+rememberFailRoll : SaveChainSide -> SaveChain -> Dice.Roll -> Model -> Model
+rememberFailRoll side chain roll model =
+    case side of
+        SaveChainFail ->
+            withUi (\u -> { u | lastFailRoll = Just { formula = failFormula chain, total = roll.total } }) model
+
+        SaveChainSuccess ->
+            model
+
+
+{-| Half the latest fail roll for a half-of-fail Pass. It holds only
+while the fail formula reads as it did when that roll was made.
+-}
+lastFailHalf : SaveChainSide -> SaveChainUi -> SaveChain -> Maybe Int
+lastFailHalf side ui chain =
+    case ( side, (outcomeFor side chain).hp ) of
+        ( SaveChainSuccess, HalfFailDamage ) ->
+            ui.lastFailRoll
+                |> Maybe.andThen
+                    (\last ->
+                        if last.formula == failFormula chain then
+                            Just (SaveChain.halfFailDamage last.total)
+
+                        else
+                            Nothing
+                    )
+
+        _ ->
+            Nothing
+
+
+failFormula : SaveChain -> String
+failFormula chain =
+    String.trim (SaveChain.rawAmount chain.onFail.hp)
 
 
 outcomeFor : SaveChainSide -> SaveChain -> SaveOutcome
@@ -1006,7 +1050,9 @@ used), fire a batch roll, and route the results back through
 disadvantage (`SaveChainRollDisadvantage` → 2d20-keep-lowest).
 Each target rolls independently under the chosen mode — the
 downstream fail / pass routing in `savesRolled` cares only
-about `roll.total`.
+about `roll.total`. Each side's amount formula rolls once in the
+same batch. The rules roll an effect's damage once for every target
+that saves against it at the same time.
 
 Returns silently when the chain has no DC (either fixed or
 overridden) — the panel disables the buttons visually in that
@@ -1025,6 +1071,7 @@ rollSaves mode model =
                     let
                         specs =
                             buildSaveSpecs mode ui model
+                                |> List.map (\( name, source, gen ) -> ( SaveChainSaveOf name, source, gen ))
 
                         -- Creatures carrying the chain's immunity
                         -- don't roll; the log says why they sat out.
@@ -1036,10 +1083,39 @@ rollSaves mode model =
                         ( pushLog skipped model, Cmd.none )
 
                     else
-                        ( pushLog skipped model, Dice.batchRollCmd SaveChainSavesRolled specs )
+                        ( pushLog skipped model
+                        , Dice.batchRollCmd SaveChainSavesRolled (specs ++ amountSpecs ui model.encounter)
+                        )
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| A roll for each side whose amount is a dice formula. A
+half-of-fail Pass has no formula of its own. It halves the fail
+side's roll.
+-}
+amountSpecs :
+    UiSaveChain.SaveChainUi
+    -> Encounter.Encounter
+    -> List ( SaveChainBatchRoll, Dice.Source, Random.Generator Dice.Roll )
+amountSpecs ui enc =
+    let
+        chain =
+            UiSaveChain.toChain ui
+
+        specFor side =
+            case ( (outcomeFor side chain).hp, rawTextForResolve side chain ) of
+                ( HalfFailDamage, _ ) ->
+                    Nothing
+
+                ( _, RawDice expr ) ->
+                    Just ( SaveChainAmountOf side, saveChainSource side chain ui enc, Dice.generator expr )
+
+                _ ->
+                    Nothing
+    in
+    List.filterMap specFor [ SaveChainFail, SaveChainSuccess ]
 
 
 {-| Assemble the per-target `(name, source, generator)` specs
@@ -1121,14 +1197,12 @@ buildSaveSpecs mode ui model =
     List.filterMap specFor targets
 
 
-{-| Batch of `1d20 + mod` rolls landed. For each result,
-compare `roll.total` against the resolved DC: `>= DC` walks
-through the Pass outcome, otherwise the Fail outcome. Roll
-history is pushed and persisted through the shared dice
-plumbing so the GM can see every roll in the dice modal
-afterwards.
+{-| A batch of `1d20 + mod` rolls landed beside each side's amount
+roll. Each save's `roll.total` is compared against the resolved DC.
+`>= DC` walks through the Pass outcome. A lower total walks through
+the Fail outcome. Every target on a side takes that side's one roll.
 -}
-savesRolled : List ( String, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
+savesRolled : List ( SaveChainBatchRoll, Dice.Roll ) -> Model -> ( Model, Cmd Msg )
 savesRolled results model =
     case drawerSurface model of
         Just (SurfaceSaveChain ui) ->
@@ -1141,34 +1215,51 @@ savesRolled results model =
                         chain =
                             UiSaveChain.toChain ui
 
+                        batch =
+                            splitBatch results
+
+                        saves =
+                            batch.saves
+
                         ( failNames, passNames ) =
                             List.partition
                                 (\( _, roll ) -> roll.total < dc)
-                                results
+                                saves
                                 |> (\( f, p ) ->
                                         ( List.map Tuple.first f
                                         , List.map Tuple.first p
                                         )
                                    )
 
+                        historyRolls =
+                            batchHistory chain batch failNames passNames
+
                         modelWithHistory =
                             List.foldl
-                                (\( _, roll ) acc ->
+                                (\roll acc ->
                                     Effects.pushDiceRoll roll acc
                                         |> Tuple.first
                                 )
                                 model
-                                results
+                                historyRolls
+                                |> (\m ->
+                                        batch.failAmount
+                                            |> Maybe.map (\roll -> rememberFailRoll SaveChainFail chain roll m)
+                                            |> Maybe.withDefault m
+                                   )
 
                         historyCmds =
-                            List.map (\( _, roll ) -> Effects.persistDiceRoll roll)
-                                results
+                            List.map Effects.persistDiceRoll historyRolls
 
                         failResolvedAmount =
-                            resolvedAmountFor chain.onFail.hp 0
+                            batch.failAmount
+                                |> Maybe.map .total
+                                |> Maybe.withDefault (resolvedAmountFor chain.onFail.hp 0)
 
                         successResolvedAmount =
-                            resolvedAmountFor chain.onSuccess.hp failResolvedAmount
+                            batch.passAmount
+                                |> Maybe.map .total
+                                |> Maybe.withDefault (resolvedAmountFor chain.onSuccess.hp failResolvedAmount)
 
                         effectCtx =
                             buildEffectContext chain model
@@ -1229,7 +1320,7 @@ savesRolled results model =
                             }
 
                         entries =
-                            List.map entryFor results
+                            List.map entryFor saves
                     in
                     ( pushLog entries (rememberArea chain { modelWithHistory | encounter = encWithImmunity })
                     , Cmd.batch historyCmds
@@ -1237,6 +1328,64 @@ savesRolled results model =
 
         _ ->
             ( model, Cmd.none )
+
+
+{-| A Roll saves batch split into each creature's save and each
+side's amount roll.
+-}
+type alias Batch =
+    { saves : List ( String, Dice.Roll )
+    , failAmount : Maybe Dice.Roll
+    , passAmount : Maybe Dice.Roll
+    }
+
+
+splitBatch : List ( SaveChainBatchRoll, Dice.Roll ) -> Batch
+splitBatch results =
+    let
+        saveOf ( tag, roll ) =
+            case tag of
+                SaveChainSaveOf name ->
+                    Just ( name, roll )
+
+                SaveChainAmountOf _ ->
+                    Nothing
+
+        amountOf side =
+            results
+                |> List.filter (\( tag, _ ) -> tag == SaveChainAmountOf side)
+                |> List.head
+                |> Maybe.map Tuple.second
+    in
+    { saves = List.filterMap saveOf results
+    , failAmount = amountOf SaveChainFail
+    , passAmount = amountOf SaveChainSuccess
+    }
+
+
+{-| The rolls a batch adds to the dice history. Every save joins.
+An amount roll joins only when some target took it.
+-}
+batchHistory : SaveChain -> Batch -> List String -> List String -> List Dice.Roll
+batchHistory chain batch failNames passNames =
+    let
+        failTaken =
+            not (List.isEmpty failNames)
+                || (chain.onSuccess.hp == HalfFailDamage && not (List.isEmpty passNames))
+    in
+    List.map Tuple.second batch.saves
+        ++ List.filterMap identity
+            [ if failTaken then
+                batch.failAmount
+
+              else
+                Nothing
+            , if List.isEmpty passNames then
+                Nothing
+
+              else
+                batch.passAmount
+            ]
 
 
 
@@ -1298,10 +1447,10 @@ areaRollNow name id model =
     )
 
 
-{-| An area marker's save landed: the side the roll earned applies
+{-| An area marker's save landed. The side the roll earned applies
 to the bearer as one more resolution of the chain the marker
-names, with an auto-rolled amount as `savesRolled` uses, and the
-marker stays for the next turn. The chain is the one remembered
+names. A formula's average is its amount. The marker stays for the
+next turn. The chain is the one remembered
 when the marker went on. After a reload it is the preset of that
 name. A preset the GM has since deleted leaves a toast rather than
 an outcome.

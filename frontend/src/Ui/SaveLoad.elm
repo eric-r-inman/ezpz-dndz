@@ -13,6 +13,7 @@ Encounter menu opens.
 
 -}
 
+import Encounter exposing (Encounter)
 import Encounter.Wire exposing (SavedEncounterMeta)
 import Msg exposing (SaveStorage(..))
 
@@ -34,12 +35,14 @@ type ListState
 
 
 {-| One pending two-step action. Overwrite and delete risk a
-save; load risks the encounter on screen. All three ask first.
+save. Load risks the encounter on screen. All of them ask first.
+A file load holds the encounter it read until the GM answers.
 -}
 type ConfirmAction
     = ConfirmOverwrite String
     | ConfirmDelete String
     | ConfirmLoad String
+    | ConfirmFileLoad Encounter
 
 
 {-| Inline rename row state. `original` is the existing save

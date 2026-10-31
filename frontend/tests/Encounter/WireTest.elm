@@ -233,6 +233,7 @@ fullyPopulatedCreature =
             , phase = AtEnd
             , ringing = False
             , note = "spell ends"
+            , skipNextTick = True
             }
     , creatureId = Just "smaug-id"
     , legendaryActionsCount = 3

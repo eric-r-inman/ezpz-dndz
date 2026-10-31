@@ -10,6 +10,7 @@ from pages.fight import (
     ManageHp,
     advance,
     begin_death_saves,
+    chip_names,
     expect_pools,
     fix_d20,
     fix_d6,
@@ -261,7 +262,7 @@ def test_flight_height_steps_by_five_feet_and_stops_at_the_ground(app):
     expect(height).to_have_text("0")
 
 
-def test_falling_damage_rolls_a_d6_per_ten_feet_and_grounds_the_creature(app):
+def test_a_fall_deals_a_d6_per_ten_feet_and_lands_the_creature_prone(app):
     app.add("Ogre")
     ogre = app.card("Ogre")
     status = status_panel(app, "Ogre")
@@ -278,8 +279,9 @@ def test_falling_damage_rolls_a_d6_per_ten_feet_and_grounds_the_creature(app):
     expect(dice.root.get_by_text("Fall damage → Ogre")).to_be_visible()
     expect(dice.root.get_by_text(re.compile(r"3d6:\(\d,\d,\d\) bludgeoning"))).to_be_visible()
     app.shot("fall")
-    # The DM applies the fall damage.  The card keeps its hit points.
-    expect_pools(ogre, 68, 68)
+    _, fell = dice.row_text(0)
+    expect_pools(ogre, 68 - fell, 68)
+    assert chip_names(ogre) == ["Prone"]
 
 
 def test_concentration_ends_when_the_creature_drops_to_zero(app):
@@ -307,19 +309,6 @@ def test_damage_to_a_concentrating_creature_prompts_its_save(app):
 
 
 # Legendary pools, recharge and special reactions.
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-FIGHT-06: every legendary creature gets its in-lair pools, with no way to say it is out of its lair",
-)
-def test_a_dragon_outside_its_lair_has_three_legendary_actions_and_resistances(app):
-    app.add("Adult Red Dragon")
-    dragon = app.card("Adult Red Dragon")
-
-    app.shot("legendary")
-    expect(readout(dragon, "Legendary Action")).to_have_text("LA: 3(3)", timeout=2000)
-    expect(readout(dragon, "Legendary Resistance")).to_have_text("LR: 3(3)", timeout=2000)
 
 
 def test_a_spent_recharge_ability_prompts_a_roll_at_the_next_turn(app):

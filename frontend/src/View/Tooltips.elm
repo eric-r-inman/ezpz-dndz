@@ -56,6 +56,7 @@ module View.Tooltips exposing
     , conditionPresetSaveStart
     , conditionPresetSaveStartBlocked
     , conditionQuickApply
+    , countdownCaption
     , coverCycleTip
     , deathBegin
     , deathDead
@@ -105,6 +106,7 @@ module View.Tooltips exposing
     , nextTurn
     , noteAdd
     , noteEdit
+    , oneMinuteCaption
     , panelOpenCompendium
     , panelOpenDiceRoller
     , queueActiveTurn
@@ -401,7 +403,7 @@ legendaryRemaining what remaining capacity =
         ++ String.fromInt remaining
         ++ " of "
         ++ String.fromInt capacity
-        ++ " remaining. Click to use. Resets after 0."
+        ++ " remaining. Click to use one. A click at 0 refills it."
 
 
 specialReactionSpent : String
@@ -450,7 +452,7 @@ flyHeightDown =
 
 fallDamage : String
 fallDamage =
-    "Roll falling damage (1d6 per 10 ft, max 20d6) and ground the creature"
+    "Roll falling damage (1d6 per 10 ft, max 20d6), deal it and land the creature Prone"
 
 
 readyAction : String
@@ -1231,6 +1233,19 @@ timerRunning t =
         ++ " left, ticks at "
         ++ t.phaseWord
         ++ "-of-turn"
+
+
+{-| Captions the rule `Encounter.skipsFirstTick` states. `whose`
+names the creature whose turns the count counts.
+-}
+countdownCaption : String -> String
+countdownCaption whose =
+    "Set on " ++ whose ++ "'s turn, an end-of-turn count skips that turn."
+
+
+oneMinuteCaption : String
+oneMinuteCaption =
+    "The turn in progress does not count."
 
 
 timerRinging : String -> String

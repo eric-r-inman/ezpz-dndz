@@ -139,7 +139,7 @@ sortSection =
                 { enabled = True
                 , cls = "action-btn action-btn--blue"
                 , msg = InitiativeQuickSort
-                , tip = "Sort the queue by the initiatives it already has"
+                , tip = "Sort the whole queue by initiative, dragged cards included"
                 , label = "🔄 Quick Sort Encounter"
                 }
             ]
