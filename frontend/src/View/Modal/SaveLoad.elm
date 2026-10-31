@@ -500,6 +500,11 @@ confirmBanner ui =
                             , "Load"
                             )
 
+                        ConfirmFileLoad _ ->
+                            ( "Load the encounter in this file? This replaces the encounter on screen."
+                            , "Load"
+                            )
+
                         ConfirmOverwrite name ->
                             ( "Overwrite \"" ++ name ++ "\" with the current encounter?"
                             , "Overwrite"
