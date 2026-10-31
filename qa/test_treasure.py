@@ -467,18 +467,33 @@ def unfold(dialog, label):
     return dialog.locator(".treasure-table__section").nth(matches[0])
 
 
+def table_response(method):
+    """Matches the server's reply to a `method` request for the treasure table."""
+    return lambda response: (
+        response.url.endswith("/api/treasure-table") and response.request.method == method
+    )
+
+
 def save_table(app, dialog):
     """Saves a signed-in DM's table edits and reloads.
 
     What the editor shows next then comes back from the server.
     """
-    with app.page.expect_response(
-        lambda response: response.url.endswith("/api/treasure-table")
-        and response.request.method == "PUT"
-    ) as saved:
+    with app.page.expect_response(table_response("PUT")) as saved:
         dialog.get_by_role("button", name="Save", exact=True).click()
     assert saved.value.ok
-    app.reload()
+    reload_with_table(app)
+
+
+def reload_with_table(app):
+    """Reloads a signed-in DM's page and waits for their table to arrive.
+
+    An editor opened before the table arrives shows the bundled defaults.
+    """
+    with app.page.expect_response(table_response("GET")) as loaded:
+        app.reload()
+    assert loaded.value.ok
+    settle(app.page)
 
 
 def toggle_of(section):
@@ -582,7 +597,7 @@ def test_a_signed_in_dms_table_edits_drive_the_next_roll(app):
         roll(panel, "All (individual loot)")
         assert coins(panel.root) == {"gp": 7}
 
-    app.reload()
+    reload_with_table(app)
     dialog = open_table(app)
     expect(dialog.get_by_role("button", name="↺ Revert")).to_be_visible()
     unfold(dialog, "CR 0–4 1 rows")
@@ -617,15 +632,12 @@ def test_a_reverted_table_stays_reverted_after_a_reload(app):
     dialog = open_table(app)
     dialog.get_by_role("button", name="↺ Revert").click()
     # A reload before the server has dropped the table would bring it back.
-    with app.page.expect_response(
-        lambda response: response.url.endswith("/api/treasure-table")
-        and response.request.method == "DELETE"
-    ) as reverted:
+    with app.page.expect_response(table_response("DELETE")) as reverted:
         dialog.get_by_role("button", name="Confirm Revert").click()
     assert reverted.value.ok
     expect(dialog.get_by_role("button", name="↺ Revert")).to_have_count(0)
 
-    app.reload()
+    reload_with_table(app)
     dialog = open_table(app)
     expect(dialog.get_by_role("button", name="↺ Revert")).to_have_count(0, timeout=2000)
 

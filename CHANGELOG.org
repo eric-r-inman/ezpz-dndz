@@ -41,6 +41,8 @@
 1. =just dev= opens the browser once the server answers.  No action needed.
 2. The QA report records how long compendium snapshot saves take on a release
    build.  No action needed.
+3. =just qa= no longer fails now and then when the treasure table loads slowly
+   after a reload.  No action needed.
 ** Security
 1. Sign-in takes as long for an unknown email as for a wrong password.  No
    action needed.
