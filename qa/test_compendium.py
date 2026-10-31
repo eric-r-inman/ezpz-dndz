@@ -950,11 +950,25 @@ def test_importing_a_file_that_is_not_a_compendium_changes_nothing(app, tab, tmp
     junk = tmp_path / "shopping-list.json"
     junk.write_text('{"eggs": 12}')
     import_from_file(tab, junk)
-    expect(tab.page.get_by_text(re.compile("compatibility issues"))).to_be_visible()
+    expect(tab.page.get_by_text("This file is not a compendium. Nothing changed.")).to_be_visible()
     tab.shot("import-junk")
     tab.button("OK").click()
     expect(tab.rows()).to_have_count(len(bundled) + 1)
     expect(tab.row("Bog Hag")).to_be_visible()
+
+
+def test_a_compendium_file_that_cannot_be_read_says_nothing_changed(app, tab, tmp_path, bundled):
+    broken = tmp_path / "old-compendium.json"
+    broken.write_text('{"creatures": [{"name": 3}]}')
+    import_from_file(tab, broken)
+    expect(
+        tab.page.get_by_text(
+            "This compendium file could not be read. It may come from another"
+            " version of the app. Nothing changed."
+        )
+    ).to_be_visible()
+    tab.button("OK").click()
+    expect(tab.rows()).to_have_count(len(bundled))
 
 
 def test_reset_asks_first_then_returns_to_the_bundled_library(app, tab, bundled):
@@ -1009,10 +1023,22 @@ def clear_all(tab):
     expect(tab.page.get_by_text("Your compendium is empty.")).to_be_visible()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-12: a signed-out Clear All is undone by a reload",
-)
+def test_a_hidden_bundled_creature_stays_hidden_until_a_reset(tab, bundled):
+    tab.check("Ogre")
+    tab.button("🗑 Clear").click()
+    tab.dialog("Clear Compendium").get_by_role("button", name="Clear Selected (1)").click()
+    expect(tab.row("Ogre")).to_have_count(0)
+    tab.page.reload()
+    expect(tab.rows()).to_have_count(len(bundled) - 1)
+    expect(tab.row("Ogre")).to_have_count(0)
+
+    tab.button("↺ Reset").click()
+    tab.dialog("Reset Compendium").get_by_role("button", name="Reset", exact=True).click()
+    expect(tab.rows()).to_have_count(len(bundled))
+    tab.page.reload()
+    expect(tab.rows()).to_have_count(len(bundled))
+
+
 def test_cleared_library_stays_empty_after_a_reload(tab):
     clear_all(tab)
     tab.page.reload()
@@ -1020,10 +1046,6 @@ def test_cleared_library_stays_empty_after_a_reload(tab):
     expect(tab.rows()).to_have_count(0, timeout=2000)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="QA-COMP-12: a signed-in Clear All toasts 0 creatures and keeps all 330",
-)
 def test_signed_in_clear_all_empties_the_library(app, signed_in_tab):
     tab = signed_in_tab
     tab.button("🗑 Clear").click()

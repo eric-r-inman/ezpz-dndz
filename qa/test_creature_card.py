@@ -10,6 +10,7 @@ from pages.fight import (
     ManageHp,
     advance,
     begin_death_saves,
+    chip_names,
     expect_pools,
     fix_d20,
     fix_d6,
@@ -261,7 +262,7 @@ def test_flight_height_steps_by_five_feet_and_stops_at_the_ground(app):
     expect(height).to_have_text("0")
 
 
-def test_falling_damage_rolls_a_d6_per_ten_feet_and_grounds_the_creature(app):
+def test_a_fall_deals_a_d6_per_ten_feet_and_lands_the_creature_prone(app):
     app.add("Ogre")
     ogre = app.card("Ogre")
     status = status_panel(app, "Ogre")
@@ -278,8 +279,9 @@ def test_falling_damage_rolls_a_d6_per_ten_feet_and_grounds_the_creature(app):
     expect(dice.root.get_by_text("Fall damage → Ogre")).to_be_visible()
     expect(dice.root.get_by_text(re.compile(r"3d6:\(\d,\d,\d\) bludgeoning"))).to_be_visible()
     app.shot("fall")
-    # The DM applies the fall damage.  The card keeps its hit points.
-    expect_pools(ogre, 68, 68)
+    _, fell = dice.row_text(0)
+    expect_pools(ogre, 68 - fell, 68)
+    assert chip_names(ogre) == ["Prone"]
 
 
 def test_concentration_ends_when_the_creature_drops_to_zero(app):

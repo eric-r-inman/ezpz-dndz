@@ -66,6 +66,7 @@ import Msg exposing (Msg(..))
 import Ui.Compendium
 import Ui.Treasure exposing (TreasureUi)
 import Util.Number
+import View.Inline.ApplyButton as ApplyButton
 import View.Panel
 import View.Tooltips as Tooltips
 
@@ -95,6 +96,7 @@ view header model =
                         (List.length brackets)
                         model.userTreasureProfiles
                         model.userTreasureProfileNameDraft
+                        model.userTreasureTableReady
                 }
 
         _ ->
@@ -161,8 +163,8 @@ maxBracket a b =
         b
 
 
-body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> Int -> Int -> Dict String Treasure.TreasureSettings -> String -> List (Html Msg)
-body ui maybeRoll settings expectedGp enemyCount profiles profileDraft =
+body : TreasureUi -> Maybe Treasure.TreasureRoll -> Treasure.TreasureSettings -> Int -> Int -> Dict String Treasure.TreasureSettings -> String -> Bool -> List (Html Msg)
+body ui maybeRoll settings expectedGp enemyCount profiles profileDraft tableReady =
     [ helpText
     , controlRow ui expectedGp
     , multiplierNotice ui.kind enemyCount (Treasure.togglesFor ui.kind settings)
@@ -179,7 +181,7 @@ body ui maybeRoll settings expectedGp enemyCount profiles profileDraft =
 
         Nothing ->
             text ""
-    , editTableLink
+    , editTableLink tableReady
     ]
 
 
@@ -764,16 +766,21 @@ coinSummary c =
         String.join ", " parts
 
 
-editTableLink : Html Msg
-editTableLink =
+editTableLink : Bool -> Html Msg
+editTableLink ready =
     div [ class "treasure__edit-table-row" ]
-        [ button
-            [ class "treasure__edit-table"
-            , type_ "button"
-            , onClick TreasureTableOpen
-            , Tooltips.attr "View / edit your treasure table"
-            ]
-            [ text "Edit treasure table…" ]
+        [ ApplyButton.view
+            { enabled = ready
+            , cls = "treasure__edit-table"
+            , msg = TreasureTableOpen
+            , tip =
+                if ready then
+                    "View / edit your treasure table"
+
+                else
+                    "Your treasure table is still loading"
+            , label = "Edit treasure table…"
+            }
         ]
 
 

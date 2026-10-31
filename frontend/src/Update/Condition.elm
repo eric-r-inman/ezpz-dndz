@@ -73,6 +73,8 @@ import Ui.Condition.Bundled as Bundled
 import Ui.Toast exposing (ToastKind(..))
 import Update.Notice
 import Update.Toast
+import Util.Number
+import Util.Text
 
 
 {-| The editor's own drawer entry, in the `Maybe Surface`
@@ -902,39 +904,84 @@ submitWith prepare rawTargets model =
             if String.isEmpty name then
                 ( Model.foldDrawer Model.conditionLens model, Cmd.none )
 
-            else if ui.editingId == Nothing && List.any (\t -> Encounter.hasConditionNamed t name model.encounter) targets then
-                -- Editing is exempt: the condition being edited
-                -- already carries the name, and matching itself
-                -- is not a duplicate.
-                ( { model | surface = Just (SurfaceNotice Update.Notice.alreadyHasCondition) }
-                , Cmd.none
-                )
-
             else
                 let
-                    ( committed, logEntry ) =
-                        commitCondition targets ui name model
+                    -- Editing is exempt.  The condition being edited
+                    -- already carries the name.  Matching itself is
+                    -- not a duplicate.
+                    ( holders, others ) =
+                        if ui.editingId == Nothing then
+                            List.partition (\t -> Encounter.hasConditionNamed t name model.encounter) targets
 
-                    withLog =
-                        case logEntry of
-                            Just entry ->
-                                { committed
-                                    | conditionLog =
-                                        entry
-                                            :: List.take
-                                                (ConditionUi.maxConditionLogEntries - 1)
-                                                committed.conditionLog
-                                    , nextConditionLogSeq = committed.nextConditionLogSeq + 1
-                                    , conditionLogOpen = True
-                                }
-
-                            Nothing ->
-                                committed
+                        else
+                            ( [], targets )
                 in
-                ( withLog, Cmd.none )
+                if List.isEmpty others && not (List.isEmpty holders) && not (Encounter.stacksWithItself name) then
+                    ( { model | surface = Just (SurfaceNotice (Update.Notice.alreadyHasCondition holders name)) }
+                    , Cmd.none
+                    )
+
+                else
+                    commitAndLog others ui name model
+                        |> settleHolders holders name
 
         _ ->
             ( model, Cmd.none )
+
+
+commitAndLog : List String -> ConditionUi -> String -> Model -> Model
+commitAndLog targets ui name model =
+    let
+        ( committed, logEntry ) =
+            commitCondition targets ui name model
+    in
+    case logEntry of
+        Just entry ->
+            { committed
+                | conditionLog =
+                    entry
+                        :: List.take
+                            (ConditionUi.maxConditionLogEntries - 1)
+                            committed.conditionLog
+                , nextConditionLogSeq = committed.nextConditionLogSeq + 1
+                , conditionLogOpen = True
+            }
+
+        Nothing ->
+            committed
+
+
+{-| What became of the creatures that already carried the condition.
+A creature that has Exhaustion gains a level. Any other condition
+passes it by. A toast names it.
+-}
+settleHolders : List String -> String -> Model -> ( Model, Cmd Msg )
+settleHolders holders name model =
+    let
+        count =
+            List.length holders
+    in
+    if List.isEmpty holders then
+        ( model, Cmd.none )
+
+    else if Encounter.stacksWithItself name then
+        Update.Toast.push ToastSuccess
+            (Util.Text.andList holders
+                ++ Util.Number.pluralize " gains an " " each gain an " count
+                ++ name
+                ++ " level."
+            )
+            { model | encounter = List.foldl Encounter.addExhaustionLevel model.encounter holders }
+
+    else
+        Update.Toast.push ToastSuccess
+            ("Skipped "
+                ++ Util.Text.andList holders
+                ++ Util.Number.pluralize ": it already has " ": they already have " count
+                ++ name
+                ++ "."
+            )
+            model
 
 
 logToggle : Model -> ( Model, Cmd Msg )
@@ -1353,24 +1400,18 @@ untouchedPresetName ui model =
 
 
 {-| Put one companion on `target`, riding on the condition
-`primaryId` names so it goes when that one goes. A condition the
-target already carries is left alone rather than doubled.
+`primaryId` names so it goes when that one goes.
 -}
 addCompanion : String -> Int -> String -> Encounter.Encounter -> Encounter.Encounter
-addCompanion target primaryId name enc =
-    if Encounter.hasConditionNamed target name enc then
-        enc
-
-    else
-        Encounter.addCondition target
-            { name = name
-            , note = ""
-            , duration = Encounter.DurationManual
-            , saveToEnd = Nothing
-            , linkedTo = Just primaryId
-            , area = Nothing
-            }
-            enc
+addCompanion target primaryId name =
+    Encounter.addConditionIfMissing target
+        { name = name
+        , note = ""
+        , duration = Encounter.DurationManual
+        , saveToEnd = Nothing
+        , linkedTo = Just primaryId
+        , area = Nothing
+        }
 
 
 companionSummary : List String -> String

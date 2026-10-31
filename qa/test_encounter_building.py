@@ -54,6 +54,14 @@ def test_quick_add_search_narrows_the_list_and_says_when_nothing_matches(app):
     app.shot("no-matches")
 
 
+def test_quick_add_search_matches_names_and_not_creature_types(app):
+    panel = app.panel("Quick Add").open()
+    panel.root.get_by_role("searchbox", name="Filter Quick Add by name").fill("dragon")
+    names = [name for name, _ in quick_add_rows(app)]
+    assert "Adult Red Dragon" in names
+    assert all("dragon" in name.lower() for name in names)
+
+
 def test_quick_add_sort_toggle_switches_between_name_and_challenge_rating(app):
     panel = app.panel("Quick Add").open()
     toggle = panel.root.get_by_role("button", name=re.compile("^Sort: "))

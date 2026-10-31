@@ -33,6 +33,9 @@ def download(app, name=None):
     return pending.value
 
 
+FILE_LOAD_QUESTION = "Load the encounter in this file? This replaces the encounter on screen."
+
+
 def load_file(app, path):
     dialog = open_encounter_dialog(app.page, "Load")
     with app.page.expect_file_chooser() as chooser:
@@ -91,6 +94,9 @@ def test_a_downloaded_file_loads_back_in_pre_combat(app, tmp_path):
     assert app.round_number() == 2
 
     dialog = load_file(app, path)
+    expect(dialog.get_by_text(FILE_LOAD_QUESTION)).to_be_visible()
+    assert app.card_names() == ["Owlbear"]
+    dialog.get_by_role("button", name="Load", exact=True).click()
     expect(dialog).to_be_hidden()
     expect(app.page.get_by_text("Loaded encounter from file.")).to_be_visible()
     assert app.card_names() == expected
@@ -98,6 +104,20 @@ def test_a_downloaded_file_loads_back_in_pre_combat(app, tmp_path):
     assert app.active_name() is None
     assert not has_unsaved_mark(app.page)
     app.shot("loaded-from-file")
+
+
+def test_cancelling_a_file_load_keeps_the_fight(app, tmp_path):
+    build_ambush(app)
+    path = tmp_path / "ambush.json"
+    download(app, "ambush").save_as(path)
+    app.add("Owlbear")
+    before = app.card_names()
+
+    dialog = load_file(app, path)
+    expect(dialog.get_by_text(FILE_LOAD_QUESTION)).to_be_visible()
+    dialog.get_by_role("button", name="Cancel", exact=True).click()
+    expect(dialog.get_by_text(FILE_LOAD_QUESTION)).to_have_count(0)
+    assert app.card_names() == before
 
 
 @pytest.mark.cross_browser

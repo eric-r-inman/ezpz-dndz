@@ -652,6 +652,9 @@ applyRow ui =
             else
                 verb
 
+        oneAmountRoll =
+            " A damage formula rolls once for every target."
+
         -- An area chain can mark its targets without resolving an
         -- outcome, for an area that grants no save on its arrival.
         markButton =
@@ -687,28 +690,28 @@ applyRow ui =
                     { enabled = not isEmpty && not blockedByDc
                     , cls = "action-btn action-btn--heal"
                     , msg = SaveChainApplyPass
-                    , tip = outcomeTip "Apply the successful-save outcome"
+                    , tip = outcomeTip "Apply the successful-save outcome. Half of Fail damage halves the latest Fail roll."
                     , label = "Pass"
                     }
                , ApplyButton.view
                     { enabled = not isEmpty && hasDc
                     , cls = "action-btn action-btn--roll-saves"
                     , msg = SaveChainRollSaves SaveChainRollNormal
-                    , tip = rollTip "Roll d20 + save modifier for every target and apply fail or pass"
+                    , tip = rollTip ("Roll d20 + save modifier for every target and apply fail or pass." ++ oneAmountRoll)
                     , label = "🎲 Roll saves"
                     }
                , ApplyButton.view
                     { enabled = not isEmpty && hasDc
                     , cls = "action-btn action-btn--roll-saves"
                     , msg = SaveChainRollSaves SaveChainRollAdvantage
-                    , tip = rollTip "Roll 2d20 keep highest + save modifier for every target and apply fail or pass"
+                    , tip = rollTip ("Roll 2d20 keep highest + save modifier for every target and apply fail or pass." ++ oneAmountRoll)
                     , label = "Roll Adv."
                     }
                , ApplyButton.view
                     { enabled = not isEmpty && hasDc
                     , cls = "action-btn action-btn--roll-saves"
                     , msg = SaveChainRollSaves SaveChainRollDisadvantage
-                    , tip = rollTip "Roll 2d20 keep lowest + save modifier for every target and apply fail or pass"
+                    , tip = rollTip ("Roll 2d20 keep lowest + save modifier for every target and apply fail or pass." ++ oneAmountRoll)
                     , label = "Roll Disadv."
                     }
                ]
