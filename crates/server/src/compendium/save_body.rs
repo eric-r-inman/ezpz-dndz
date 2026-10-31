@@ -17,15 +17,13 @@
 //! precision exactly — serde_json's float formatting is
 //! shortest-round-trip.
 //!
-//! Insertion walks the tree iteratively (a work queue) so deeply
-//! nested bodies don't require recursive async functions;
-//! reassembly groups the fetched rows by parent id and rebuilds
+//! Reassembly groups the fetched rows by parent id and rebuilds
 //! synchronously.
 
 use std::collections::HashMap;
 
 use serde_json::{Map, Number, Value};
-use sqlx::{any::AnyRow, AnyConnection, Row};
+use sqlx::{any::AnyRow, AnyConnection, AssertSqlSafe, Row};
 use uuid::Uuid;
 
 use super::error::CompendiumStoreError;
@@ -42,69 +40,128 @@ fn decode_error(detail: String) -> CompendiumStoreError {
   CompendiumStoreError::SaveRowDecode { detail }
 }
 
+/// One node of a body tree, ready to insert.
+struct NodeRow<'a> {
+  id: String,
+  parent_id: Option<String>,
+  position: i64,
+  object_key: Option<&'a str>,
+  kind: &'static str,
+  bool_value: Option<i64>,
+  number_text: Option<String>,
+  string_value: Option<&'a str>,
+}
+
+/// Nodes per INSERT.  Timed on a release build with a whole-library
+/// body: one node per statement saved in about 0.58 seconds, 20 per
+/// statement in about 0.33, and 500 in about 1.2.  A long statement
+/// costs more to bind than it saves.
+const ROWS_PER_INSERT: usize = 20;
+
 /// Insert `value` as `save_id`'s body tree.  Takes a bare
 /// connection so callers control the transaction (the snapshot row
-/// and its nodes commit together).
+/// and its nodes commit together).  A whole library runs to tens of
+/// thousands of nodes, so they go in multi-row INSERTs.
 pub async fn insert_body(
   conn: &mut AnyConnection,
   save_id: &str,
   value: &Value,
 ) -> Result<(), CompendiumStoreError> {
+  for batch in node_rows(value).chunks(ROWS_PER_INSERT) {
+    let placeholders = (0..batch.len())
+      .map(|row| {
+        let first = row * 9;
+        format!(
+          "(${}, ${}, ${}, ${}, ${}, ${}, ${}, ${}, ${})",
+          first + 1,
+          first + 2,
+          first + 3,
+          first + 4,
+          first + 5,
+          first + 6,
+          first + 7,
+          first + 8,
+          first + 9,
+        )
+      })
+      .collect::<Vec<_>>()
+      .join(", ");
+    batch
+      .iter()
+      .fold(
+        // The only text spliced in is `$n` placeholders numbered from
+        // row indexes.  No request data reaches the SQL.
+        sqlx::query(AssertSqlSafe(format!(
+          "INSERT INTO compendium_save_nodes (id, save_id, parent_id, \
+           position, object_key, kind, bool_value, number_text, \
+           string_value) VALUES {placeholders}"
+        ))),
+        |query, row| {
+          query
+            .bind(&row.id)
+            .bind(save_id)
+            .bind(&row.parent_id)
+            .bind(row.position)
+            .bind(row.object_key)
+            .bind(row.kind)
+            .bind(row.bool_value)
+            .bind(&row.number_text)
+            .bind(row.string_value)
+        },
+      )
+      .execute(&mut *conn)
+      .await
+      .map_err(write_error)?;
+  }
+  Ok(())
+}
+
+/// Every node of `value` as a row.  The tree is walked with a work
+/// queue, so deeply nested bodies need no recursion.
+fn node_rows(value: &Value) -> Vec<NodeRow<'_>> {
   // (parent id, position within parent, object key, node) — the
   // root is position 0 under a NULL parent.
-  let mut queue: Vec<(Option<String>, i64, Option<String>, &Value)> =
+  let mut queue: Vec<(Option<String>, i64, Option<&str>, &Value)> =
     vec![(None, 0, None, value)];
 
-  while let Some((parent_id, position, object_key, node)) = queue.pop() {
-    let node_id = Uuid::new_v4().to_string();
-    let (kind, bool_value, number_text, string_value) = match node {
-      Value::Null => ("null", None, None, None),
-      Value::Bool(b) => ("bool", Some(i64::from(*b)), None, None),
-      Value::Number(n) => ("number", None, Some(n.to_string()), None),
-      Value::String(s) => ("string", None, None, Some(s.clone())),
-      Value::Array(_) => ("array", None, None, None),
-      Value::Object(_) => ("object", None, None, None),
-    };
-
-    sqlx::query(
-      "INSERT INTO compendium_save_nodes (id, save_id, parent_id, \
-       position, object_key, kind, bool_value, number_text, string_value) \
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
-    )
-    .bind(&node_id)
-    .bind(save_id)
-    .bind(&parent_id)
-    .bind(position)
-    .bind(&object_key)
-    .bind(kind)
-    .bind(bool_value)
-    .bind(number_text)
-    .bind(string_value)
-    .execute(&mut *conn)
-    .await
-    .map_err(write_error)?;
-
-    match node {
-      Value::Array(items) => {
-        for (i, item) in items.iter().enumerate() {
-          queue.push((Some(node_id.clone()), i as i64, None, item));
+  std::iter::from_fn(move || {
+    queue.pop().map(|(parent_id, position, object_key, node)| {
+      let id = Uuid::new_v4().to_string();
+      let (kind, bool_value, number_text, string_value) = match node {
+        Value::Null => ("null", None, None, None),
+        Value::Bool(b) => ("bool", Some(i64::from(*b)), None, None),
+        Value::Number(n) => ("number", None, Some(n.to_string()), None),
+        Value::String(s) => ("string", None, None, Some(s.as_str())),
+        Value::Array(_) => ("array", None, None, None),
+        Value::Object(_) => ("object", None, None, None),
+      };
+      match node {
+        Value::Array(items) => queue.extend(
+          items
+            .iter()
+            .enumerate()
+            .map(|(i, item)| (Some(id.clone()), i as i64, None, item)),
+        ),
+        Value::Object(map) => {
+          queue.extend(map.iter().enumerate().map(|(i, (key, item))| {
+            (Some(id.clone()), i as i64, Some(key.as_str()), item)
+          }))
         }
+        _ => {}
       }
-      Value::Object(map) => {
-        for (i, (key, item)) in map.iter().enumerate() {
-          queue.push((
-            Some(node_id.clone()),
-            i as i64,
-            Some(key.clone()),
-            item,
-          ));
-        }
+      NodeRow {
+        id,
+        parent_id,
+        position,
+        object_key,
+        kind,
+        bool_value,
+        number_text,
+        string_value,
       }
-      _ => {}
-    }
-  }
-
-  Ok(())
+    })
+  })
+  .collect()
 }
 
 /// A fetched node, pre-decoded from its row.

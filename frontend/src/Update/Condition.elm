@@ -1400,24 +1400,18 @@ untouchedPresetName ui model =
 
 
 {-| Put one companion on `target`, riding on the condition
-`primaryId` names so it goes when that one goes. A condition the
-target already carries is left alone rather than doubled.
+`primaryId` names so it goes when that one goes.
 -}
 addCompanion : String -> Int -> String -> Encounter.Encounter -> Encounter.Encounter
-addCompanion target primaryId name enc =
-    if Encounter.hasConditionNamed target name enc then
-        enc
-
-    else
-        Encounter.addCondition target
-            { name = name
-            , note = ""
-            , duration = Encounter.DurationManual
-            , saveToEnd = Nothing
-            , linkedTo = Just primaryId
-            , area = Nothing
-            }
-            enc
+addCompanion target primaryId name =
+    Encounter.addConditionIfMissing target
+        { name = name
+        , note = ""
+        , duration = Encounter.DurationManual
+        , saveToEnd = Nothing
+        , linkedTo = Just primaryId
+        , area = Nothing
+        }
 
 
 companionSummary : List String -> String

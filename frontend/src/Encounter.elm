@@ -11,7 +11,7 @@ module Encounter exposing
     , mapCreature, nextCover, toggleReaction, toggleSpecialReaction
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
-    , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
+    , addCondition, addConditionIfMissing, addConditionWithId, updateCondition, removeCondition, findCondition
     , describeDuration, skipsFirstTick
     , addSaveNotice, removeSaveNotice
     , AreaTracker, DamageTrigger(..), RechargeAbility, Standing(..), addExhaustionLevel, conditionLevel, creatureNamed, damageReminders, damageRolls, damageTaken, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, stacksWithItself, standing, unsavedChanges
@@ -77,7 +77,7 @@ mutation (move, sort, remove, duplicate, append) lives in
 
 # Conditions / effects
 
-@docs addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
+@docs addCondition, addConditionIfMissing, addConditionWithId, updateCondition, removeCondition, findCondition
 @docs describeDuration, skipsFirstTick
 
 
@@ -901,6 +901,19 @@ the contract of [`mapCreature`](#mapCreature)).
 addCondition : String -> ConditionDraft -> Encounter -> Encounter
 addCondition target draft enc =
     Tuple.first (addConditionWithId target draft enc)
+
+
+{-| `addCondition` for a condition the target may already carry. A
+condition does not stack with itself, so a carried one is left
+alone rather than doubled.
+-}
+addConditionIfMissing : String -> ConditionDraft -> Encounter -> Encounter
+addConditionIfMissing target draft enc =
+    if hasConditionNamed target draft.name enc then
+        enc
+
+    else
+        addCondition target draft enc
 
 
 {-| `addCondition`, also handing back the id the new condition

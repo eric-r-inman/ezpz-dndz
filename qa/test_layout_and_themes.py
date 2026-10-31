@@ -34,6 +34,11 @@ def shell_theme(page):
     return page.locator(".app-shell").get_attribute("data-theme")
 
 
+def native_scheme(page, selector):
+    """The colour scheme the browser draws native widgets in under `selector`."""
+    return page.evaluate(f"() => getComputedStyle(document.querySelector('{selector}')).colorScheme")
+
+
 # Screen sizes.
 
 
@@ -151,9 +156,13 @@ def test_a_dark_operating_system_leaves_the_modern_theme_whole(app, browser):
         assert luminance(page_background(dark_os.page)) > 0.8
         field = dark_os.page.get_by_label("HP:", exact=True)
         assert luminance(field.evaluate("e => getComputedStyle(e).backgroundColor")) > 0.8
+        assert native_scheme(dark_os.page, "html") == "light"
+        assert native_scheme(dark_os.page, ".app-shell") == "light"
         dark_os.shot("os-dark-modern")
         choose_theme(dark_os, "Dark")
         assert luminance(page_background(dark_os.page)) < 0.3
+        assert native_scheme(dark_os.page, "html") == "dark"
+        assert native_scheme(dark_os.page, ".app-shell") == "dark"
         dark_os.shot("os-dark-dark")
         assert not dark_os.page_errors
     finally:
