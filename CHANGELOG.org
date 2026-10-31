@@ -4,6 +4,11 @@
 * Upcoming
 ** Added
 ** Fixes
+** Breaking
+** Maintenance
+** Security
+* v0.39.0
+** Fixes
 1. A legendary pool's hover text says that a click at 0 refills it.  No action
    needed.
 2. A dragged queue keeps its order when creatures join or an initiative changes.
