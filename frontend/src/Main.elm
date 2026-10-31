@@ -709,6 +709,7 @@ init flags url key =
                     (Decode.decodeValue Encounter.Treasure.TableWire.decodeTable
                         >> Result.toMaybe
                     )
+        , userTreasureTableReady = False
         , userTreasureProfiles =
             flags.localTreasureProfiles
                 |> Maybe.andThen

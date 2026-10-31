@@ -87,16 +87,21 @@ fn test_version_flag() {
 }
 
 #[test]
-fn test_basic_execution() {
+fn test_no_subcommand_is_a_usage_error() {
   let output = Command::new(get_binary_path()).output();
 
   match output {
     Ok(output) => {
-      assert!(
-        output.status.success(),
-        "Expected success exit code, got: {:?}\nstderr: {}",
+      assert_eq!(
         output.status.code(),
+        Some(2),
+        "Expected the usage-error exit code\nstderr: {}",
         String::from_utf8_lossy(&output.stderr)
+      );
+      assert!(
+        String::from_utf8_lossy(&output.stderr)
+          .contains("Usage: ezpz-dndz-cli"),
+        "Expected clap's usage on stderr"
       );
     }
     Err(e) => {
@@ -108,6 +113,28 @@ fn test_basic_execution() {
       panic!("Failed to execute binary: {}", e);
     }
   }
+}
+
+#[test]
+fn test_dice_clear_without_yes_fails_and_says_why() {
+  let dir = std::env::temp_dir()
+    .join(format!("ezpz-dndz-cli-test-{}", uuid::Uuid::new_v4()));
+  let output = Command::new(get_binary_path())
+    .args([
+      "dice",
+      "clear",
+      "--email",
+      "dm@example.com",
+      "--data-dir",
+      dir.to_str().expect("path utf8"),
+    ])
+    .output()
+    .expect("run cli");
+  assert!(!output.status.success(), "clear without --yes should fail");
+  assert!(
+    String::from_utf8_lossy(&output.stderr).contains("--yes"),
+    "the failure should name --yes"
+  );
 }
 
 #[test]

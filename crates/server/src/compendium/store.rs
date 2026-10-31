@@ -46,11 +46,11 @@ use std::{
 
 use ezpz_dndz_lib::compendium::Creature;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use tracing::{info, warn};
 
 use super::error::CompendiumStoreError;
 use super::json_file_store::JsonFileStore;
+use crate::digest::sha256_hex;
 
 /// Bundled creatures shipped with the binary.  Parsed once at
 /// store-construction time; baked into the binary via
@@ -348,33 +348,4 @@ fn parse_bundled() -> Result<Vec<Creature>, CompendiumStoreError> {
 /// default in case of trouble.
 fn content_hash(c: &Creature) -> String {
   sha256_hex(serde_json::to_string(c).unwrap_or_default().as_bytes())
-}
-
-/// The SHA-256 of `bytes` as lowercase hex, the form every stored
-/// content hash takes.
-///
-/// sha2's digest implements no hex formatting of its own.  A hash
-/// already on disk has to keep matching, so the output must not
-/// change shape.
-fn sha256_hex(bytes: &[u8]) -> String {
-  Sha256::digest(bytes)
-    .iter()
-    .map(|byte| format!("{byte:02x}"))
-    .collect()
-}
-
-#[cfg(test)]
-mod tests {
-  use super::sha256_hex;
-
-  // FIPS 180-2's first SHA-256 example.  Stored content hashes take
-  // exactly this lowercase-hex form, so a change of shape here would
-  // mark every bundled creature as edited.
-  #[test]
-  fn sha256_hex_matches_the_standard_vector() {
-    assert_eq!(
-      sha256_hex(b"abc"),
-      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-    );
-  }
 }

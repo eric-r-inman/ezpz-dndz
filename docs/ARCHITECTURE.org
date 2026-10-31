@@ -213,7 +213,7 @@ In practice:
   update branches.  Update modules never ~import Http~ directly — the compendium
   CRUD requests, for example, live in Effects as ~postCompendiumCreature~ /
   ~putCompendiumCreature~ / ~deleteCompendiumCreature~ /
-  ~importCompendiumBundle~ / ~clearCompendiumCreatures~ / ~resetCompendium~.
+  ~importCompendiumBundle~ / ~keepCompendiumCreatures~ / ~resetCompendium~.
 
 * Model and modal state
 
@@ -512,19 +512,23 @@ single 401 ~"Invalid email or password"~ response so timing / error-text
 differences don't leak account-existence information.  A request with no session
 gets its own 401, ~"Sign in required"~.  A wrong current password on ~POST
 /api/auth/password~ gets a 403, so the frontend does not read it as a lost
-session.
+session.  A password change signs every other session out.
 
 ** Session and middleware
 
 Sessions ride on ~tower-sessions~ via foundation's runner (~MemoryStore~ today;
 restarting the server logs everyone out).  The session cookie is ~SameSite=Lax~
-and ~Secure~ in production builds.  ~user_id~ is the only key the app stores.
+and ~Secure~ in production builds.  The app stores two keys: ~user_id~ and
+~password_stamp~.  The stamp is a digest of the password hash the session signed
+in with.  A password change gives the hash a fresh salt, so every older stamp
+goes stale.
 
 ~users::require_auth~ is the middleware layered over the protected ApiRouter: it
 pulls ~user_id~ off the session, looks up the ~User~ via
 ~UserStore::find_by_id~, and inserts a ~CurrentUser(User)~ extension on the
 request.  Handlers that need the user extract ~Extension<CurrentUser>~ alongside
-their other inputs.  No session, no user → 401 with a JSON body.
+their other inputs.  A request with no session, no user or a stale stamp gets a
+401 with a JSON body.
 
 ** Per-user data shapes
 
@@ -570,6 +574,10 @@ The compendium has two layers that the server merges at request time:
 - *Per-user creatures* (custom creations, edits, duplicates) live in
   ~UserCompendiumStore~ over the ~user_creatures~ table family (migration 0003),
   keyed by ~user_id~.
+- *Hidden bundled creatures* are the bundled ids a user has cleared from their
+  library.  Migration 0010 adds the ~compendium_hidden_bundled~ table that holds
+  them.  They stay hidden until a reset.  A signed-out session keeps its set in
+  the local compendium snapshot.
 
 Every ~Creature~ that crosses the wire carries an ~is_bundled : bool~ field that
 the server computes from ~BundledCompendium::contains(id)~ on the way out.  The
@@ -580,7 +588,7 @@ The HTTP surface:
 
 | Endpoint                                    | Behaviour                                                                 |
 |---------------------------------------------+---------------------------------------------------------------------------|
-| ~GET /api/compendium/creatures~             | Returns bundled rows ++ the caller's per-user rows, with ~is_bundled~ stamped. |
+| ~GET /api/compendium/creatures~             | Returns the bundled rows the caller has not hidden ++ the caller's per-user rows.  Each carries ~is_bundled~. |
 | ~GET /api/compendium/creatures/{id}~        | Tries bundled first, then the caller's per-user store; 404 otherwise.    |
 | ~POST /api/compendium/creatures~            | Creates in the caller's per-user store with a fresh UUIDv4.              |
 | ~PUT /api/compendium/creatures/{id}~        | 403 ~BundledNotEditable~ if ~id~ is bundled; otherwise updates the caller's record. |
@@ -588,7 +596,8 @@ The HTTP surface:
 | ~POST /api/compendium/creatures/{id}/duplicate~ | Clones (bundled or own) into caller's store with a fresh UUIDv4 and "Copy of …" name prefix.  The only path to an editable copy of a bundled creature. |
 | ~POST /api/compendium/import~               | Replaces the caller's per-user list (bundled-id rows in the body are silently dropped). |
 | ~POST /api/compendium/merge~                | Appends creatures and groups under fresh ids and keeps what the caller has.  Sign-in uses it. |
-| ~POST /api/compendium/reset~                | Drops the caller's per-user creatures + groups; bundled reappears via the merge. |
+| ~POST /api/compendium/keep~                 | Makes the library exactly the body.  The caller's own creatures become the body's.  Each bundled creature left out is hidden. |
+| ~POST /api/compendium/reset~                | Drops the caller's per-user creatures + groups and un-hides every bundled creature. |
 | ~GET /api/compendium/export~                | Returns the caller's per-user creatures + groups only — bundled is omitted because the receiver's server already has it. |
 
 Frontend UI mirrors the model: the compendium browser hides Edit and Delete on
@@ -1074,12 +1083,12 @@ click-outside subscriptions have a single handler to close them all.
   destination=Server) / To Device (same modal, destination= Device, fires
   ~File.Download.string~ on submit).  The trigger lights yellow when
   ~compendiumDirty~ is True so the GM sees there's something worth saving.
-- *Clear* — Clear All / Clear Selected.  Both replace the library wholesale via
-  ~/api/compendium/import~ but route the response through
-  =Update.Compendium.Bulk.clearResponse= (which keeps ~compendiumDirty = True~)
-  rather than =importResponse= (which clears it).
+- *Clear* — Clear All / Clear Selected.  Both send what the library keeps to
+  ~/api/compendium/keep~.  The server hides each bundled creature left out.  The
+  response routes through =Update.Compendium.Bulk.clearResponse=.  It keeps
+  ~compendiumDirty = True~.  =importResponse= would clear it.
 - *Reset* — single button (no popover); restores the bundled creature set via
-  ~/api/compendium/reset~.
+  ~/api/compendium/reset~.  Hidden ones come back too.
 
 The Save / Load Compendium modals themselves mirror the Encounter menu's Save
 and Load modals: filename input, list of existing snapshots, inline

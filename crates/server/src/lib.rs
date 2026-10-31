@@ -2,6 +2,7 @@ pub mod auth_rate_limit;
 pub mod compendium;
 pub mod config;
 pub mod dice;
+pub mod digest;
 pub mod encounters;
 pub mod frontend;
 pub mod json_import;
