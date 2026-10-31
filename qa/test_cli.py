@@ -64,8 +64,9 @@ def test_every_subcommand_explains_itself(cli):
 
 
 def test_running_with_no_subcommand_points_at_help(cli):
-    result = cli()
-    assert "Run with --help for usage." in result.stdout
+    result = cli(check=False)
+    assert result.returncode == 2
+    assert "Usage: ezpz-dndz-cli" in result.stderr
 
 
 # Resetting a forgotten password.
@@ -249,8 +250,9 @@ def test_dice_inspection_and_clearing_follow_the_dms_rolls(app, cli):
     assert len(latest) == 1
     assert latest[0]["formula"] == "1d20" and 1 <= latest[0]["total"] <= 20
 
-    unconfirmed = cli("dice", "clear", "--email", DM, *on(app.server))
-    assert "Pass --yes to confirm." in unconfirmed.stderr
+    unconfirmed = cli("dice", "clear", "--email", DM, *on(app.server), check=False)
+    assert unconfirmed.returncode != 0
+    assert "--yes" in unconfirmed.stderr
     assert cli("dice", "count", "--email", DM, *on(app.server)).stdout.strip() == "2"
 
     cleared = cli("dice", "clear", "--email", DM, "--yes", *on(app.server))

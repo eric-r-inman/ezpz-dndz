@@ -53,5 +53,5 @@ pub struct Config {
   #[merge_config(common)]
   pub log_format: LogFormat,
   #[merge_config(subcommand)]
-  pub command: Option<Command>,
+  pub command: Command,
 }

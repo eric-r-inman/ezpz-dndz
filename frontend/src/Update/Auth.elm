@@ -39,6 +39,7 @@ import Json.Decode as Decode
 import Model exposing (Model)
 import Msg exposing (Msg(..))
 import Ports
+import Set
 import Ui.Compendium as CompendiumUi
 import Ui.Login as LoginUi
 import Ui.Toast exposing (ToastKind(..))
@@ -142,6 +143,10 @@ meReceived result model =
                         , localEncounterRaw = Nothing
                         , localDiceHistoryRaw = Nothing
                         , localCompendiumRaw = Nothing
+
+                        -- The signed-out table came from localStorage
+                        -- with the flags.
+                        , userTreasureTableReady = True
                     }
 
                 withDice =
@@ -299,6 +304,7 @@ applyLocalCompendium raw model =
                                         | db =
                                             CompendiumUi.CompendiumDbLoaded
                                                 (Compendium.fromList userOnlyCreatures)
+                                        , hiddenBundled = Set.fromList snap.hiddenBundled
                                     }
                                 , nextLocalCreatureId = snap.nextLocalId
                             }

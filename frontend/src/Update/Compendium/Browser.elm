@@ -101,8 +101,9 @@ every time the bundle version bumped.
 The merge: take all fetched creatures (they win on id collisions
 — bundled-id creatures get refreshed) plus any creatures in the
 current DB whose ids aren't in the fetched set (user-created).
-We return a fresh `Ok merged` so the downstream `loadedUpdate`
-and `syncEncounterFromCompendium` both see the unioned list.
+The bundled creatures the DM hid stay out. We return a fresh
+`Ok merged` so the downstream `loadedUpdate` and
+`syncEncounterFromCompendium` both see the unioned list.
 
 When `pendingBundleMerge = False` or the fetch failed, fall
 through to the standard replace-everything behaviour by passing
@@ -124,8 +125,11 @@ mergedResult result model =
                     model.compendium.db
                         |> loadedCreaturesOrEmpty
                         |> List.filter (\c -> not (Set.member c.id fetchedIds))
+
+                shown =
+                    List.filter (\c -> not (Set.member c.id model.compendium.hiddenBundled)) fetched
             in
-            Ok (fetched ++ preserved)
+            Ok (shown ++ preserved)
 
         _ ->
             result
