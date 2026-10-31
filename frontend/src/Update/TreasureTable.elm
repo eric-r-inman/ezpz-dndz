@@ -60,15 +60,23 @@ import Update.Toast
 import Update.Treasure
 
 
+{-| Open the editor on the DM's table. Before that table has
+arrived the editor stays shut. It would show the bundled defaults.
+Saving them would overwrite the DM's own.
+-}
 open : Model -> ( Model, Cmd Msg )
 open model =
     let
         snapshot =
             Maybe.withDefault Treasure.bundledTable model.userTreasureTable
     in
-    ( { model | surface = Just (Model.SurfaceTreasureTable (Ui.fresh snapshot)) }
-    , Cmd.none
-    )
+    if model.userTreasureTableReady then
+        ( { model | surface = Just (Model.SurfaceTreasureTable (Ui.fresh snapshot)) }
+        , Cmd.none
+        )
+
+    else
+        ( model, Cmd.none )
 
 
 {-| Close the editor without committing. The draft inside the
