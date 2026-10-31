@@ -144,6 +144,14 @@ pub enum CompendiumStoreError {
   #[error("Corrupt saved-compendium body row: {detail}")]
   SaveRowDecode { detail: String },
 
+  /// Reading the user's hidden bundled creatures failed at the SQL layer.
+  #[error("Failed to read the user's hidden bundled creatures: {source}")]
+  HiddenBundledRead { source: sqlx::Error },
+
+  /// Writing the user's hidden bundled creatures failed at the SQL layer.
+  #[error("Failed to write the user's hidden bundled creatures: {source}")]
+  HiddenBundledWrite { source: sqlx::Error },
+
   /// Beginning a compendium store transaction failed.
   #[error("Failed to begin a compendium {store} transaction: {source}")]
   TransactionBegin {
@@ -186,6 +194,8 @@ impl IntoResponse for CompendiumStoreError {
       | Self::SaveRowsRead { .. }
       | Self::SaveRowsWrite { .. }
       | Self::SaveRowDecode { .. }
+      | Self::HiddenBundledRead { .. }
+      | Self::HiddenBundledWrite { .. }
       | Self::TransactionBegin { .. }
       | Self::TransactionCommit { .. } => StatusCode::INTERNAL_SERVER_ERROR,
     };
