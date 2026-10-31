@@ -53,15 +53,16 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
     QA-TURN-04 and QA-TURN-05.  Done.  QA-TURN-05 is declined.
 13. Harden sign-in and sessions.  See QA-ACCT-05, QA-ACCT-06, QA-ACCT-08 and
     QA-ACCT-09.  Done as far as this repository reaches.  The rest needs
-    rust-template.  QA-ACCT-05 is a question.
+    rust-template.  So does QA-ACCT-05.
 14. Keep random encounters inside their budget and scale.  See QA-BUILD-04,
     QA-BUILD-05 and QA-BUILD-06.  Done.
 15. Fit the phone layout.  See QA-UI-01.  Done.
 16. Decide each open question.  Every entry marked question needs a decision
-    before it can be fixed or closed.  QA-TURN-05, QA-FIGHT-06 and QA-FIGHT-18
-    are declined.
-17. Sweep the remaining minor and cosmetic entries.  Done.  QA-COMP-12 needs a
-    decision and joins item 16.  So does the contact address in QA-UI-02 and
+    before it can be fixed or closed.  Decided and done except two.  The contact
+    address in QA-UI-02 and QA-ACCT-18 is still to be chosen.  QA-ACCT-05 waits
+    on rust-template.  QA-TURN-05, QA-FIGHT-06 and QA-FIGHT-18 are declined.
+17. Sweep the remaining minor and cosmetic entries.  Done.  QA-COMP-12 joined
+    item 16 for its decision.  So did the contact address in QA-UI-02 and
     QA-ACCT-18.
 
 * How the run worked
@@ -591,8 +592,9 @@ The suite did not cover these:
   localhost.  ~docs/DEPLOY.org~ documents HTTPS through Caddy.  A DM serving the
   app to a table on a home network would still hit this.
 - Evidence :: ~test_signing_in_over_plain_http_on_a_home_network_works~
-- Action :: Set Secure from the scheme of ~--base-url~.  Failing that, say so
-  when the cookie does not stick.
+- Action :: Decided.  Secure comes from the scheme of ~--base-url~.  The
+  foundation's ~listen~ sets Secure on every scheme and offers no hook.  The fix
+  waits on rust-template.  See the session-store entry in ~tasks.org~.
 
 *** QA-ACCT-06: A server restart signs every DM out and loses edits quietly
 
@@ -662,11 +664,13 @@ The suite did not cover these:
 
 *** QA-ACCT-11: A password change leaves other devices signed in
 
+- Status :: fixed
 - Severity :: question
 - Actual :: After a change on one device, the other device's session still
   works.
 - Evidence :: ~test_changing_the_password_signs_out_other_devices~
-- Action :: Decide on a policy.  Ending the other sessions is the usual default.
+- Action :: Fixed.  A password change signs out every other session.  The device
+  that made the change stays signed in.
 
 *** QA-ACCT-12: A request with no session hears "Invalid email or password"
 
@@ -741,20 +745,29 @@ The suite did not cover these:
 
 *** QA-ACCT-19: Sign-in timing reveals which emails have accounts
 
+- Status :: fixed
 - Severity :: question
 - Actual :: A wrong password for a known email took about 15 ms.  An unknown
   email took about 3 ms because the hash check is skipped.  Registration already
-  reveals a taken email with a 409.  The impact is small.  No test covers it.  A
-  timing test would be flaky.
-- Action :: Check unknown emails against a dummy hash or note the leak.
+  reveals a taken email with a 409.  The impact is small.
+- Evidence :: ~an_unknown_email_takes_as_long_as_a_wrong_password~ in
+  ~crates/lib/src/users/store.rs~.  It allows a fourfold gap and passed eight
+  runs in a row.
+- Action :: Fixed.  An unknown email is checked against a stand-in hash built
+  with the same parameters.  Registration still reveals a taken email.
 
 *** QA-ACCT-20: The CLI exits 0 when it did nothing
 
+- Status :: fixed
 - Severity :: question
 - Actual :: ~dice clear~ without ~--yes~ clears nothing and exits 0.  Its help
   mentions a prompt that does not exist.  Running the CLI with no subcommand
   also exits 0.
-- Action :: Exit non-zero in both cases or add the prompt.
+- Evidence :: ~test_running_with_no_subcommand_points_at_help~ and
+  ~test_dice_inspection_and_clearing_follow_the_dms_rolls~
+- Action :: Fixed.  ~dice clear~ without ~--yes~ fails and names the flag.  Its
+  help no longer mentions a prompt.  A run with no subcommand gets clap's usage
+  and exit code 2.
 
 *** QA-ACCT-21: Sign-in toasts cover the app bar
 
@@ -767,6 +780,7 @@ The suite did not cover these:
 
 *** QA-ACCT-22: Each device's boot writes the treasure table back
 
+- Status :: fixed
 - Severity :: question
 - Actual :: A second device's boot writes the table to the server with the
   bundled rows filled in.  The DM's own edits survive.  The bundled defaults
@@ -774,7 +788,8 @@ The suite did not cover these:
   account.
 - Evidence ::
   ~test_save_chains_lore_groups_and_treasure_follow_the_dm_to_a_second_device~
-- Action :: Do not persist the table when the change came from the server.
+- Action :: Fixed.  A table that arrives from the server is not written back.
+  The DM's own edits still save.
 
 ** Building and saving an encounter
 
@@ -1404,14 +1419,17 @@ The suite did not cover these:
 
 *** QA-COMP-12: Clear All does not stay cleared
 
+- Status :: fixed
 - Severity :: minor
 - Actual :: Signed out, the library shows empty until a reload brings back all
   330 bundled creatures.  Signed in, the toast says the library has 0 creatures
   while all 330 stay listed.  The dialog says bundled creatures go too.
-- Evidence :: ~test_cleared_library_stays_empty_after_a_reload~ and
-  ~test_signed_in_clear_all_empties_the_library~
-- Action :: Decide whether a DM can hide the bundled creatures.  Make the dialog
-  and the toast match that.
+- Evidence :: ~test_cleared_library_stays_empty_after_a_reload~,
+  ~test_signed_in_clear_all_empties_the_library~ and
+  ~test_a_hidden_bundled_creature_stays_hidden_until_a_reset~
+- Action :: Fixed.  A DM can hide bundled creatures.  Signed in or not, Clear
+  All and Clear Selected hide the bundled ones they leave out.  Reset brings
+  them back.  The dialog and the toast now hold true.
 
 *** QA-COMP-13: The Save Chain error shows in the compendium tab too
 
@@ -1526,18 +1544,30 @@ The suite did not cover these:
 
 *** QA-COMP-24: A file that is not a compendium gets a misleading warning
 
+- Status :: fixed
 - Severity :: question
 - Actual :: The message warns of compatibility issues and missing values.
   Nothing was imported.
 - Evidence :: ~test_importing_a_file_that_is_not_a_compendium_changes_nothing~
-- Action :: Say the file is not a compendium and nothing changed.
+  and ~test_a_compendium_file_that_cannot_be_read_says_nothing_changed~
+- Action :: Fixed.  A file that is not a compendium says so.  A compendium file
+  that will not read says it may come from another version.  Both say nothing
+  changed.
 
 *** QA-COMP-25: Server snapshot saves are slow
 
+- Status :: fixed
 - Severity :: question
 - Actual :: Each save took about 2 seconds on the idle debug build.  One took 26
   seconds while other suites ran.  A load took 0.4 seconds.
-- Action :: Time it on a release build before deciding anything.
+- Evidence :: Timed on a release build with a 330-creature body of about 34,000
+  JSON nodes.  On an idle machine one INSERT per node saved in about 0.58
+  seconds.  A first timing of 2.2 seconds ran under heavy load.  Loads took
+  about 0.13 seconds.
+  ~test_compendium_save_of_the_whole_library_round_trips_exactly~ guards the
+  body.
+- Action :: Fixed.  ~save_body.rs~ inserts 20 nodes per statement.  A save now
+  takes about 0.33 seconds.  Statements of 500 nodes were slower, at about 1.2.
 
 *** QA-COMP-26: A request with no session hears "Invalid email or password"
 

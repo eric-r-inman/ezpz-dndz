@@ -51,6 +51,7 @@ use axum::{
 use ezpz_dndz_lib::compendium::{Creature, CreatureDraft, Group, GroupDraft};
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashSet;
 
 use crate::users::CurrentUser;
 use crate::web_base::AppState;
@@ -70,30 +71,64 @@ use crate::web_base::AppState;
 /// user creatures, stamping the `is_bundled` flag so the frontend
 /// can branch Edit/Delete vs Duplicate on each row.  Bundled
 /// creatures come first to match the legacy ordering; user
-/// creatures append.
+/// creatures append.  The bundled creatures the caller has hidden
+/// are left out.
 async fn list_creatures(
   State(state): State<AppState>,
   Extension(CurrentUser(user)): Extension<CurrentUser>,
 ) -> Response {
-  let bundled = state
-    .bundled_compendium
-    .list()
-    .iter()
-    .cloned()
-    .map(|mut c| {
-      c.is_bundled = true;
-      c
-    });
-  match state.user_compendium.list(&user.id).await {
-    Ok(user_owned) => Json(
-      bundled
+  let listed: Result<Vec<Creature>, CompendiumStoreError> = async {
+    let hidden = state.user_compendium.hidden_bundled(&user.id).await?;
+    let user_owned = state.user_compendium.list(&user.id).await?;
+    Ok(
+      state
+        .bundled_compendium
+        .list()
+        .iter()
+        .filter(|c| !hidden.contains(&c.id))
+        .cloned()
+        .map(|mut c| {
+          c.is_bundled = true;
+          c
+        })
         .chain(user_owned.into_iter().map(|mut c| {
           c.is_bundled = false;
           c
         }))
-        .collect::<Vec<_>>(),
+        .collect(),
     )
-    .into_response(),
+  }
+  .await;
+  match listed {
+    Ok(creatures) => Json(creatures).into_response(),
+    Err(e) => e.into_response(),
+  }
+}
+
+/// Make the caller's library exactly the creatures in the body.  Their
+/// own creatures become the body's.  A bundled creature the body leaves
+/// out is hidden from them until a reset.  Clear All sends an empty
+/// body.  Clear Selected and Delete Selected send what they keep.
+async fn keep_compendium(
+  State(state): State<AppState>,
+  Extension(CurrentUser(user)): Extension<CurrentUser>,
+  Json(kept): Json<Vec<Creature>>,
+) -> Response {
+  let (kept_bundled, own): (Vec<Creature>, Vec<Creature>) = kept
+    .into_iter()
+    .partition(|c| state.bundled_compendium.contains(&c.id));
+  let kept_ids: HashSet<String> =
+    kept_bundled.into_iter().map(|c| c.id).collect();
+  let hidden: Vec<String> = state
+    .bundled_compendium
+    .list()
+    .iter()
+    .map(|c| c.id.clone())
+    .filter(|id| !kept_ids.contains(id))
+    .collect();
+  let count = own.len() + kept_ids.len();
+  match state.user_compendium.keep(&user.id, own, hidden).await {
+    Ok(()) => Json(serde_json::json!({ "kept": count })).into_response(),
     Err(e) => e.into_response(),
   }
 }
@@ -371,9 +406,9 @@ fn import_bad_body() -> Response {
 }
 
 /// Reset the caller's per-user compendium to empty AND wipe their
-/// groups.  Bundled creatures are always present (in-binary), so
-/// "reset" only has to drop the user's own creatures + groups —
-/// the bundled rows reappear automatically the next time the
+/// groups.  Bundled creatures ship in the binary.  A reset only has
+/// to drop the user's own creatures + groups and un-hide every
+/// bundled creature.  The bundled rows reappear the next time the
 /// merged list is read.  Other users are untouched.
 ///
 /// Groups reference creature ids that may have been removed by
@@ -385,7 +420,7 @@ async fn reset_compendium(
 ) -> Response {
   if let Err(e) = state
     .user_compendium
-    .replace_for_user(&user.id, Vec::new())
+    .keep(&user.id, Vec::new(), Vec::new())
     .await
   {
     return e.into_response();
@@ -657,6 +692,16 @@ pub fn router() -> ApiRouter<AppState> {
         op.description(
           "Add creatures and groups to the compendium under fresh ids. \
            Body: { creatures, groups }.  Existing entries are kept.",
+        )
+      }),
+    )
+    .api_route(
+      "/api/compendium/keep",
+      post_with(keep_compendium, |op: TransformOperation| {
+        op.description(
+          "Make the library exactly the supplied creatures.  Body: \
+           Vec<Creature>.  Bundled creatures left out are hidden from \
+           the caller until a reset.",
         )
       }),
     )
