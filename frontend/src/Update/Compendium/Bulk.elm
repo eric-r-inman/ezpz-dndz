@@ -93,7 +93,9 @@ importFileRead raw model =
 
 The two parsers are tried in order via `Decode.oneOf`; whichever
 matches sets the `PendingImport` ready for the confirmation
-banner. A parse failure shows its error on the page instead.
+banner. A parse failure shows its error on the page instead. The
+error tells a file that is no compendium from one that is but will
+not read. Either way nothing changed.
 
 -}
 importFileLoaded : String -> CompendiumUi -> CompendiumUi
@@ -125,18 +127,34 @@ importFileLoaded raw ui =
             }
 
         Err _ ->
-            -- Surface a friendly compatibility note instead of the
-            -- Json.Decode trace.  Older save files are the common
-            -- cause (a since-renamed field, a new required field,
-            -- etc.); the alert popup that consumes `bulkError`
-            -- carries an OK button so the user can dismiss and
-            -- try a different file.
+            -- The alert that shows `bulkError` carries an OK button,
+            -- so the DM can dismiss it and pick another file.
             { ui
                 | pending = Nothing
                 , bulkError =
                     Just
-                        "This save file may have compatibility issues with the current software version; some values may be incorrect or missing."
+                        (if isCompendiumShaped raw then
+                            "This compendium file could not be read. It may come from another version of the app. Nothing changed."
+
+                         else
+                            "This file is not a compendium. Nothing changed."
+                        )
             }
+
+
+{-| Whether `raw` has a compendium's outline: an object with a
+`creatures` field, or a bare list.
+-}
+isCompendiumShaped : String -> Bool
+isCompendiumShaped raw =
+    Decode.decodeString
+        (Decode.oneOf
+            [ Decode.field "creatures" Decode.value |> Decode.map (always True)
+            , Decode.list Decode.value |> Decode.map (always True)
+            ]
+        )
+        raw
+        |> Result.withDefault False
 
 
 resetClick : Model -> ( Model, Cmd Msg )

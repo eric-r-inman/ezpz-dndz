@@ -259,6 +259,47 @@ async fn test_compendium_save_create_list_get_roundtrip() {
 }
 
 #[tokio::test]
+async fn test_compendium_save_of_the_whole_library_round_trips_exactly() {
+  let (_temp, state) = stub_app_state().await;
+  let app = build_test_router(state);
+  let cookie = register_and_get_cookie(&app).await;
+  // The full library a DM saves runs to tens of thousands of nodes,
+  // so it spans many insert batches.  The tail holds the values a
+  // node row has to keep apart.
+  let body = serde_json::json!({
+    "creatures": list_creatures(&app, &cookie).await,
+    "groups": [],
+    "edges": [1, 1.0, -0.5, 1e-300, 18446744073709551615u64, null, true, false,
+              "ünïcode ✓", "", {"nested": [[], {}, [null]]}],
+  });
+
+  let put = send_json(
+    &app,
+    &cookie,
+    "PUT",
+    "/api/compendium/saves/Whole%20library",
+    body.clone(),
+  )
+  .await;
+  assert_eq!(put.status(), StatusCode::OK);
+
+  let get = app
+    .oneshot(
+      Request::builder()
+        .uri("/api/compendium/saves/Whole%20library")
+        .header("cookie", &cookie)
+        .body(Body::empty())
+        .unwrap(),
+    )
+    .await
+    .unwrap();
+  assert_eq!(get.status(), StatusCode::OK);
+  let saved: serde_json::Value =
+    serde_json::from_str(&read_body(get).await).unwrap();
+  assert_eq!(saved["creatures"], body);
+}
+
+#[tokio::test]
 async fn test_compendium_save_overwrite_conflicts_without_flag() {
   let (_temp, state) = stub_app_state().await;
   let app = build_test_router(state);

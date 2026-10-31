@@ -950,11 +950,25 @@ def test_importing_a_file_that_is_not_a_compendium_changes_nothing(app, tab, tmp
     junk = tmp_path / "shopping-list.json"
     junk.write_text('{"eggs": 12}')
     import_from_file(tab, junk)
-    expect(tab.page.get_by_text(re.compile("compatibility issues"))).to_be_visible()
+    expect(tab.page.get_by_text("This file is not a compendium. Nothing changed.")).to_be_visible()
     tab.shot("import-junk")
     tab.button("OK").click()
     expect(tab.rows()).to_have_count(len(bundled) + 1)
     expect(tab.row("Bog Hag")).to_be_visible()
+
+
+def test_a_compendium_file_that_cannot_be_read_says_nothing_changed(app, tab, tmp_path, bundled):
+    broken = tmp_path / "old-compendium.json"
+    broken.write_text('{"creatures": [{"name": 3}]}')
+    import_from_file(tab, broken)
+    expect(
+        tab.page.get_by_text(
+            "This compendium file could not be read. It may come from another"
+            " version of the app. Nothing changed."
+        )
+    ).to_be_visible()
+    tab.button("OK").click()
+    expect(tab.rows()).to_have_count(len(bundled))
 
 
 def test_reset_asks_first_then_returns_to_the_bundled_library(app, tab, bundled):

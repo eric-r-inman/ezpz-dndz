@@ -143,6 +143,10 @@ meReceived result model =
                         , localEncounterRaw = Nothing
                         , localDiceHistoryRaw = Nothing
                         , localCompendiumRaw = Nothing
+
+                        -- The signed-out table came from localStorage
+                        -- with the flags.
+                        , userTreasureTableReady = True
                     }
 
                 withDice =
