@@ -58,10 +58,9 @@ The list runs from the most harm to a DM at the table to the least.  Items 1 to
     QA-BUILD-05 and QA-BUILD-06.  Done.
 15. Fit the phone layout.  See QA-UI-01.  Done.
 16. Decide each open question.  Every entry marked question needs a decision
-    before it can be fixed or closed.  Decided and done except three.  The
-    contact address in QA-UI-02 and QA-ACCT-18 is still to be chosen.
-    QA-ACCT-05 waits on rust-template.  QA-COMP-25 waits on a choice of fix.
-    QA-TURN-05, QA-FIGHT-06 and QA-FIGHT-18 are declined.
+    before it can be fixed or closed.  Decided and done except two.  The contact
+    address in QA-UI-02 and QA-ACCT-18 is still to be chosen.  QA-ACCT-05 waits
+    on rust-template.  QA-TURN-05, QA-FIGHT-06 and QA-FIGHT-18 are declined.
 17. Sweep the remaining minor and cosmetic entries.  Done.  QA-COMP-12 joined
     item 16 for its decision.  So did the contact address in QA-UI-02 and
     QA-ACCT-18.
@@ -1557,15 +1556,18 @@ The suite did not cover these:
 
 *** QA-COMP-25: Server snapshot saves are slow
 
+- Status :: fixed
 - Severity :: question
 - Actual :: Each save took about 2 seconds on the idle debug build.  One took 26
   seconds while other suites ran.  A load took 0.4 seconds.
-- Evidence :: Timed on a release build with a 330-creature body.  The first save
-  took 0.8 seconds and the next four about 2.2 seconds each.  A load took 0.14
-  seconds.  The debug build was no slower.  The body holds about 34,000 JSON
-  nodes.  ~save_body.rs~ inserts one row for each.
-- Action :: Timed.  The cost is the per-node insert.  The build does not matter.
-  The fix waits on a choice in ~tasks.org~.
+- Evidence :: Timed on a release build with a 330-creature body of about 34,000
+  JSON nodes.  On an idle machine one INSERT per node saved in about 0.58
+  seconds.  A first timing of 2.2 seconds ran under heavy load.  Loads took
+  about 0.13 seconds.
+  ~test_compendium_save_of_the_whole_library_round_trips_exactly~ guards the
+  body.
+- Action :: Fixed.  ~save_body.rs~ inserts 20 nodes per statement.  A save now
+  takes about 0.33 seconds.  Statements of 500 nodes were slower, at about 1.2.
 
 *** QA-COMP-26: A request with no session hears "Invalid email or password"
 

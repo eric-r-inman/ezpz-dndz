@@ -31,6 +31,8 @@
     leaves out until a reset.  No action needed.
 15. A compendium import that fails says whether the file is a compendium at all.
     No action needed.
+16. Saving the compendium to the server takes about half as long.  No action
+    needed.
 ** Breaking
 1. A password change signs the account out on every other device.  Sign in again
    there with the new password.
