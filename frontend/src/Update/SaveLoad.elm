@@ -345,45 +345,49 @@ confirmCancel model =
     ( withUi (\ui -> { ui | confirm = Nothing }) model, Cmd.none )
 
 
-{-| Go through with the pending action.
+{-| Go through with the pending action. A file load needs no
+account. Every other action reaches the server.
 -}
 confirmConfirm : Model -> ( Model, Cmd Msg )
 confirmConfirm model =
-    case ( modalUi model, model.auth ) of
-        ( Just ui, Auth.AuthAuthenticated _ ) ->
-            let
-                started cmd =
-                    ( withUi
-                        (\u -> { u | busy = True, confirm = Nothing, error = Nothing })
-                        model
-                    , cmd
-                    )
-            in
-            case ui.confirm of
-                Just (ConfirmLoad name) ->
-                    started (Encounter.Wire.getSaveCmd (SaveLoadServerResponse name) name)
+    case Maybe.andThen .confirm (modalUi model) of
+        Just (ConfirmFileLoad encounter) ->
+            adoptFile encounter model
 
-                Just (ConfirmOverwrite name) ->
-                    started
-                        (Encounter.Wire.putSaveCmd
-                            (SaveLoadPersistResponse name)
-                            { name = name, overwrite = True }
-                            model.encounter
-                        )
+        Just (ConfirmLoad name) ->
+            onServer (Encounter.Wire.getSaveCmd (SaveLoadServerResponse name) name) model
 
-                Just (ConfirmDelete name) ->
-                    started (Encounter.Wire.deleteSaveCmd (SaveLoadDeleteResponse name) name)
+        Just (ConfirmOverwrite name) ->
+            onServer
+                (Encounter.Wire.putSaveCmd
+                    (SaveLoadPersistResponse name)
+                    { name = name, overwrite = True }
+                    model.encounter
+                )
+                model
 
-                Nothing ->
-                    ( model, Cmd.none )
+        Just (ConfirmDelete name) ->
+            onServer (Encounter.Wire.deleteSaveCmd (SaveLoadDeleteResponse name) name) model
 
-        ( Just _, _ ) ->
-            ( withUi (\u -> { u | confirm = Nothing, error = Just signInRequired }) model
-            , Cmd.none
+        Nothing ->
+            ( model, Cmd.none )
+
+
+{-| Start a confirmed server action. A signed-out GM is asked to
+sign in first.
+-}
+onServer : Cmd Msg -> Model -> ( Model, Cmd Msg )
+onServer cmd model =
+    case model.auth of
+        Auth.AuthAuthenticated _ ->
+            ( withUi (\u -> { u | busy = True, confirm = Nothing, error = Nothing }) model
+            , cmd
             )
 
         _ ->
-            ( model, Cmd.none )
+            ( withUi (\u -> { u | confirm = Nothing, error = Just signInRequired }) model
+            , Cmd.none
+            )
 
 
 deleteResponse : String -> Result Http.Error () -> Model -> ( Model, Cmd Msg )
@@ -604,28 +608,16 @@ deviceFileChosen file model =
     ( model, Task.perform SaveLoadDeviceFileRead (File.toString file) )
 
 
-{-| Decode the file the GM picked. A success forces pre-combat
-mode, for the reason `serverResponse` gives.
+{-| Decode the file the GM picked. A file that reads asks before it
+replaces the encounter on screen. A server load asks the same way.
 -}
 deviceFileRead : String -> Model -> ( Model, Cmd Msg )
 deviceFileRead raw model =
     case Decode.decodeString Encounter.Wire.decodeEncounter raw of
         Ok encounter ->
-            let
-                fresh =
-                    { encounter | round = 1, activeName = "" }
-
-                next =
-                    Model.reaimStale
-                        { model
-                            | encounter = fresh
-                            , savedSnapshot = Just fresh
-                            , savedAs = Nothing
-                        }
-            in
-            Update.Toast.push ToastSuccess
-                "Loaded encounter from file."
-                (close next)
+            ( withUi (\ui -> { ui | confirm = Just (ConfirmFileLoad encounter), error = Nothing }) model
+            , Cmd.none
+            )
 
         -- The decoder's own report quotes the whole file back.
         Err _ ->
@@ -639,3 +631,25 @@ deviceFileRead raw model =
                 model
             , Cmd.none
             )
+
+
+{-| The file's encounter replaces the one on screen. It starts in
+pre-combat mode. `serverResponse` gives the reason.
+-}
+adoptFile : Encounter -> Model -> ( Model, Cmd Msg )
+adoptFile encounter model =
+    let
+        fresh =
+            { encounter | round = 1, activeName = "" }
+    in
+    Update.Toast.push ToastSuccess
+        "Loaded encounter from file."
+        (close
+            (Model.reaimStale
+                { model
+                    | encounter = fresh
+                    , savedSnapshot = Just fresh
+                    , savedAs = Nothing
+                }
+            )
+        )

@@ -11,10 +11,10 @@ module Encounter exposing
     , mapCreature, nextCover, toggleReaction, toggleSpecialReaction
     , emptyDeathSaves, addDeathSaveSuccesses, addDeathSaveFailures
     , isDeathSaveStable, isDeathSaveDead
-    , addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
-    , describeDuration
+    , addCondition, addConditionIfMissing, addConditionWithId, updateCondition, removeCondition, findCondition
+    , describeDuration, skipsFirstTick
     , addSaveNotice, removeSaveNotice
-    , AreaTracker, DamageTrigger(..), RechargeAbility, Standing(..), conditionLevel, creatureNamed, damageReminders, damageRolls, damageTaken, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, standing, unsavedChanges
+    , AreaTracker, DamageTrigger(..), RechargeAbility, Standing(..), addExhaustionLevel, conditionLevel, creatureNamed, damageReminders, damageRolls, damageTaken, defaultTarget, excludingPlaceholderNames, hasConditionNamed, hasCreature, isEnemy, isPlaceholderName, nextExhaustionLevel, pruneOrphanedLinks, remindersAt, stacksWithItself, standing, unsavedChanges
     )
 
 {-| Domain layer for the encounter manager.
@@ -77,8 +77,8 @@ mutation (move, sort, remove, duplicate, append) lives in
 
 # Conditions / effects
 
-@docs addCondition, addConditionWithId, updateCondition, removeCondition, findCondition
-@docs describeDuration
+@docs addCondition, addConditionIfMissing, addConditionWithId, updateCondition, removeCondition, findCondition
+@docs describeDuration, skipsFirstTick
 
 
 # Save notices
@@ -372,6 +372,8 @@ turn-phase hook fire on the bearer; rings when it hits 0.
     shows a flashing "0" with an × button until the GM
     dismisses it. The view layer also mounts an `<audio>`
     element with the ping sound when any timer is ringing.
+  - `skipNextTick` lets an end-of-turn timer started on its
+    bearer's turn skip that turn. See `skipsFirstTick`.
 
 -}
 type alias Timer =
@@ -379,6 +381,7 @@ type alias Timer =
     , phase : TurnPhase
     , ringing : Bool
     , note : String
+    , skipNextTick : Bool
     }
 
 
@@ -900,6 +903,19 @@ addCondition target draft enc =
     Tuple.first (addConditionWithId target draft enc)
 
 
+{-| `addCondition` for a condition the target may already carry. A
+condition does not stack with itself, so a carried one is left
+alone rather than doubled.
+-}
+addConditionIfMissing : String -> ConditionDraft -> Encounter -> Encounter
+addConditionIfMissing target draft enc =
+    if hasConditionNamed target draft.name enc then
+        enc
+
+    else
+        addCondition target draft enc
+
+
 {-| `addCondition`, also handing back the id the new condition
 was assigned — for callers that must reference the instance
 later (the condition log's undo removes by id).
@@ -934,11 +950,42 @@ level it has, starting at 1, and no other condition has one.
 -}
 conditionLevel : String -> Maybe Int -> Maybe Int
 conditionLevel name level =
-    if name == "Exhaustion" then
+    if stacksWithItself name then
         Just (Maybe.withDefault 1 level)
 
     else
         Nothing
+
+
+{-| Exhaustion is the one condition that stacks with itself. Each
+time a creature receives it, the creature gains a level. Any other
+condition a creature either has or does not.
+-}
+stacksWithItself : String -> Bool
+stacksWithItself name =
+    name == "Exhaustion"
+
+
+{-| The named creature receives Exhaustion again and gains a level.
+Level 6 is death. Receiving it there changes nothing.
+-}
+addExhaustionLevel : String -> Encounter -> Encounter
+addExhaustionLevel target =
+    mapCreature target
+        (\c ->
+            { c
+                | conditions =
+                    List.map
+                        (\cond ->
+                            if stacksWithItself cond.name then
+                                { cond | level = Maybe.map (\l -> Basics.min 6 (l + 1)) cond.level }
+
+                            else
+                                cond
+                        )
+                        c.conditions
+            }
+        )
 
 
 {-| One step up the Exhaustion ladder: 1 through 6, then back to 0.
@@ -1093,6 +1140,16 @@ conditionsWhere pick name enc =
         |> Maybe.withDefault []
         |> List.filter (\cond -> cond.saveToEnd |> Maybe.map pick |> Maybe.withDefault False)
         |> List.map (\cond -> ( name, cond.id ))
+
+
+{-| Whether a turn count started now lets the turn in progress pass
+uncounted. An end-of-turn count started on the counted creature's
+own turn skips that turn. Timers, condition countdowns and Save
+Chain effects all follow this rule.
+-}
+skipsFirstTick : String -> String -> TurnPhase -> Bool
+skipsFirstTick activeName counted phase =
+    phase == AtEnd && counted == activeName
 
 
 {-| Render a one-line human-readable description of a duration

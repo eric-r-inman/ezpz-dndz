@@ -1,6 +1,6 @@
 module Encounter.Roster exposing
     ( moveCreature, landingIndex
-    , sortByInitiative
+    , sortByInitiative, reslot
     , removeCreature, duplicateCreature, insertCopyAfter
     , appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
     , appendPlaceholder, renameCreature, replaceCreature
@@ -19,7 +19,7 @@ mutations through these and lifecycle ticks through
 `Encounter.Lifecycle` interchangeably.
 
 @docs moveCreature, landingIndex
-@docs sortByInitiative
+@docs sortByInitiative, reslot
 @docs removeCreature, duplicateCreature, insertCopyAfter
 @docs appendCreatures, uniqueInstanceName, uniqueMinionName, instanceBaseName
 @docs appendPlaceholder, renameCreature, replaceCreature
@@ -35,10 +35,9 @@ ones between. A `from` outside the queue leaves it unchanged; a
 `to` past the end lands the creature at the bottom, which is what
 a drop below the last card means.
 
-A pure position move: initiative values are untouched, so a
-subsequent `sortByInitiative` re-orders the queue back to
-initiative order. That is the documented contract — manual moves
-are temporary, and the next sort wipes them.
+A pure position move: initiative values are untouched. A newcomer
+or an initiative edit keeps the move. Only `sortByInitiative` puts
+the queue back in initiative order.
 
 -}
 moveCreature : Int -> Int -> Encounter -> Encounter
@@ -90,16 +89,63 @@ modifier the roll added). If both are equal the name breaks the tie.
 A trailing copy number compares as a number.
 
 `activeName` is preserved across the sort, so a re-sort
-mid-combat doesn't reset whose turn it is.
+mid-combat doesn't reset whose turn it is. This is the one sort
+that undoes the DM's drags.
 
 -}
 sortByInitiative : Encounter -> Encounter
 sortByInitiative enc =
+    { enc | creatures = List.sortBy initiativeKey enc.creatures }
+
+
+{-| Move the named creatures to the slots their initiatives now
+earn. Everyone else keeps their place, dragged cards included.
+-}
+reslot : List String -> Encounter -> Encounter
+reslot names enc =
     let
-        sortKey c =
-            ( ( negate c.initiative, negate c.initiativeBonus ), copyKey c.name )
+        ( moved, kept ) =
+            List.partition (\c -> List.member c.name names) enc.creatures
     in
-    { enc | creatures = List.sortBy sortKey enc.creatures }
+    { enc | creatures = slotIn moved kept }
+
+
+initiativeKey : Creature -> ( ( Int, Int ), ( String, Int ) )
+initiativeKey c =
+    ( ( negate c.initiative, negate c.initiativeBonus ), copyKey c.name )
+
+
+{-| Slot each newcomer into the queue by initiative, highest first.
+Slotted into a sorted queue, they land in sorted order.
+-}
+slotIn : List Creature -> List Creature -> List Creature
+slotIn newcomers creatures =
+    List.foldl slotOne creatures (List.sortBy initiativeKey newcomers)
+
+
+{-| The newcomer lands where the fewest creatures sit on the wrong
+side of it. A dragged queue has no spot that is right for everyone.
+The lowest of equally good spots wins, so a newcomer joins after
+the creatures already there.
+-}
+slotOne : Creature -> List Creature -> List Creature
+slotOne newcomer creatures =
+    let
+        outranks a b =
+            compare (initiativeKey a) (initiativeKey b) == LT
+
+        misplaced spot =
+            List.length (List.filter (outranks newcomer) (List.take spot creatures))
+                + List.length (List.filter (\c -> outranks c newcomer) (List.drop spot creatures))
+
+        best =
+            List.range 0 (List.length creatures)
+                |> List.map (\spot -> ( misplaced spot, negate spot ))
+                |> List.minimum
+                |> Maybe.map (Tuple.second >> negate)
+                |> Maybe.withDefault 0
+    in
+    List.take best creatures ++ newcomer :: List.drop best creatures
 
 
 {-| A name with its copy number split off. "Goblin Warrior 10" then
@@ -344,15 +390,15 @@ stripTrailingMinion name =
             name
 
 
-{-| Append a batch of creatures to the queue, then re-sort by
-initiative. Used by the Compendium → queue handoff after the
-batch initiative rolls land. `activeName` is preserved so adding
-creatures mid-combat doesn't reset whose turn it is.
+{-| Slot a batch of creatures into the queue by initiative. The
+creatures already there keep their order, dragged cards included.
+Used by the Compendium-to-queue handoff after the batch initiative
+rolls land. `activeName` is preserved so adding creatures
+mid-combat doesn't reset whose turn it is.
 -}
 appendCreatures : List Creature -> Encounter -> Encounter
 appendCreatures newcomers enc =
-    { enc | creatures = enc.creatures ++ newcomers }
-        |> sortByInitiative
+    { enc | creatures = slotIn newcomers enc.creatures }
 
 
 {-| Append a stub combatant ("Placeholder 1", "Placeholder 2", …)

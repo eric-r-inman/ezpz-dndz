@@ -31,6 +31,11 @@ pub enum DiceCliError {
 
   #[error("Failed to serialize the dice-roll history to JSON: {0}")]
   SerializeError(#[source] serde_json::Error),
+
+  #[error(
+    "Refused to clear the dice history for {email}: pass --yes to confirm"
+  )]
+  ClearUnconfirmed { email: String },
 }
 
 /// Subcommands grouped under `ezpz-dndz-cli dice <...>`.
@@ -64,9 +69,8 @@ pub enum DiceCommand {
     n: usize,
   },
 
-  /// Wipe one user's roll history.  This is destructive; pass
-  /// `--yes` to bypass the confirmation prompt (the only "ask" the
-  /// CLI does, since you very rarely mean to nuke a roll log).
+  /// Wipe one user's roll history.  The wipe cannot be undone, so the
+  /// command refuses to run without `--yes`.
   Clear {
     #[command(flatten)]
     db: DbArgs,
@@ -75,7 +79,7 @@ pub enum DiceCommand {
     #[arg(long)]
     email: String,
 
-    /// Skip the interactive confirmation.
+    /// Confirm the wipe.
     #[arg(long)]
     yes: bool,
   },
@@ -89,14 +93,13 @@ impl DiceCommand {
       }
       DiceCommand::Tail { db, email, n } => db::block_on(tail(db, email, *n)),
       DiceCommand::Clear { db, email, yes } => {
-        if !*yes {
-          eprintln!(
-            "About to wipe the dice history for {email}.  \
-             Pass --yes to confirm."
-          );
-          return Ok(());
+        if *yes {
+          db::block_on(clear(db, email))
+        } else {
+          Err(DiceCliError::ClearUnconfirmed {
+            email: email.clone(),
+          })
         }
-        db::block_on(clear(db, email))
       }
     }
   }

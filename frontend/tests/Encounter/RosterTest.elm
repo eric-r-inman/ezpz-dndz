@@ -10,6 +10,8 @@ These exercise the documented invariants:
     no-op.
   - `sortByInitiative` preserves `activeName` and ties break on
     `initiativeBonus` then alphabetic name.
+  - `appendCreatures` and `reslot` slot creatures in by initiative
+    and keep a dragged order.
   - `removeCreature` advances the active marker when it deletes
     the active creature.
   - `duplicateCreature` reseeds `id`s on conditions and notices
@@ -39,6 +41,7 @@ suite =
         , uniqueInstanceNameSuite
         , uniqueMinionNameSuite
         , appendCreaturesSuite
+        , reslotSuite
         ]
 
 
@@ -523,4 +526,47 @@ appendCreaturesSuite =
                 Seed.initialEncounter
                     |> Roster.appendCreatures []
                     |> Expect.equal Seed.initialEncounter
+        , test "slots a newcomer by initiative and keeps a dragged order" <|
+            \_ ->
+                Roster.appendCreatures [ mkCreature "D" 12 ] dragged
+                    |> names
+                    |> Expect.equal [ "A", "C", "B", "D" ]
+        , test "puts a newcomer that outranks everyone on top" <|
+            \_ ->
+                Roster.appendCreatures [ mkCreature "D" 25 ] dragged
+                    |> names
+                    |> Expect.equal [ "D", "A", "C", "B" ]
+        ]
+
+
+{-| `threeCreatures` after the DM dragged C above B.
+-}
+dragged : Encounter
+dragged =
+    { threeCreatures | creatures = [ mkCreature "A" 20, mkCreature "C" 10, mkCreature "B" 15 ] }
+
+
+
+-- ── reslot ───────────────────────────────────────────────────────────────
+
+
+reslotSuite : Test
+reslotSuite =
+    describe "reslot"
+        [ test "moves only the creature whose initiative changed" <|
+            \_ ->
+                Encounter.mapCreature "A" (\c -> { c | initiative = 12 }) dragged
+                    |> Roster.reslot [ "A" ]
+                    |> names
+                    |> Expect.equal [ "C", "B", "A" ]
+        , test "reslotting everyone sorts the queue" <|
+            \_ ->
+                Roster.reslot [ "A", "B", "C" ] dragged
+                    |> names
+                    |> Expect.equal [ "A", "B", "C" ]
+        , test "keeps whose turn it is" <|
+            \_ ->
+                Roster.reslot [ "A", "B", "C" ] { dragged | activeName = "C" }
+                    |> .activeName
+                    |> Expect.equal "C"
         ]

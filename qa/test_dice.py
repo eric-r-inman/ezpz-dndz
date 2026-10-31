@@ -54,7 +54,7 @@ def test_a_malformed_expression_says_it_could_not_be_read_and_rolls_nothing(app,
     expect(dice.root.get_by_text("Couldn't parse")).to_have_count(0)
 
 
-@pytest.mark.parametrize("typed", ["0d6", "1d0"])
+@pytest.mark.parametrize("typed", ["0d6", "1d0", "2d6 bananas"])
 def test_an_impossible_die_is_refused_rather_than_rolled_as_something_else(app, typed):
     dice = Dice(app).open()
     dice.roll(typed)
