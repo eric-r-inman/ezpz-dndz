@@ -6,6 +6,16 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump encoding_rs from 0.8.42 to 0.8.44
+2. Bump js-sys from 0.3.106 to 0.3.107
+3. Bump log from 0.4.34 to 0.4.35
+4. Bump utf8_iter from 1.0.4 to 1.1.0
+5. Bump wasm-bindgen from 0.2.129 to 0.2.130
+6. Bump wasm-bindgen-futures from 0.4.79 to 0.4.80
+7. Bump wasm-bindgen-macro from 0.2.129 to 0.2.130
+8. Bump wasm-bindgen-macro-support from 0.2.129 to 0.2.130
+9. Bump wasm-bindgen-shared from 0.2.129 to 0.2.130
+10. Bump web-sys from 0.3.106 to 0.3.107
 ** Security
 * v0.39.0
 ** Fixes
