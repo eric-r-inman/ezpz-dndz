@@ -178,6 +178,7 @@ pub struct Timer {
   pub phase: String,
   pub ringing: bool,
   pub note: String,
+  pub skip_next_tick: bool,
 }
 
 pub struct TreasureSettings {
@@ -755,6 +756,8 @@ fn decode_timer(value: &Value) -> Result<Timer, String> {
     phase: req_token(map, "phase", PHASES, "timer")?,
     ringing: req_bool(map, "ringing", "timer")?,
     note: opt_str(map, "note", ""),
+    // Added after `note`.  Older saves lack it.
+    skip_next_tick: opt_bool(map, "skipNextTick", false),
   })
 }
 
@@ -1146,6 +1149,7 @@ fn encode_timer(timer: &Timer) -> Value {
     "phase": timer.phase,
     "ringing": timer.ringing,
     "note": timer.note,
+    "skipNextTick": timer.skip_next_tick,
   })
 }
 
@@ -1364,7 +1368,7 @@ mod tests {
         "inactive": false,
         "note": "angry",
         "memo": "hoards gold",
-        "timer": { "remaining": 4, "phase": "atEnd", "ringing": false, "note": "lair" },
+        "timer": { "remaining": 4, "phase": "atEnd", "ringing": false, "note": "lair", "skipNextTick": true },
         "creatureId": "dragon-uuid",
         "legendaryActionsCount": 3,
         "legendaryActionsLairBonus": 1,

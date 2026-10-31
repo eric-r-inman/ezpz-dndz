@@ -415,12 +415,12 @@ def test_a_dragged_order_decides_who_acts_next(app):
 
 
 @pytest.mark.cross_browser
-def test_quick_add_mid_fight_puts_a_dragged_queue_back_in_initiative_order(app):
+def test_quick_add_mid_fight_keeps_a_dragged_order(app):
     fight(app)
     app.begin_combat()
     drag_card(app, "Ogre", onto="Goblin Warrior 2", half="lower")
     app.add("Skeleton")
-    assert app.card_names() == [*ORDER, "Skeleton"]
+    assert app.card_names() == ["Goblin Warrior 2", "Ogre", "Wolf", "Goblin Warrior", "Skeleton"]
     assert app.active_name() == "Goblin Warrior 2"
 
 
@@ -591,12 +591,15 @@ def test_a_start_of_turn_timer_ticks_as_the_bearers_turn_begins(app):
     expect(timer_pill(app, "Goblin Warrior")).to_have_class(re.compile("timer-pill--ringing"))
 
 
-def test_an_end_of_turn_timer_set_on_the_bearers_turn_counts_that_turn(app):
+def test_an_end_of_turn_timer_set_on_the_bearers_turn_skips_that_turn(app):
     fight(app)
     app.begin_combat()
     app.next_turn()
     assert app.active_name() == "Wolf"
     start_timer(app, "Wolf", 1, "end")
+    advance(app, 4)
+    assert app.active_name() == "Wolf"
+    expect(timer_pill(app, "Wolf")).not_to_have_class(re.compile("timer-pill--ringing"))
     app.next_turn()
     expect(timer_pill(app, "Wolf")).to_have_class(re.compile("timer-pill--ringing"))
 

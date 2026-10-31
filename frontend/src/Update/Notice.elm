@@ -12,14 +12,19 @@ than a constructor the reader has to look up.
 
 import Model exposing (Model)
 import Msg exposing (Msg)
+import Util.Number
+import Util.Text
 
 
-{-| What the modal says when a creature already carries the
-condition the GM is applying.
+{-| What the modal says when every creature the GM aimed at
+already carries the condition.
 -}
-alreadyHasCondition : String
-alreadyHasCondition =
-    "The creature already has this condition"
+alreadyHasCondition : List String -> String -> String
+alreadyHasCondition holders condition =
+    Util.Text.andList holders
+        ++ Util.Number.pluralize " already has " " already have " (List.length holders)
+        ++ condition
+        ++ "."
 
 
 dismiss : Model -> ( Model, Cmd Msg )

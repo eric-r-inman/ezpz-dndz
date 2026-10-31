@@ -29,9 +29,9 @@ apply time — an integer applies directly, a dice formula rolls
 first and the total lands via `SaveChainApplyRollLanded`.
 
 The `HpEffect.HalfFailDamage` variant is a success-side hint:
-resolve the fail's raw text (rolling if it's a formula), then
-halve the resulting integer. Independent from any prior Fail
-apply so a GM can click Pass without having clicked Fail first.
+resolve the fail's raw text and then halve the resulting integer. A
+formula halves the roll the failed saves took. Pass rolls the
+formula itself only when no Fail roll exists.
 
 @docs SaveChain, SaveOutcome, HpEffect
 @docs EffectApply, EffectDuration, TurnRef, EffectSave
@@ -173,9 +173,9 @@ condition-apply chains don't touch HP at all.
 either a plain integer (`"28"`) applied as-is, or a dice
 formula (`"8d6"`) rolled at apply time.
 
-`HalfFailDamage` is a success-side sentinel — the Update layer
-resolves the fail's raw text (rolling if it's a formula) and
-halves the resulting integer.
+`HalfFailDamage` is a success-side sentinel. The Update layer
+halves the fail side's amount. A formula halves the fail side's
+roll.
 
 `DrainDamage` is damage that also lowers the target's hit point
 maximum by the amount dealt — Harm, a wight's Life Drain.
@@ -484,15 +484,10 @@ resolveDuration activeName bearer duration =
             Encounter.DurationUntilTurn Encounter.AtEnd Encounter.OnCurrentTurn bearer
 
         LastsForTurns phase turns ->
-            Encounter.DurationCountdown phase turns (skipsFirstTick activeName bearer phase) Nothing
+            Encounter.DurationCountdown phase turns (Encounter.skipsFirstTick activeName bearer phase) Nothing
 
         LastsOneMinute ->
-            Encounter.DurationCountdown Encounter.AtEnd 10 (skipsFirstTick activeName bearer Encounter.AtEnd) Nothing
-
-
-skipsFirstTick : String -> String -> Encounter.TurnPhase -> Bool
-skipsFirstTick activeName bearer phase =
-    phase == Encounter.AtEnd && bearer == activeName
+            Encounter.DurationCountdown Encounter.AtEnd 10 (Encounter.skipsFirstTick activeName bearer Encounter.AtEnd) Nothing
 
 
 {-| The condition a granted immunity lives on as, named for the

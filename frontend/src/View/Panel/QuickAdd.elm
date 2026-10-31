@@ -51,9 +51,7 @@ view header model =
 
 {-| Top row of the Quick Add panel: name-search input on the
 left, sort toggle on the right. The search input filters the
-list in real time via `Compendium.search`, which already powers
-the full Compendium browser, so the matching surface is
-consistent (name / race / source / CR).
+list by name in real time.
 -}
 controlsRow : QuickAddUi -> Html Msg
 controlsRow ui =
@@ -99,7 +97,7 @@ listSection ui model =
                 CompendiumDbLoaded db ->
                     let
                         filteredDb =
-                            Compendium.search ui.searchText db
+                            Compendium.searchNames ui.searchText db
 
                         sortedDb =
                             case ui.sort of

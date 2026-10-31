@@ -217,13 +217,13 @@ def test_shift_click_on_a_folded_heading_just_unfolds_it(app):
 
 
 @pytest.mark.cross_browser
-def test_escape_folds_the_lowest_open_panel_first(app):
+def test_escape_folds_the_panel_opened_last_first(app):
     app.panel("Initiative").open()
     app.panel("Status").open()
     assert open_titles(app.page) == ["Manage HP", "Status", "Initiative"]
     app.page.keyboard.press("Escape")
     app.settle()
-    assert open_titles(app.page) == ["Manage HP", "Status"]
+    assert open_titles(app.page) == ["Manage HP", "Initiative"]
     app.page.keyboard.press("Escape")
     app.settle()
     assert open_titles(app.page) == ["Manage HP"]

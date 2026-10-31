@@ -1312,6 +1312,7 @@ encodeTimer t =
         , ( "phase", encodeTurnPhase t.phase )
         , ( "ringing", E.bool t.ringing )
         , ( "note", E.string t.note )
+        , ( "skipNextTick", E.bool t.skipNextTick )
         ]
 
 
@@ -1731,8 +1732,10 @@ decodeRechargeAbility =
 
 decodeTimer : D.Decoder Timer
 decodeTimer =
-    D.map4 Timer
+    D.map5 Timer
         (D.field "remaining" D.int)
         (D.field "phase" decodeTurnPhase)
         (D.field "ringing" D.bool)
         (D.oneOf [ D.field "note" D.string, D.succeed "" ])
+        -- Added after `note`.  Older saves lack it.
+        (D.oneOf [ D.field "skipNextTick" D.bool, D.succeed False ])

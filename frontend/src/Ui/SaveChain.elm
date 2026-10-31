@@ -55,6 +55,10 @@ type alias SaveChainUi =
     -- form (so "Delete" knows which entry to remove).
     , presetPickerSelection : String
     , loadedPresetName : Maybe String
+
+    -- The latest roll of the fail side's formula and the formula
+    -- it rolled.  Pass halves it while the formula stands.
+    , lastFailRoll : Maybe { formula : String, total : Int }
     }
 
 
@@ -86,6 +90,7 @@ fresh target =
     , area = Nothing
     , presetPickerSelection = ""
     , loadedPresetName = Nothing
+    , lastFailRoll = Nothing
     }
 
 
@@ -117,12 +122,14 @@ freshOutcome =
 
 {-| Load a saved chain's fields into the form. Called by the
 Load-preset handler; sets `loadedPresetName` so a subsequent
-Delete knows what to remove.
+Delete knows what to remove. A loaded preset starts a new casting.
+It drops the last fail roll.
 -}
 fromChain : SaveChainUi -> SaveChain -> SaveChainUi
 fromChain baseline chain =
     { baseline
         | name = chain.name
+        , lastFailRoll = Nothing
         , saveAbility = chain.saveAbility
         , dcText =
             case chain.saveDc of
