@@ -60,16 +60,10 @@ pub fn main(config: Config) -> Result<ExitCode, ApplicationError> {
   info!("Starting ezpz-dndz-cli");
 
   match config.command {
-    Some(Command::Compendium { command }) => command.run()?,
-    Some(Command::Encounter { command }) => command.run()?,
-    Some(Command::Dice { command }) => command.run()?,
-    Some(Command::Users { command }) => command.run()?,
-    None => {
-      println!(
-        "ezpz-dndz-cli: no subcommand provided.  Run with --help \
-         for usage."
-      );
-    }
+    Command::Compendium { command } => command.run()?,
+    Command::Encounter { command } => command.run()?,
+    Command::Dice { command } => command.run()?,
+    Command::Users { command } => command.run()?,
   }
 
   Ok(ExitCode::SUCCESS)

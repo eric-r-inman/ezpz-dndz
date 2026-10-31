@@ -335,6 +335,9 @@ impl From<UserStoreError> for AuthHttpError {
         Self::Internal(e.to_string())
       }
       UserStoreError::Hash(s) => Self::Internal(s),
+      stand_in @ UserStoreError::UnknownEmailHash(_) => {
+        Self::Internal(stand_in.to_string())
+      }
     }
   }
 }
