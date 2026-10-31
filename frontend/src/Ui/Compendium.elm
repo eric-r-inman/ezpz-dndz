@@ -102,6 +102,12 @@ type alias CompendiumUi =
     -- (which picks the right-pane stat block).
     , selectedIds : Set String
 
+    -- Bundled creature ids the DM has cleared from the library.
+    -- The server keeps a signed-in DM's set.  This copy is the
+    -- truth for a signed-out session and lets another tab notice
+    -- a change.
+    , hiddenBundled : Set String
+
     -- Compendium id whose "[N] in Encounter" badge is mid-flash.
     -- Set by an add, cleared by a timed message, so the count
     -- change is visibly acknowledged where the eye already is.
@@ -211,6 +217,7 @@ emptyCompendium =
     , showOnlyAdded = False
     , pending = Nothing
     , selectedIds = Set.empty
+    , hiddenBundled = Set.empty
     , badgeFlashFor = Nothing
     , bulkMenu = Nothing
     , compendiumDirty = False
