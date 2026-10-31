@@ -488,7 +488,7 @@ def save_table(app, dialog):
 def reload_with_table(app):
     """Reloads a signed-in DM's page and waits for their table to arrive.
 
-    An editor opened before the table arrives shows the bundled defaults.
+    The editor's button stays disabled until then.
     """
     with app.page.expect_response(table_response("GET")) as loaded:
         app.reload()
@@ -607,6 +607,28 @@ def save_one_extra_mundane_item(app):
     dialog = open_table(app)
     unfold(dialog, "Items 133 entries").get_by_role("button", name="+ Add item").click()
     save_table(app, dialog)
+
+
+def test_the_table_editor_waits_for_a_signed_in_dms_table(app):
+    app.sign_up()
+    save_one_extra_mundane_item(app)
+    held = []
+    app.page.route(
+        "**/api/treasure-table",
+        lambda route: held.append(route) if route.request.method == "GET" else route.continue_(),
+    )
+    with app.page.expect_request(
+        lambda request: request.url.endswith("/api/treasure-table") and request.method == "GET"
+    ):
+        app.reload()
+    assert held, "the boot never asked for the table"
+    edit = treasure_panel(app).root.get_by_role("button", name="Edit treasure table…")
+    expect(edit).to_be_disabled()
+
+    held[0].continue_()
+    expect(edit).to_be_enabled()
+    dialog = open_table(app)
+    expect(dialog.get_by_role("button", name="↺ Revert")).to_be_visible()
 
 
 def test_revert_asks_first_then_drops_the_custom_table(app):

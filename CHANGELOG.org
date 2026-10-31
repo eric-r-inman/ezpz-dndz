@@ -33,6 +33,8 @@
     No action needed.
 16. Saving the compendium to the server takes about half as long.  No action
     needed.
+17. The Treasure Table editor no longer saves the bundled defaults over a
+    signed-in DM's saved table.  No action needed.
 ** Breaking
 1. A password change signs the account out on every other device.  Sign in again
    there with the new password.
