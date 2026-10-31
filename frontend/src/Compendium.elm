@@ -7,7 +7,7 @@ module Compendium exposing
     , Habitat(..), allHabitats, habitatLabel, habitatToWire, habitatFromWire, isPlanarHabitat
     , Treasure(..), allTreasures, treasureLabel, treasureToWire, treasureFromWire
     , Db, fromList, toList, count, upsert, remove
-    , find, findByName, search, filterByKind, sortByName, sortByCr, sortByRecency
+    , find, findByName, search, searchNames, filterByKind, sortByName, sortByCr, sortByRecency
     , crToFloat, abilityModifier
     , stripTrailingRecharge, appendRechargeSuffix
     , draftToInstance
@@ -41,7 +41,7 @@ lives in `View/` modules and consumes this domain.
 
 # Lookup / filter / sort
 
-@docs find, findByName, search, filterByKind, sortByName, sortByCr, sortByRecency
+@docs find, findByName, search, searchNames, filterByKind, sortByName, sortByCr, sortByRecency
 
 
 # Helpers
@@ -779,7 +779,20 @@ findByName name (Db cs) =
 Case-insensitive. Empty query returns the full DB unchanged.
 -}
 search : String -> Db -> Db
-search query (Db cs) =
+search =
+    matchingIn (\c -> [ c.name, c.race, c.alignment, c.source, c.challengeRating ])
+
+
+{-| `search` against names alone, for a box that promises a name
+search.
+-}
+searchNames : String -> Db -> Db
+searchNames =
+    matchingIn (\c -> [ c.name ])
+
+
+matchingIn : (Creature -> List String) -> String -> Db -> Db
+matchingIn fields query (Db cs) =
     let
         needle =
             String.toLower (String.trim query)
@@ -788,25 +801,7 @@ search query (Db cs) =
         Db cs
 
     else
-        Db
-            (List.filter
-                (\c ->
-                    let
-                        haystack =
-                            String.toLower
-                                (String.join " "
-                                    [ c.name
-                                    , c.race
-                                    , c.alignment
-                                    , c.source
-                                    , c.challengeRating
-                                    ]
-                                )
-                    in
-                    String.contains needle haystack
-                )
-                cs
-            )
+        Db (List.filter (\c -> String.contains needle (String.toLower (String.join " " (fields c)))) cs)
 
 
 filterByKind : List CreatureKind -> Db -> Db

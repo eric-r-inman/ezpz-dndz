@@ -6,7 +6,7 @@ module Effects exposing
     , persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
     , compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
     , postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
-    , importCompendiumBundle, clearCompendiumCreatures, resetCompendium
+    , importCompendiumBundle, keepCompendiumCreatures, resetCompendium
     , anchorDicePopup, areaRollCmd, areaRollSpecsFor, changePassword, compendiumListId, damageSaveSpec, deleteTreasureTable, diceInputId, editorFieldFocus, encounterPanelBodyId, fetchAuthMe, fetchConditionPresets, fetchLoreGroups, fetchSaveChainPresets, fetchTreasureProfiles, fetchTreasureTable, focusField, pushIncomingDiceRoll, putConditionPresets, putLoreGroups, putSaveChainPresets, putTreasureProfiles, putTreasureTable, rechargeRollCmd, rechargeRollCmdsFor, saveExpression, saveFlashExpiry, saveFlashMs, saveSource, submitLogin, submitLogout, submitRegister, updateProfile
     )
 
@@ -32,7 +32,7 @@ way: Update modules → Effects.
 @docs persistEncounterFor, persistLocalEncounter, persistDiceHistoryFor, persistCompendiumFor, broadcastCompendiumFor
 @docs compendiumChanged, couldDealDamage, shouldPersistAfter, shouldBroadcastAfter, shouldBroadcastCompendiumAfter
 @docs postCompendiumCreature, putCompendiumCreature, deleteCompendiumCreature
-@docs importCompendiumBundle, clearCompendiumCreatures, resetCompendium
+@docs importCompendiumBundle, keepCompendiumCreatures, resetCompendium
 
 -}
 
@@ -61,6 +61,7 @@ import Msg exposing (BatchRoll(..), Msg(..))
 import Ports
 import Process
 import Random
+import Set
 import Task
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.Condition
@@ -1222,23 +1223,20 @@ importCompendiumBundle creatures groups =
         }
 
 
-{-| Clear-All / Clear-Selected wire path. Sends the **legacy**
-bare-array body shape so the server's `import_compendium`
-handler keeps groups untouched — a clear is about creatures
-only. The response shape (`{ imported }`) is the same as
-`importCompendiumBundle`, but the Msg is tagged so the frontend
-dirty-flag semantics differ: Clear keeps dirty=True, file-import
-clears it.
+{-| Clear All, Clear Selected and Delete Selected wire path. The
+library becomes exactly `creatures`. The server hides each bundled
+creature left out. Groups stay untouched. The Msg is tagged so
+Clear keeps dirty=True. A file import clears it.
 -}
-clearCompendiumCreatures : List Compendium.Creature -> Cmd Msg
-clearCompendiumCreatures creatures =
+keepCompendiumCreatures : List Compendium.Creature -> Cmd Msg
+keepCompendiumCreatures creatures =
     Http.post
-        { url = "/api/compendium/import"
+        { url = "/api/compendium/keep"
         , body =
             Http.jsonBody (Encode.list Compendium.Wire.encodeCreature creatures)
         , expect =
             Http.expectJson CompendiumClearResponse
-                (Decode.field "imported" Decode.int)
+                (Decode.field "kept" Decode.int)
         }
 
 
@@ -1352,6 +1350,7 @@ localSnapshot model =
     , groups = Dict.values model.compendium.groups
     , nextLocalId = model.nextLocalCreatureId
     , bundledVersion = Compendium.Wire.currentBundledVersion
+    , hiddenBundled = Set.toList model.compendium.hiddenBundled
     }
 
 
@@ -1391,6 +1390,12 @@ shouldPersistAfter msg =
         CompendiumFromOtherTab _ ->
             False
 
+        -- The table just came from the server with the bundled rows
+        -- filled in.  Writing it back would freeze those rows into the
+        -- account.  A later fix to the bundle would then never reach it.
+        TreasureTableLoaded _ ->
+            False
+
         _ ->
             True
 
@@ -1420,7 +1425,7 @@ couldDealDamage msg =
         SaveLoadServerResponse _ _ ->
             False
 
-        SaveLoadDeviceFileRead _ ->
+        SaveLoadConfirmConfirm ->
             False
 
         EncounterReset ->

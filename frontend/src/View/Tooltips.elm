@@ -452,7 +452,7 @@ flyHeightDown =
 
 fallDamage : String
 fallDamage =
-    "Roll falling damage (1d6 per 10 ft, max 20d6) and ground the creature"
+    "Roll falling damage (1d6 per 10 ft, max 20d6), deal it and land the creature Prone"
 
 
 readyAction : String

@@ -230,8 +230,8 @@ type DurationEdit
 -- ── PREFERENCES AUX ──────────────────────────────────────────────────────────
 
 
-{-| Color-scheme preference. `Auto` defers to the OS pref via
-the `prefers-color-scheme` media query baked into `style.css`.
+{-| Color-scheme preference. The operating system's dark mode
+does not pick one.
 Defined in `Msg` (rather than `Preferences`) so the
 `PreferencesThemeSet Theme` Msg constructor can carry it
 without an import cycle, mirroring the `CompendiumSort` pattern

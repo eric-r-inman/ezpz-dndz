@@ -54,11 +54,12 @@ import Encounter exposing (Encounter)
 import Encounter.Lifecycle
 import Encounter.Roster
 import Model exposing (Model, PendingControl(..))
-import Msg exposing (Msg(..))
+import Msg exposing (HpKind(..), Msg(..))
 import Set
 import Ui.Compendium exposing (CompendiumDb(..))
 import Ui.QueueDrag
 import Update.Condition
+import Update.HpChange
 import Update.Status
 
 
@@ -669,11 +670,7 @@ through the dice history.
 are rounded DOWN to the nearest 10-foot segment, so 26 ft → 2d6.
 A creature at 0–9 ft of altitude takes no damage.
 
-The damage isn't auto-applied to the creature's HP — the GM gets
-to decide (saving throw / feather fall / etc.). The roll lands
-in the shared dice history so the title bar's "latest total"
-readout updates and the dice modal can be opened later for the
-full breakdown.
+The roll lands in `fallDamageLanded`, which deals it.
 
 The creature's `flying` flag is cleared (and `flyHeight` reset to
 
@@ -708,19 +705,26 @@ rollFallDamage name model =
     ( { model | encounter = groundedEnc }, landedCmd )
 
 
-{-| Push the fall-damage roll into the shared dice history so the
-title-bar readout updates and the dice modal sees it on next
-open. No HP mutation — see `rollFallDamage`.
+{-| The fall's roll landed. It joins the dice history, and the
+creature takes it as damage through Manage HP's log. Under the
+2024 rules a creature that takes damage from a fall lands Prone.
 -}
 fallDamageLanded : String -> Dice.Roll -> Model -> ( Model, Cmd Msg )
-fallDamageLanded _ roll model =
-    let
-        ( pushed, broadcastCmd ) =
-            Effects.pushDiceRoll roll model
-    in
-    ( pushed
-    , Cmd.batch [ Effects.persistDiceRoll roll, broadcastCmd ]
-    )
+fallDamageLanded name roll model =
+    Update.HpChange.freshRollLanded DamageKind name roll model
+        |> Tuple.mapFirst (\m -> { m | encounter = landProne name m.encounter })
+
+
+landProne : String -> Encounter -> Encounter
+landProne name =
+    Encounter.addConditionIfMissing name
+        { name = "Prone"
+        , note = ""
+        , duration = Encounter.DurationManual
+        , saveToEnd = Nothing
+        , linkedTo = Nothing
+        , area = Nothing
+        }
 
 
 findFlyHeight : String -> Encounter -> Int

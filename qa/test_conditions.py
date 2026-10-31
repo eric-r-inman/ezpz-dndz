@@ -64,18 +64,47 @@ def test_the_quick_apply_caret_applies_and_folds_the_editor(app):
     expect(cond.panel.fold_button()).to_have_attribute("aria-expanded", "false")
 
 
+def apply_anew(cond, condition, scope="Target"):
+    """Leaves the condition the editor just applied and applies one anew."""
+    cond.root.get_by_role("button", name="New condition").click()
+    cond.pick(condition).apply(scope)
+
+
 def test_a_creature_cannot_take_the_same_condition_twice(app):
+    app.add("Ogre")
+    cond = ConditionEditor(app).open_for("Ogre")
+    cond.pick("Prone").apply()
+
+    apply_anew(cond, "Prone")
+    expect(app.page.get_by_text("Ogre already has Prone.")).to_be_visible()
+    app.shot("already-has")
+    assert chip_names(app.card("Ogre")) == ["Prone"]
+
+
+def test_a_condition_on_a_selection_skips_the_creature_that_has_it(app):
     app.add("Ogre")
     app.add("Goblin Warrior")
     select(app, "Ogre", "Goblin Warrior")
-    cond = ConditionEditor(app).open_for("Goblin Warrior")
-    cond.pick("Prone").apply()
+    ConditionEditor(app).open_for("Goblin Warrior").pick("Prone").apply()
 
-    cond = ConditionEditor(app).open_for("Ogre")
-    cond.pick("Prone").apply("Selected (2)")
-    expect(app.page.get_by_text("The creature already has this condition")).to_be_visible()
-    app.shot("already-has")
+    ConditionEditor(app).open_for("Ogre").pick("Prone").apply("Selected (2)")
+    expect(app.page.get_by_text("Skipped Goblin Warrior: it already has Prone.")).to_be_visible()
     assert chip_names(app.card("Goblin Warrior")) == ["Prone"]
+    assert chip_names(app.card("Ogre")) == ["Prone"]
+
+
+def test_exhaustion_on_a_creature_that_has_it_adds_a_level(app):
+    app.add("Ogre")
+    app.add("Goblin Warrior")
+    select(app, "Ogre", "Goblin Warrior")
+    cond = ConditionEditor(app).open_for("Ogre")
+    cond.pick("Exhaustion").apply()
+
+    apply_anew(cond, "Exhaustion", "Selected (2)")
+    expect(app.page.get_by_text("Ogre gains an Exhaustion level.")).to_be_visible()
+    for name, level in (("Ogre", 2), ("Goblin Warrior", 1)):
+        badge = app.card(name).root.get_by_role("button", name=re.compile("^Exhaustion level "))
+        expect(badge).to_have_accessible_name(f"Exhaustion level {level}")
 
 
 def test_a_second_condition_on_the_same_creature_is_added_beside_the_first(app):

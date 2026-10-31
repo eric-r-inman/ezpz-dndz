@@ -942,6 +942,7 @@ type alias LocalCompendiumSnapshot =
     , groups : List Compendium.Group.Group
     , nextLocalId : Int
     , bundledVersion : Int
+    , hiddenBundled : List String
     }
 
 
@@ -952,12 +953,13 @@ encodeLocalCompendiumSnapshot snap =
         , ( "groups", E.list Compendium.GroupWire.encodeGroup snap.groups )
         , ( "next_local_id", E.int snap.nextLocalId )
         , ( "bundled_version", E.int snap.bundledVersion )
+        , ( "hidden_bundled", E.list E.string snap.hiddenBundled )
         ]
 
 
 decodeLocalCompendiumSnapshot : D.Decoder LocalCompendiumSnapshot
 decodeLocalCompendiumSnapshot =
-    D.map4 LocalCompendiumSnapshot
+    D.map5 LocalCompendiumSnapshot
         (D.field "creatures" (D.list decodeCreature))
         (D.oneOf
             [ D.field "groups" (D.list Compendium.GroupWire.decodeGroup)
@@ -972,6 +974,12 @@ decodeLocalCompendiumSnapshot =
         (D.oneOf
             [ D.field "bundled_version" D.int
             , D.succeed 0
+            ]
+        )
+        -- Added after `bundled_version`.  Older snapshots lack it.
+        (D.oneOf
+            [ D.field "hidden_bundled" (D.list D.string)
+            , D.succeed []
             ]
         )
 

@@ -253,17 +253,17 @@ treasureTableLoaded :
 treasureTableLoaded result model =
     case result of
         Ok (Just serverTable) ->
-            ( { model | userTreasureTable = Just serverTable }, Cmd.none )
+            ( { model | userTreasureTable = Just serverTable, userTreasureTableReady = True }, Cmd.none )
 
         Ok Nothing ->
             case model.userTreasureTable of
                 Just localTable ->
                     -- Empty server, populated client (anon-mode
                     -- migration on sign-in).
-                    ( model, Effects.putTreasureTable localTable )
+                    ( { model | userTreasureTableReady = True }, Effects.putTreasureTable localTable )
 
                 Nothing ->
-                    ( model, Cmd.none )
+                    ( { model | userTreasureTableReady = True }, Cmd.none )
 
         Err err ->
             Update.Toast.push ToastError
