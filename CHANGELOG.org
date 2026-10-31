@@ -6,6 +6,8 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump serde_json from 1.0.151 to 1.0.152
+   (https://github.com/eric-r-inman/ezpz-dndz/pull/175)
 ** Security
 * v0.39.0
 ** Fixes
