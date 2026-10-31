@@ -17,6 +17,7 @@
 //! drops them all), matching what the JSON store did with
 //! `find` / `retain`.
 
+use std::collections::HashSet;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use ezpz_dndz_lib::{
@@ -105,20 +106,10 @@ impl UserCompendiumStore {
     user_id: &UserId,
     creature: Creature,
   ) -> Result<(), CompendiumStoreError> {
-    let mut tx = self.db.pool().begin().await.map_err(|source| {
-      CompendiumStoreError::TransactionBegin {
-        store: "creature",
-        source,
-      }
-    })?;
+    let mut tx = self.begin().await?;
     let position = next_position(&mut tx, user_id).await?;
     insert_creature(&mut tx, user_id.as_str(), position, &creature).await?;
-    tx.commit().await.map_err(|source| {
-      CompendiumStoreError::TransactionCommit {
-        store: "creature",
-        source,
-      }
-    })
+    commit(tx).await
   }
 
   /// Replace the user's creature at `id` with the supplied record.
@@ -143,12 +134,7 @@ impl UserCompendiumStore {
     }
     creature.updated_at = epoch_millis();
 
-    let mut tx = self.db.pool().begin().await.map_err(|source| {
-      CompendiumStoreError::TransactionBegin {
-        store: "creature",
-        source,
-      }
-    })?;
+    let mut tx = self.begin().await?;
 
     // The first row (by position) with this wire id, mirroring the
     // legacy Vec's `find`.  Delete-and-reinsert lets the whole child
@@ -172,12 +158,7 @@ impl UserCompendiumStore {
     insert_creature(&mut tx, user_id.as_str(), existing.position, &creature)
       .await?;
 
-    tx.commit().await.map_err(|source| {
-      CompendiumStoreError::TransactionCommit {
-        store: "creature",
-        source,
-      }
-    })?;
+    commit(tx).await?;
     Ok(creature)
   }
 
@@ -211,12 +192,7 @@ impl UserCompendiumStore {
     creatures: Vec<Creature>,
   ) -> Result<(), CompendiumStoreError> {
     let now = epoch_millis();
-    let mut tx = self.db.pool().begin().await.map_err(|source| {
-      CompendiumStoreError::TransactionBegin {
-        store: "creature",
-        source,
-      }
-    })?;
+    let mut tx = self.begin().await?;
     let first = next_position(&mut tx, user_id).await?;
     for (i, creature) in creatures.into_iter().enumerate() {
       let stamped = Creature {
@@ -231,45 +207,106 @@ impl UserCompendiumStore {
       insert_creature(&mut tx, user_id.as_str(), first + i as i64, &stamped)
         .await?;
     }
-    tx.commit().await.map_err(|source| {
-      CompendiumStoreError::TransactionCommit {
-        store: "creature",
-        source,
-      }
-    })
+    commit(tx).await
   }
 
   /// Replace this user's entire creature list with `creatures`.
-  /// Used by the reset-to-bundled path (empty `creatures`) and by
-  /// full-compendium import (the user uploaded a JSON export).
-  /// Server preserves nothing — what you send is what's persisted
-  /// for this user.
+  /// Full-compendium import uses it to load a JSON export.  The
+  /// server preserves nothing.  What the caller sends is what
+  /// persists for this user.
   pub async fn replace_for_user(
     &self,
     user_id: &UserId,
     creatures: Vec<Creature>,
   ) -> Result<(), CompendiumStoreError> {
-    let mut tx = self.db.pool().begin().await.map_err(|source| {
-      CompendiumStoreError::TransactionBegin {
-        store: "creature",
-        source,
-      }
-    })?;
-    sqlx::query("DELETE FROM user_creatures WHERE user_id = $1")
+    let mut tx = self.begin().await?;
+    write_creatures(&mut tx, user_id, &creatures).await?;
+    commit(tx).await
+  }
+
+  /// The bundled creature ids this user has hidden from their list.
+  pub async fn hidden_bundled(
+    &self,
+    user_id: &UserId,
+  ) -> Result<HashSet<String>, CompendiumStoreError> {
+    sqlx::query_scalar::<_, String>(
+      "SELECT creature_id FROM compendium_hidden_bundled WHERE user_id = $1",
+    )
+    .bind(user_id.as_str())
+    .fetch_all(self.db.pool())
+    .await
+    .map(|ids| ids.into_iter().collect())
+    .map_err(|source| CompendiumStoreError::HiddenBundledRead { source })
+  }
+
+  /// Make this user's library exactly `creatures` plus every bundled
+  /// creature outside `hidden`.  One transaction writes both.  A reader
+  /// never sees one without the other.  A reset keeps nothing
+  /// and hides nothing.
+  pub async fn keep(
+    &self,
+    user_id: &UserId,
+    creatures: Vec<Creature>,
+    hidden: Vec<String>,
+  ) -> Result<(), CompendiumStoreError> {
+    let mut tx = self.begin().await?;
+    write_creatures(&mut tx, user_id, &creatures).await?;
+    sqlx::query("DELETE FROM compendium_hidden_bundled WHERE user_id = $1")
       .bind(user_id.as_str())
       .execute(&mut *tx)
       .await
-      .map_err(|source| CompendiumStoreError::CreatureRowsWrite { source })?;
-    for (i, creature) in creatures.iter().enumerate() {
-      insert_creature(&mut tx, user_id.as_str(), i as i64, creature).await?;
+      .map_err(|source| CompendiumStoreError::HiddenBundledWrite { source })?;
+    for id in &hidden {
+      sqlx::query(
+        "INSERT INTO compendium_hidden_bundled (user_id, creature_id) \
+         VALUES ($1, $2)",
+      )
+      .bind(user_id.as_str())
+      .bind(id)
+      .execute(&mut *tx)
+      .await
+      .map_err(|source| CompendiumStoreError::HiddenBundledWrite { source })?;
     }
-    tx.commit().await.map_err(|source| {
-      CompendiumStoreError::TransactionCommit {
+    commit(tx).await
+  }
+
+  async fn begin(
+    &self,
+  ) -> Result<sqlx::Transaction<'static, sqlx::Any>, CompendiumStoreError> {
+    self.db.pool().begin().await.map_err(|source| {
+      CompendiumStoreError::TransactionBegin {
         store: "creature",
         source,
       }
     })
   }
+}
+
+async fn write_creatures(
+  tx: &mut sqlx::Transaction<'static, sqlx::Any>,
+  user_id: &UserId,
+  creatures: &[Creature],
+) -> Result<(), CompendiumStoreError> {
+  sqlx::query("DELETE FROM user_creatures WHERE user_id = $1")
+    .bind(user_id.as_str())
+    .execute(&mut **tx)
+    .await
+    .map_err(|source| CompendiumStoreError::CreatureRowsWrite { source })?;
+  for (i, creature) in creatures.iter().enumerate() {
+    insert_creature(tx, user_id.as_str(), i as i64, creature).await?;
+  }
+  Ok(())
+}
+
+async fn commit(
+  tx: sqlx::Transaction<'static, sqlx::Any>,
+) -> Result<(), CompendiumStoreError> {
+  tx.commit()
+    .await
+    .map_err(|source| CompendiumStoreError::TransactionCommit {
+      store: "creature",
+      source,
+    })
 }
 
 /// The next free list slot for this user (appends go at the end,
