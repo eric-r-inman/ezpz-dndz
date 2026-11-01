@@ -6,6 +6,9 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.40.0
+** Maintenance
 1. Bump encoding_rs from 0.8.42 to 0.8.44
 2. Bump js-sys from 0.3.106 to 0.3.107
 3. Bump log from 0.4.34 to 0.4.35
@@ -17,7 +20,6 @@
 9. Bump wasm-bindgen-macro-support from 0.2.129 to 0.2.130
 10. Bump wasm-bindgen-shared from 0.2.129 to 0.2.130
 11. Bump web-sys from 0.3.106 to 0.3.107
-** Security
 * v0.39.0
 ** Fixes
 1. A legendary pool's hover text says that a click at 0 refills it.  No action
