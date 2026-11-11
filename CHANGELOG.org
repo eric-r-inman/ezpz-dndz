@@ -6,6 +6,9 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.42.0
+** Maintenance
 1. Bump cc from 1.11.0 to 1.11.1
 2. Bump const-oid from 0.10.2 to 0.10.3
 3. Bump itoa from 1.0.18 to 1.0.19
@@ -28,7 +31,6 @@
 20. Bump uuid from 1.29.0 to 1.29.2
 21. Bump webpki-root-certs from 1.0.11 to 1.0.12
 22. Bump winnow from 1.0.4 to 1.0.5
-** Security
 * v0.41.0
 ** Maintenance
 1. Bump cc from 1.10.0 to 1.11.0
