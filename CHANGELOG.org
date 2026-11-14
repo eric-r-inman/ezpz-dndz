@@ -6,6 +6,9 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.43.0
+** Maintenance
 1. Bump bumpalo from 3.20.3 to 3.20.4
 2. Bump cc from 1.11.1 to 1.11.2
 3. Bump errno from 0.3.14 to 0.3.15
