@@ -6,12 +6,14 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.44.0
+** Maintenance
 1. Bump jiff from 0.2.43 to 0.2.45
 2. Bump jiff-core from 0.1.5 to 0.1.7
 3. Bump jiff-static from 0.2.43 to 0.2.45
 4. Bump jiff-tzdb from 0.1.9 to 0.1.10
 5. Bump rand from 0.10.3 to 0.10.4
-** Security
 * v0.43.0
 ** Maintenance
 1. Bump bumpalo from 3.20.3 to 3.20.4
