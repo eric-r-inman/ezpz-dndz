@@ -6,6 +6,9 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump jiff from 0.2.45 to 0.2.46
+2. Bump jiff-core from 0.1.7 to 0.1.8
+3. Bump jiff-static from 0.2.45 to 0.2.46
 ** Security
 * v0.44.0
 ** Maintenance
