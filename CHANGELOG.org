@@ -6,7 +6,25 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump bytes from 1.12.1 to 1.12.2
+2. Bump clap from 4.6.7 to 4.6.8
+3. Bump clap_derive from 4.6.7 to 4.6.8
+4. Bump clap_lex from 1.1.1 to 1.1.2
+5. Bump rand_pcg from 0.10.2 to 0.10.3
+6. Bump regex-automata from 0.4.18 to 0.4.19
+7. Bump regex-syntax from 0.8.11 to 0.8.12
+8. Bump smallvec from 1.16.5 to 1.16.6
+9. Bump sqlx from 0.9.0 to 0.9.1
+10. Bump sqlx-core from 0.9.0 to 0.9.1
+11. Bump sqlx-macros from 0.9.0 to 0.9.1
+12. Bump sqlx-macros-core from 0.9.0 to 0.9.1
+13. Bump sqlx-mysql from 0.9.0 to 0.9.1
+14. Bump sqlx-postgres from 0.9.0 to 0.9.1
+15. Bump sqlx-sqlite from 0.9.0 to 0.9.1
+16. Bump uuid from 1.29.2 to 1.29.3
+17. Bump zeroize from 1.9.1 to 1.9.2
 ** Security
+1. Bump libsqlite3-sys from 0.37.0 to 0.40.0 (RUSTSEC-2026-0459)
 * v0.45.0
 ** Maintenance
 1. Bump jiff from 0.2.45 to 0.2.46
