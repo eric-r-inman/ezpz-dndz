@@ -6,6 +6,14 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump cc from 1.11.2 to 1.11.3
+2. Bump clap from 4.6.8 to 4.6.9
+3. Bump clap_derive from 4.6.8 to 4.6.9
+4. Bump pin-project from 1.1.13 to 1.2.0
+5. Bump pin-project-internal from 1.1.13 to 1.2.0
+6. Bump pin-project-lite from 0.2.17 to 0.2.18
+7. Bump serde_with from 3.24.0 to 3.25.0
+8. Bump serde_with_macros from 3.24.0 to 3.25.0
 ** Security
 * v0.46.0
 ** Maintenance
