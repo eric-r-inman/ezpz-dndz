@@ -6,6 +6,9 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.48.0
+** Maintenance
 1. Bump form_urlencoded from 1.2.2 to 1.2.3
 2. Bump toml from 1.2.1+spec-1.1.0 to 1.2.2+spec-1.1.0
 3. Bump toml_parser from 1.1.5+spec-1.1.0 to 1.1.6+spec-1.1.0
@@ -13,7 +16,6 @@
 5. Bump walkdir from 2.5.0 to 2.5.1
 6. Bump zerocopy from 0.8.63 to 0.8.64
 7. Bump zerocopy-derive from 0.8.63 to 0.8.64
-** Security
 * v0.47.0
 ** Maintenance
 1. Bump cc from 1.11.2 to 1.11.3
