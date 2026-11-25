@@ -6,6 +6,9 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.51.0
+** Maintenance
 1. Bump clap from 4.6.9 to 4.6.10
 2. Bump clap_builder from 4.6.7 to 4.6.10
 3. Bump hyper from 1.12.0 to 1.13.0
@@ -18,7 +21,6 @@
 10. Bump toml_parser from 1.1.6+spec-1.1.0 to 1.1.7+spec-1.1.0
 11. Bump zerocopy from 0.8.64 to 0.8.65
 12. Bump zerocopy-derive from 0.8.64 to 0.8.65
-** Security
 * v0.50.0
 ** Security
 1. Bump cookie from 0.18.2 to 0.18.3 (RUSTSEC-2026-0594)
