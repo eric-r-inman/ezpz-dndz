@@ -6,6 +6,18 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+1. Bump clap from 4.6.9 to 4.6.10
+2. Bump clap_builder from 4.6.7 to 4.6.10
+3. Bump hyper from 1.12.0 to 1.13.0
+4. Bump jiff from 1.0.2 to 1.0.3
+5. Bump jiff-core from 1.0.1 to 1.0.2
+6. Bump jiff-static from 1.0.2 to 1.0.3
+7. Bump litrs from 1.0.1 to 1.1.0
+8. Bump sha2 from 0.11.1 to 0.11.2
+9. Bump toml from 1.2.2+spec-1.1.0 to 1.2.3+spec-1.1.0
+10. Bump toml_parser from 1.1.6+spec-1.1.0 to 1.1.7+spec-1.1.0
+11. Bump zerocopy from 0.8.64 to 0.8.65
+12. Bump zerocopy-derive from 0.8.64 to 0.8.65
 ** Security
 * v0.50.0
 ** Security
