@@ -6,10 +6,12 @@
 ** Fixes
 ** Breaking
 ** Maintenance
+** Security
+* v0.52.0
+** Maintenance
 1. Bump allocator-api2 from 0.2.21 to 0.2.22
 2. Bump zerocopy from 0.8.65 to 0.8.66
 3. Bump zerocopy-derive from 0.8.65 to 0.8.66
-** Security
 * v0.51.0
 ** Maintenance
 1. Bump clap from 4.6.9 to 4.6.10
